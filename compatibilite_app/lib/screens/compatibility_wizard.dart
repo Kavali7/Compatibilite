@@ -187,6 +187,40 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
 
   String _formatDate(DateTime? date) => date == null ? 'Sélectionner' : DateFormat('dd/MM/yyyy').format(date);
 
+  int _daysInMonth(int? year, int? month) {
+    if (year == null || month == null) return 31;
+    final beginningNextMonth = (month < 12) ? DateTime(year, month + 1, 1) : DateTime(year + 1, 1, 1);
+    final lastDayCurrentMonth = beginningNextMonth.subtract(const Duration(days: 1)).day;
+    return lastDayCurrentMonth;
+  }
+
+  void _updateBirthDate(bool isFirst) {
+    final year = isFirst ? _yearA : _yearB;
+    final month = isFirst ? _monthA : _monthB;
+    final day = isFirst ? _dayA : _dayB;
+    if (year != null && month != null && day != null) {
+      final maxDay = _daysInMonth(year, month);
+      if (day > maxDay) {
+        if (isFirst) {
+          _dayA = null;
+          _birthA = null;
+        } else {
+          _dayB = null;
+          _birthB = null;
+        }
+        return;
+      }
+      final date = DateTime(year, month, day);
+      setState(() {
+        if (isFirst) {
+          _birthA = date;
+        } else {
+          _birthB = date;
+        }
+      });
+    }
+  }
+
   void _toggleChallenge(String item) {
     setState(() {
       if (_challenges.contains(item)) {
@@ -659,7 +693,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
               Expanded(
                 child: DropdownButtonFormField<int>(
                   decoration: const InputDecoration(labelText: 'Année'),
-                  value: selectedYear,
+                  initialValue: selectedYear,
                   items: years
                       .map((y) => DropdownMenuItem<int>(
                             value: y,
@@ -677,7 +711,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
               Expanded(
                 child: DropdownButtonFormField<int>(
                   decoration: const InputDecoration(labelText: 'Mois'),
-                  value: selectedMonth,
+                  initialValue: selectedMonth,
                   items: List.generate(
                     months.length,
                     (index) => DropdownMenuItem<int>(
@@ -696,7 +730,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
               Expanded(
                 child: DropdownButtonFormField<int>(
                   decoration: const InputDecoration(labelText: 'Jour'),
-                  value: selectedDay != null && selectedDay <= maxDay ? selectedDay : null,
+                  initialValue: selectedDay != null && selectedDay <= maxDay ? selectedDay : null,
                   items: days
                       .map((d) => DropdownMenuItem<int>(
                             value: d,
