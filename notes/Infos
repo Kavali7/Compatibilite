@@ -1,0 +1,5 @@
+Prochaines étapes suggérées :
+
+Remplacer progressivement les appels dépréciés par les nouvelles API (withValues, activeThumbColor).
+Ajouter la persistance locale (SharedPreferences) et un rappel quotidien.
+Intégrer des illustrations/animations pour enrichir la landing cible et renforcer le storytelling.

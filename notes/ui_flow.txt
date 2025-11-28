@@ -1,0 +1,150 @@
+Parcours utilisateur et interface pour le service
+« Compatibilité & Guidance amoureuse »
+Ce document décrit l’expérience utilisateur (UX) et l’interface utilisateur (UI) du premier service. Le but
+est d’offrir un parcours en plusieurs étapes , inspiré des sites de numérologie/astrologie existants, qui
+engage l’utilisateur et l’incite à revenir régulièrement. Les recommandations s’appuient sur des bonnes
+pratiques de conception de formulaires multi‑étapes.
+Principes de conception
+Formulaire multi‑étapes  : un formulaire en plusieurs pages réduit la charge cognitive,
+augmente le taux de complétion et améliore l’expérience utilisateur . Chaque étape recueille
+un groupe d’informations cohérent, encourageant la progression et la motivation .
+Progress bar  : un indicateur visuel (barre ou liste de pas) informe l’utilisateur de l’avancement et
+du nombre d’étapes restantes. Les progress trackers augmentent les taux de finalisation en
+découpant la tâche en sous‑objectifs, réduisant ainsi l’anxiété et la frustration . IBM
+recommande de « diviser l’objectif final en tâches plus petites » pour encourager la complétion
+.
+Une seule colonne et peu de champs  : éviter les colonnes multiples et ne demander que les
+informations nécessaires améliore la compréhension et réduit les erreurs . Le nombre de
+champs devrait être limité à 5–6 par formulaire .
+Ordre logique et questions faciles  : commencer par des questions simples ou engageantes
+(prénom) puis progresser vers des questions plus personnelles (date de naissance, e‑mail). Cela
+crée un effet de « progressive engagement » .
+Étiquettes claires et champs obligatoires  : utiliser des labels plutôt que des placeholders et
+marquer les champs obligatoires/optionnels pour éviter toute confusion .
+Étapes du parcours
+Accueil / Introduction
+Objectif :  saluer l’utilisateur , expliquer en une phrase l’utilité du service (analyser la compatibilité
+amoureuse via la numérologie) et rassurer sur la confidentialité. 
+Contenu :  bref texte d’accroche et bouton « Commencer ».
+Design :  page épurée avec une illustration symbolique (cœurs, étoiles, etc.) et incitation claire à
+débuter . Le bouton doit être large et visible.
+Prénoms des partenaires
+Champs :
+Prénom du partenaire 1
+Prénom du partenaire 2
+Option :  genre ou rôle dans le couple (facultatif) pour personnaliser le discours.
+Conseils :  proposer un exemple sous les champs (ex. « Jean et Marie »). Les champs sont
+marqués comme obligatoires.• 
+1
+2
+• 
+3
+4
+• 
+5
+6
+• 
+7
+• 
+8
+1. 
+2. 
+3. 
+4. 
+5. 
+6. 
+◦ 
+◦ 
+7. 
+8. 
+1
+Validation :  vérifier que le champ n’est pas vide et n’excède pas une longueur raisonnable.
+Dates de naissance
+Champs :
+Date de naissance de la personne 1 (sélecteur de date)
+Date de naissance de la personne 2
+Description :  rappeler l’utilité des dates (calcul du chemin de vie et de l’année personnelle) pour
+inciter l’utilisateur à compléter cette étape.
+Validation :  s’assurer que les dates sont valides (format DD/MM/AAAA) et que les années ne sont
+pas dans le futur .
+Informations contextuelles (facultatives)
+Objectif :  enrichir l’interprétation sans allonger la phase obligatoire. Le formulaire propose des
+questions à cocher ou à saisir :
+Date de rencontre ou de mariage (sélecteur de date)
+Durée de la relation
+Défis principaux rencontrés (liste à choix multiples : communication, finances, jalousie,
+etc.)
+Design :  cette étape est facultative ; indiquer clairement qu’elle n’est pas obligatoire (bouton
+« Passer »).
+Coordonnées et opt‑in
+Champs :  adresse e‑mail (obligatoire) et consentement à recevoir le rapport et les prévisions
+quotidiennes. 
+Objectif :  permettre l’envoi du rapport complet, collecter un point de contact et amorcer la
+fidélisation. 
+Conseils  :  expliquer  que  l’e‑mail  permettra  de  recevoir  le  dossier  et  les  prochains  conseils.
+Ajouter une case à cocher pour s’abonner aux notifications quotidiennes (optionnelle).
+Présentation des résultats
+Contenu :
+Nombre de couple  et interprétation (parmi les 1‑9) avec conseils pour cultiver la relation.
+Chemin de vie  de chaque partenaire et compatibilité générale. 
+Année personnelle actuelle  de chacun et influence sur la relation. 
+Conseil du jour  (analyse numérologique de la date actuelle), avec indications sur les
+décisions à prendre ou à éviter et les précautions pour chaque partenaire.
+Appel à l’action :  inciter l’utilisateur à revenir consulter la guidance quotidienne (bouton « Voir
+ma vibration de demain »), soulignant que les influences changent chaque jour . 
+Design :  segments séparés (compatibilité, chemin de vie, années personnelles, conseil du jour)
+avec icônes et couleurs harmonieuses. Possibilité de télécharger le rapport complet en PDF.9. 
+10. 
+11. 
+◦ 
+◦ 
+12. 
+13. 
+14. 
+15. 
+◦ 
+◦ 
+◦ 
+16. 
+17. 
+18. 
+19. 
+20. 
+21. 
+22. 
+◦ 
+◦ 
+◦ 
+◦ 
+23. 
+1
+24. 
+2
+Fonctionnalités de fidélisation
+Notifications / rappels  : inviter l’utilisateur à activer les notifications ou les e‑mails quotidiens
+pour recevoir le conseil du jour et les évolutions. Ce système crée une dépendance en s’appuyant
+sur le principe qu’au moins un des cycles (jour , mois, année) change chaque jour et que
+l’interprétation évolue .
+Progressez avec nous  : proposer des contenus complémentaires (articles, tirages de tarot,
+calculs kabbalistiques) et un accès à un suivi personnalisé via un abonnement.
+Sauvegarde locale  : pour une version sans backend, stocker les réponses et l’état de
+progression dans le localStorage  du navigateur afin de reprendre le formulaire là où
+l’utilisateur s’est arrêté.
+Utilisation :  ce parcours sera implémenté dans l’application Flutter en respectant la structure et les
+étapes ci‑dessus. Chaque écran correspondra à un widget distinct, avec navigation contrôlée et gestion
+de l’état (progression, validation, stockage local). L’interface s’inspirera de la concurrence en restant
+simple, mobile‑friendly et attrayante. 
+Must-Follow UX Best Practices When Designing A Multi Step Form - Growform
+Multi Step Form Builder
+https://www.growform.co/must-follow-ux-best-practices-when-designing-a-multi-step-form/
+Design Better Progress Trackers and Control User Expectations
+https://www.uxpin.com/studio/blog/design-progress-trackers/
+Your Personal Years, Months, and Days
+https://affinitynumerology.com/using-numerology/your-personal-years-months-and-days.php• 
+9
+• 
+• 
+1 2 5 6 7 8
+3 4
+9
+3
