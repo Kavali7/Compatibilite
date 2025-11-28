@@ -903,6 +903,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
 
   Widget _coupleCard(CompatibilitySummary summary) {
     final interpretation = _service.describeCoupleNumber(summary.coupleNumber);
+    final label = _service.archetypeLabel(summary.coupleNumber);
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -914,7 +915,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Nombre du couple : ${summary.coupleNumber}',
+            'Dynamique du couple : $label',
             style: GoogleFonts.philosopher(fontSize: 20, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
@@ -966,28 +967,23 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            ' ? ',
+            'Portrait de ${report.input.name}',
             style: GoogleFonts.philosopher(fontSize: 18, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
-          _numberRow('Chemin de vie', report.lifePath, _service.describeBaseNumber(report.lifePath)),
+          _numberRow('Profil essentiel', report.lifePath, _service.describeBaseNumber(report.lifePath)),
           const SizedBox(height: 6),
-          _numberRow('Nombre du nom', report.nameNumber, _service.describeNameNumber(report.nameNumber)),
+          _numberRow('Signature relationnelle', report.nameNumber, _service.describeNameNumber(report.nameNumber)),
           const SizedBox(height: 6),
-          _numberRow('Nombre intime', report.intimateNumber, _service.describeIntimateNumber(report.intimateNumber)),
+          _numberRow('Tonalité intime', report.intimateNumber, _service.describeIntimateNumber(report.intimateNumber)),
           const SizedBox(height: 6),
-          _numberRow('Nombre de personnalite', report.personalityNumber, _service.describePersonalityNumber(report.personalityNumber)),
+          _numberRow('Style social', report.personalityNumber, _service.describePersonalityNumber(report.personalityNumber)),
           const SizedBox(height: 6),
-          _numberRow('Nombre hereditaire', report.heredityNumber, _service.describeHeredityNumber(report.heredityNumber)),
+          _numberRow('Racines', report.heredityNumber, _service.describeHeredityNumber(report.heredityNumber)),
           const SizedBox(height: 6),
-          _numberRow('Nombre kabbalistique', report.kabbalahNumber, _service.describeKabbalahNumber(report.kabbalahNumber)),
+          _numberRow('Énergie complémentaire', report.kabbalahNumber, _service.describeKabbalahNumber(report.kabbalahNumber)),
           const SizedBox(height: 6),
-          _numberRow('Annee personnelle', report.personalYear, _service.describePersonalYear(report.personalYear)),
-          const SizedBox(height: 6),
-          Text(
-            'Mois personnel :  ? Jour personnel :  ()',
-            style: const TextStyle(color: AppColors.textMuted),
-          ),
+          _numberRow('Rythme annuel', report.personalYear, _service.describePersonalYear(report.personalYear)),
           const SizedBox(height: 8),
           _guideRow(report),
         ],
@@ -1008,7 +1004,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Guides Chemin/Expression',
+            'Points d’appui',
             style: TextStyle(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 4),
@@ -1022,6 +1018,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   }
 
   Widget _numberRow(String label, int value, String meaning) {
+    final archetype = _service.archetypeLabel(value);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1031,10 +1028,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
             shape: BoxShape.circle,
             color: AppColors.primary.withValues(alpha: 0.2),
           ),
-          child: Text(
-            value.toString(),
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
+          child: const Icon(Icons.star, color: AppColors.primary, size: 20),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -1042,6 +1036,10 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+              Text(
+                archetype,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
               Text(meaning, style: const TextStyle(color: AppColors.textMuted)),
             ],
           ),

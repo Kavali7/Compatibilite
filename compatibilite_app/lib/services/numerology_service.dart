@@ -1,7 +1,5 @@
 import 'package:compatibilite_app/models/compatibility_models.dart';
 
-import 'interpretations.dart';
-
 class NumerologyService {
   static const Map<String, int> _letterValues = {
     'A': 1,
@@ -205,31 +203,70 @@ class NumerologyService {
     );
   }
 
-  String describeBaseNumber(int number) => baseNumberMeanings[number] ?? '';
 
-  String describeNameNumber(int number) => nameNumberMeanings[number] ?? baseNumberMeanings[number] ?? '';
+  static const Map<int, String> _archetypes = {
+    1: 'Initiateur',
+    2: 'Harmoniseur',
+    3: 'Cr?atif',
+    4: 'Architecte',
+    5: 'Explorateur',
+    6: 'Gardien',
+    7: 'Analyste',
+    8: 'B?tisseur',
+    9: 'Humaniste',
+    11: 'Visionnaire',
+    22: 'Strat?ge',
+    33: 'Inspireur',
+  };
 
-  String describeCoupleNumber(int number) => coupleMeanings[number] ?? '';
+  static const Map<int, String> _archetypeDescriptions = {
+    1: 'Initie et entra?ne, aime tracer une voie claire.',
+    2: 'Cr?e l??quilibre et l??coute, relie les points de vue.',
+    3: 'Apporte cr?ativit? et id?es nouvelles.',
+    4: 'Structure et s?curise, construit sur du solide.',
+    5: 'Curieux et adaptable, aime le mouvement.',
+    6: 'Protecteur, soigne le lien et la loyaut?.',
+    7: 'Analytique et pos?, cherche la profondeur.',
+    8: 'Orient? impact, aime mat?rialiser les projets.',
+    9: 'G?n?reux et empathique, ouvert aux autres.',
+    11: 'Intuitif et inspirant, voit les possibilit?s.',
+    22: 'Vision longue, organise avec pragmatisme.',
+    33: 'Port? par le sens, ?l?ve et rassemble.',
+  };
 
-  String describeCoupleDeep(int number) => coupleDeepMeanings[number] ?? coupleMeanings[number] ?? '';
+  String archetypeLabel(int number) => _archetypes[number] ?? 'Essentiel';
 
-  String describeIntimateNumber(int number) => baseNumberMeanings[number] ?? '';
+  String describeBaseNumber(int number) => _archetypeDescriptions[number] ?? '';
 
-  String describePersonalityNumber(int number) => baseNumberMeanings[number] ?? '';
+  String describeNameNumber(int number) => _archetypeDescriptions[number] ?? '';
 
-  String describeHeredityNumber(int number) => baseNumberMeanings[number] ?? '';
+  String describeCoupleNumber(int number) =>
+      'Votre dynamique commune : ${archetypeLabel(number)}. ${_archetypeDescriptions[number] ?? ''}';
+
+  String describeCoupleDeep(int number) =>
+      'Ce qui renforce votre lien : ${archetypeLabel(number)}. ${_archetypeDescriptions[number] ?? ''}';
+
+  String describeIntimateNumber(int number) => _archetypeDescriptions[number] ?? '';
+
+  String describePersonalityNumber(int number) => _archetypeDescriptions[number] ?? '';
+
+  String describeHeredityNumber(int number) => _archetypeDescriptions[number] ?? '';
 
   String describeGuide(int lifePath, int expression) {
-    final life = baseNumberMeanings[lifePath] ?? '';
-    final expr = nameNumberMeanings[expression] ?? baseNumberMeanings[expression] ?? '';
-    return 'Chemin de vie $lifePath : $life\\nExpression $expression : $expr';
+    final lifeLabel = archetypeLabel(lifePath);
+    final exprLabel = archetypeLabel(expression);
+    return 'Votre socle : $lifeLabel. Votre style d?expression : $exprLabel.';
   }
 
-  String describePersonalYear(int number) => personalYearMeanings[number] ?? '';
+  String describePersonalYear(int number) =>
+      'Rythme annuel : ${archetypeLabel(number)}. ${_archetypeDescriptions[number] ?? ''}';
 
-  String describeKabbalahNumber(int number) => kabbalahMeanings[number] ?? '';
+  String describeKabbalahNumber(int number) => _archetypeDescriptions[number] ?? '';
 
-  String describePersonalDay(int number) => personalDayHints[number] ?? '';
+  String describePersonalDay(int number) =>
+      '?nergie du moment : ${archetypeLabel(number)}. ${_archetypeDescriptions[number] ?? ''}';
 
-  String describeCoupleDailyAction(int number) => coupleDailyActions[number] ?? personalDayHints[number] ?? '';
+  String describeCoupleDailyAction(int number) =>
+      'Focus du jour : ${archetypeLabel(number)}. ${_archetypeDescriptions[number] ?? ''}';
+
 }
