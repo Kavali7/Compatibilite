@@ -1,5 +1,4 @@
 import 'package:compatibilite_app/models/compatibility_models.dart';
-
 class NumerologyService {
   static const Map<String, int> _letterValues = {
     'A': 1,
