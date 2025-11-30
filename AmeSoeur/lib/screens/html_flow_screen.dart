@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/app_theme.dart';
+import '../widgets/hamburger_menu_overlay.dart';
 
 class HtmlFlowScreen extends StatefulWidget {
   const HtmlFlowScreen({super.key});
@@ -13,11 +14,15 @@ class HtmlFlowScreen extends StatefulWidget {
 class _HtmlFlowScreenState extends State<HtmlFlowScreen> {
   final PageController _controller = PageController();
   int _index = 0;
-
-  // stocke les choix simples
+  bool _menuOpen = false;
   final Map<int, String> _selected = {};
-
   static const int stepsCount = 14;
+
+  List<MenuEntry> get _menuEntries => [
+        const MenuEntry(label: 'Accueil'),
+        const MenuEntry(label: 'Legal'),
+        const MenuEntry(label: 'Contact'),
+      ];
 
   void _next() {
     if (_index < stepsCount - 1) {
@@ -50,79 +55,94 @@ class _HtmlFlowScreenState extends State<HtmlFlowScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return Column(
-              children: [
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: _TopBar(
-                    title: 'Astroline',
-                    showBack: _index > 0,
-                    onBack: _back,
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: _ProgressBar(
-                    progress: (_index + 1) / stepsCount,
-                  ),
-                ),
-                Expanded(
-                  child: PageView.builder(
-                    controller: _controller,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: stepsCount,
-                    itemBuilder: (context, i) {
-                      return SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints:
-                                BoxConstraints(maxWidth: constraints.maxWidth > 720 ? 620 : 560),
-                            child: _buildStep(context, i),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  child: Row(
-                    children: [
-                      if (_index > 0)
-                        TextButton(
-                          onPressed: _back,
-                          child: const Text(
-                            'Retour',
-                            style: TextStyle(color: AppColors.textMuted),
-                          ),
-                        ),
-                      const Spacer(),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.black,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 12),
-                        ),
-                        onPressed: _next,
-                        child: Text(_index == stepsCount - 1
-                            ? 'Terminer'
-                            : 'Continuer'),
+        child: Stack(
+          children: [
+            LayoutBuilder(
+              builder: (context, constraints) {
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      child: _TopBar(
+                        title: 'Arowpeak Agence',
+                        showBack: _index > 0,
+                        onBack: _back,
+                        onMenu: () => setState(() => _menuOpen = true),
                       ),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          },
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: _ProgressBar(
+                        progress: (_index + 1) / stepsCount,
+                      ),
+                    ),
+                    Expanded(
+                      child: PageView.builder(
+                        controller: _controller,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: stepsCount,
+                        itemBuilder: (context, i) {
+                          return SingleChildScrollView(
+                            padding:
+                                const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                            child: Center(
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  maxWidth: constraints.maxWidth > 720
+                                      ? 620
+                                      : 560,
+                                ),
+                                child: _buildStep(context, i),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+                      child: Row(
+                        children: [
+                          if (_index > 0)
+                            TextButton(
+                              onPressed: _back,
+                              child: const Text(
+                                'Retour',
+                                style: TextStyle(color: AppColors.textMuted),
+                              ),
+                            ),
+                          const Spacer(),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.black,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 12),
+                            ),
+                            onPressed: _next,
+                            child: Text(_index == stepsCount - 1
+                                ? 'Terminer'
+                                : 'Continuer'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+            HamburgerMenuOverlay(
+              isOpen: _menuOpen,
+              onToggle: () => setState(() => _menuOpen = !_menuOpen),
+              entries: _menuEntries,
+              isDark: true,
+            ),
+          ],
         ),
       ),
     );
@@ -148,7 +168,7 @@ class _HtmlFlowScreenState extends State<HtmlFlowScreen> {
               'Indiquez votre anniversaire pour que nous puissions créer un thème astral précis.',
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+            children: const [
               _Input(label: 'Date (AAAA-MM-JJ)', hint: '2000-01-01'),
               _Input(label: 'Mois', hint: 'Janvier'),
               _Input(label: 'Jour', hint: '12'),
@@ -190,11 +210,11 @@ class _HtmlFlowScreenState extends State<HtmlFlowScreen> {
               'Nous examinons la position des planètes pour comprendre votre personnalité, vos défis et vos forces.',
           child: _CardBox(
             child: Column(
-              children: [
-                const Text('Votre thème natal révèle :'),
-                const SizedBox(height: 12),
+              children: const [
+                Text('Votre thème natal révèle :'),
+                SizedBox(height: 12),
                 _TripleInfo(
-                  items: const [
+                  items: [
                     ('Scorpion', 'Signe lunaire'),
                     ('Capricorne', 'Signe du soleil'),
                     ('Poissons', 'Ascendant'),
@@ -209,10 +229,10 @@ class _HtmlFlowScreenState extends State<HtmlFlowScreen> {
           title: 'Précision des prévisions',
           description: '',
           child: Column(
-            children: [
+            children: const [
               _Gauge(value: 34),
-              const SizedBox(height: 16),
-              const _SpeechBubble(
+              SizedBox(height: 16),
+              _SpeechBubble(
                 text:
                     "L'énergie cosmique augmente ! Partagez encore un peu plus pour améliorer la précision.",
               ),
@@ -260,7 +280,8 @@ class _HtmlFlowScreenState extends State<HtmlFlowScreen> {
       case 8:
         return _StepShell(
           title: 'Quelle est votre couleur préférée ?',
-          description: 'Votre couleur favorite en dit long sur votre énergie intérieure.',
+          description:
+              'Votre couleur favorite en dit long sur votre énergie intérieure.',
           child: _OptionList(
             options: const ['Rouge', 'Jaune', 'Bleu', 'Orange', 'Vert', 'Violet'],
             selected: _selected[i],
@@ -325,10 +346,10 @@ class _HtmlFlowScreenState extends State<HtmlFlowScreen> {
           title: 'Précision des prévisions',
           description: '',
           child: Column(
-            children: [
+            children: const [
               _Gauge(value: 67),
-              const SizedBox(height: 16),
-              const _SpeechBubble(
+              SizedBox(height: 16),
+              _SpeechBubble(
                 text:
                     'La grande révélation est proche ! Confirmez une dernière chose pour découvrir votre histoire complète.',
               ),
@@ -348,7 +369,8 @@ class _HtmlFlowScreenState extends State<HtmlFlowScreen> {
                 decoration: BoxDecoration(
                   color: AppColors.block,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: .3)),
+                  border:
+                      Border.all(color: AppColors.primary.withValues(alpha: .3)),
                 ),
                 child: const Center(
                   child: Text(
@@ -717,11 +739,13 @@ class _TopBar extends StatelessWidget {
     required this.title,
     required this.showBack,
     required this.onBack,
+    required this.onMenu,
   });
 
   final String title;
   final bool showBack;
   final VoidCallback onBack;
+  final VoidCallback onMenu;
 
   @override
   Widget build(BuildContext context) {
@@ -746,7 +770,10 @@ class _TopBar extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 48),
+        IconButton(
+          onPressed: onMenu,
+          icon: const Icon(Icons.menu, color: AppColors.primary),
+        ),
       ],
     );
   }
@@ -770,8 +797,8 @@ class _ProgressBar extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(4),
-            gradient:
-                const LinearGradient(colors: [AppColors.primary, Color(0xFF5ca8dc)]),
+            gradient: const LinearGradient(
+                colors: [AppColors.primary, Color(0xFF5ca8dc)]),
           ),
         ),
       ),
