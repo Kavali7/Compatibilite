@@ -6,6 +6,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../models/compatibility_models.dart';
 import '../services/numerology_service.dart';
+import '../services/compatibility_repository.dart';
+import '../services/supabase_manager.dart';
 import '../theme/app_theme.dart';
 import '../widgets/hamburger_menu_overlay.dart';
 import 'legal_page.dart';
@@ -23,7 +25,10 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   final _nameAController = TextEditingController();
   final _nameBController = TextEditingController();
   final _durationController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final NumerologyService _service = NumerologyService();
+  CompatibilityRepository? _repository;
 
   int _currentStep = 0;
   DateTime? _birthA;
@@ -39,6 +44,12 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   final Set<String> _challenges = {};
   bool _wantsNotifications = true;
   CompatibilitySummary? _summary;
+  PartnerInput? _partnerAInput;
+  PartnerInput? _partnerBInput;
+  bool _isSaving = false;
+  String? _saveError;
+  String? _sessionId;
+  String? _clientToken;
   bool _isMenuOpen = false;
 
   static const _supportEmail = 'growpeak.agence@gmail.com';
@@ -54,11 +65,19 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   ];
   static const _relationStatuses = [
     'En couple',
-    'Marié·e',
-    'Fiancé·e',
+    'Mariee',
+    'Fiancee',
     'Relation complexe',
-    'Célibataire curieux·se',
+    'Celibataire curieux/se',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    if (SupabaseManager.isReady) {
+      _repository = CompatibilityRepository(SupabaseManager.client);
+    }
+  }
 
   @override
   void dispose() {
@@ -66,13 +85,17 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     _nameAController.dispose();
     _nameBController.dispose();
     _durationController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
-  void _goNext() {
+  Future<void> _goNext() async {
+    if (_isSaving) return;
     if (!_validateCurrentStep()) return;
     if (_currentStep == _totalSteps - 2) {
       _computeSummary();
+      await _saveSessionIfPossible();
     }
     if (_currentStep < _totalSteps - 1) {
       setState(() {
@@ -102,6 +125,13 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           _showSnack('Choisissez la date du partenaire 2.');
         }
         return hasDateB;
+      case 5:
+        final email = _emailController.text.trim();
+        if (email.isEmpty || !_isValidEmail(email)) {
+          _showSnack('Entrez un email valide pour recevoir le rapport.');
+          return false;
+        }
+        return true;
       default:
         return true;
     }
@@ -133,7 +163,46 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     final summary = _service.buildSummary(partnerA, partnerB);
     setState(() {
       _summary = summary;
+      _partnerAInput = partnerA;
+      _partnerBInput = partnerB;
     });
+  }
+
+  Future<void> _saveSessionIfPossible() async {
+    if (_repository == null || _summary == null || _partnerAInput == null || _partnerBInput == null) {
+      return;
+    }
+    setState(() {
+      _isSaving = true;
+      _saveError = null;
+    });
+    try {
+      final result = await _repository!.saveSession(
+        partnerA: _partnerAInput!,
+        partnerB: _partnerBInput!,
+        summary: _summary!,
+        relationStatus: _relationStatus,
+        meetingDate: _meetingDate,
+        durationText: _durationController.text.trim().isEmpty ? null : _durationController.text.trim(),
+        challenges: _challenges.toList(),
+        wantsNotifications: _wantsNotifications,
+        contactEmail: _emailController.text.trim().isEmpty ? null : _emailController.text.trim(),
+        contactPhone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
+      );
+      setState(() {
+        _sessionId = result.sessionId;
+        _clientToken = result.clientToken;
+      });
+    } catch (error) {
+      setState(() {
+        _saveError = error.toString();
+      });
+      _showSnack('Impossible d\'enregistrer vos resultats pour le moment.');
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
   }
 
   Future<void> _pickMeetingDate() async {
@@ -166,6 +235,8 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     _nameAController.clear();
     _nameBController.clear();
     _durationController.clear();
+    _emailController.clear();
+    _phoneController.clear();
     _birthA = null;
     _birthB = null;
     _yearA = null;
@@ -179,13 +250,19 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     _challenges.clear();
     _wantsNotifications = true;
     _summary = null;
+    _partnerAInput = null;
+    _partnerBInput = null;
+    _saveError = null;
+    _sessionId = null;
+    _clientToken = null;
+    _isSaving = false;
     setState(() {
       _currentStep = 0;
     });
     _pageController.jumpToPage(0);
   }
 
-  String _formatDate(DateTime? date) => date == null ? 'Sélectionner' : DateFormat('dd/MM/yyyy').format(date);
+  String _formatDate(DateTime? date) => date == null ? 'SÃƒÆ’Ã‚Â©lectionner' : DateFormat('dd/MM/yyyy').format(date);
 
   int _daysInMonth(int? year, int? month) {
     if (year == null || month == null) return 31;
@@ -376,7 +453,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 260),
               child: Text(
-                'Découvrez si vous êtes faits l’un pour l’autre',
+                'DÃƒÆ’Ã‚Â©couvrez si vous ÃƒÆ’Ã‚Âªtes faits lÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢un pour lÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢autre',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.philosopher(
                   fontSize: 22,
@@ -391,7 +468,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         const Align(
           alignment: Alignment.center,
           child: Text(
-            'Parcours en 6 étapes rapides, conçu pour rester fluide.',
+            'Parcours en 6 ÃƒÆ’Ã‚Â©tapes rapides, conÃƒÆ’Ã‚Â§u pour rester fluide.',
             textAlign: TextAlign.center,
             style: TextStyle(color: AppColors.textMuted),
           ),
@@ -407,7 +484,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Étape ${_currentStep + 1} / $_totalSteps',
+          'ÃƒÆ’Ã¢â‚¬Â°tape ${_currentStep + 1} / $_totalSteps',
           style: const TextStyle(color: AppColors.textMuted),
         ),
       ],
@@ -433,8 +510,8 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           const SizedBox(width: 12),
           Expanded(
             child: ElevatedButton(
-              onPressed: _goBack,
-              child: const Text('Retour aux étapes'),
+              onPressed: _isSaving ? null : _goBack,
+              child: const Text('Retour aux ÃƒÆ’Ã‚Â©tapes'),
             ),
           ),
         ],
@@ -451,15 +528,21 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
                 foregroundColor: AppColors.accentText,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
               ),
-              onPressed: _goBack,
-              child: const Text('Précédent'),
+              onPressed: _isSaving ? null : _goBack,
+              child: const Text('PrÃƒÆ’Ã‚Â©cÃƒÆ’Ã‚Â©dent'),
             ),
           ),
         if (_currentStep > 0) const SizedBox(width: 12),
         Expanded(
           child: ElevatedButton(
-            onPressed: _goNext,
-            child: Text(_currentStep == _totalSteps - 2 ? 'Voir mes résultats' : 'Continuer'),
+            onPressed: _isSaving ? null : _goNext,
+            child: _isSaving
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : Text(_currentStep == _totalSteps - 2 ? 'Voir mes rÃƒÆ’Ã‚Â©sultats' : 'Continuer'),
           ),
         ),
       ],
@@ -491,7 +574,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: 12),
             child: Text(
-              'Analyse la vibration de votre couple via un quiz d’une minute. Nous calculons le nombre du couple, les chemins de vie et un conseil quotidien.',
+              'Analyse la vibration de votre couple via un quiz dÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢une minute. Nous calculons le nombre du couple, les chemins de vie et un conseil quotidien.',
               textAlign: TextAlign.center,
             ),
           ),
@@ -517,7 +600,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
                 const SizedBox(width: 16),
                 Expanded(
                   child: Text(
-                    'Flow en étapes courtes : design nocturne et call-to-action clair.',
+                    'Flow en ÃƒÆ’Ã‚Â©tapes courtes : design nocturne et call-to-action clair.',
                     style: TextStyle(color: AppColors.accentText.withValues(alpha: 0.9)),
                   ),
                 ),
@@ -544,25 +627,25 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Prénoms du couple',
+              'PrÃƒÆ’Ã‚Â©noms du couple',
               style: GoogleFonts.philosopher(fontSize: 22, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
             const Text(
-              'Commencez par les prénoms pour engager l’utilisateur avant les questions plus personnelles.',
+              'Commencez par les prÃƒÆ’Ã‚Â©noms pour engager lÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢utilisateur avant les questions plus personnelles.',
               style: TextStyle(color: AppColors.textMuted),
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _nameAController,
-              decoration: const InputDecoration(labelText: 'Prénom partenaire 1'),
-              validator: (value) => (value == null || value.trim().isEmpty) ? 'Entrez un prénom' : null,
+              decoration: const InputDecoration(labelText: 'PrÃƒÆ’Ã‚Â©nom partenaire 1'),
+              validator: (value) => (value == null || value.trim().isEmpty) ? 'Entrez un prÃƒÆ’Ã‚Â©nom' : null,
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _nameBController,
-              decoration: const InputDecoration(labelText: 'Prénom partenaire 2'),
-              validator: (value) => (value == null || value.trim().isEmpty) ? 'Entrez un prénom' : null,
+              decoration: const InputDecoration(labelText: 'PrÃƒÆ’Ã‚Â©nom partenaire 2'),
+              validator: (value) => (value == null || value.trim().isEmpty) ? 'Entrez un prÃƒÆ’Ã‚Â©nom' : null,
             ),
             DropdownButtonFormField<String>(
               decoration: const InputDecoration(labelText: 'Statut (facultatif)'),
@@ -587,7 +670,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
 
   Widget _buildBirthdatesStep({required bool isFirst}) {
     final title = isFirst ? 'Date de naissance (Partenaire 1)' : 'Date de naissance (Partenaire 2)';
-    final hint = 'Choisissez année, mois, jour pour ${isFirst ? "le premier partenaire" : "le second partenaire"}.';
+    final hint = 'Choisissez annÃƒÆ’Ã‚Â©e, mois, jour pour ${isFirst ? "le premier partenaire" : "le second partenaire"}.';
     final selectedYear = isFirst ? _yearA : _yearB;
     final selectedMonth = isFirst ? _monthA : _monthB;
     final selectedDay = isFirst ? _dayA : _dayB;
@@ -663,17 +746,17 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     final years = List<int>.generate(DateTime.now().year - 1919, (i) => 1920 + i).reversed.toList();
     final months = const [
       'Janvier',
-      'Février',
+      'FÃƒÆ’Ã‚Â©vrier',
       'Mars',
       'Avril',
       'Mai',
       'Juin',
       'Juillet',
-      'Août',
+      'AoÃƒÆ’Ã‚Â»t',
       'Septembre',
       'Octobre',
       'Novembre',
-      'Décembre',
+      'DÃƒÆ’Ã‚Â©cembre',
     ];
     final maxDay = _daysInMonth(selectedYear, selectedMonth);
     final days = List<int>.generate(maxDay, (i) => i + 1);
@@ -692,7 +775,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
             children: [
               Expanded(
                 child: DropdownButtonFormField<int>(
-                  decoration: const InputDecoration(labelText: 'Année'),
+                  decoration: const InputDecoration(labelText: 'AnnÃƒÆ’Ã‚Â©e'),
                   initialValue: selectedYear,
                   items: years
                       .map((y) => DropdownMenuItem<int>(
@@ -759,7 +842,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Personnalisez les textes sans rallonger le flux principal. Cette étape peut être ignorée.',
+            'Personnalisez les textes sans rallonger le flux principal. Cette ÃƒÆ’Ã‚Â©tape peut ÃƒÆ’Ã‚Âªtre ignorÃƒÆ’Ã‚Â©e.',
             style: TextStyle(color: AppColors.textMuted),
           ),
           const SizedBox(height: 16),
@@ -772,7 +855,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           TextField(
             controller: _durationController,
             decoration: const InputDecoration(
-              labelText: 'Durée de la relation (ex: 3 ans)',
+              labelText: 'DurÃƒÆ’Ã‚Â©e de la relation (ex: 3 ans)',
             ),
           ),
           const SizedBox(height: 12),
@@ -793,7 +876,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           ),
           const SizedBox(height: 12),
           const Text(
-            'Bouton « Passer » recommandé pour rappeler que la section est facultative.',
+            'Bouton Ãƒâ€šÃ‚Â« Passer Ãƒâ€šÃ‚Â» recommandÃƒÆ’Ã‚Â© pour rappeler que la section est facultative.',
             style: TextStyle(color: AppColors.textMuted),
           ),
           const SizedBox(height: 16),
@@ -843,33 +926,57 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'CoordonnǸes',
+            'Coordonnees & paiement',
             style: GoogleFonts.philosopher(fontSize: 22, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           const Text(
-            'Choisissez si vous voulez recevoir la guidance quotidienne.',
+            'Email obligatoire pour recevoir le rapport et le recu. Telephone recommande pour le support.',
             style: TextStyle(color: AppColors.textMuted),
           ),
           const SizedBox(height: 16),
+          TextField(
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+              labelText: 'Email',
+              hintText: 'vous@example.com',
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _phoneController,
+            keyboardType: TextInputType.phone,
+            decoration: const InputDecoration(
+              labelText: 'Telephone (optionnel)',
+              hintText: '+33...',
+            ),
+          ),
+          const SizedBox(height: 12),
           SwitchListTile(
             value: _wantsNotifications,
             onChanged: (value) => setState(() => _wantsNotifications = value),
             activeThumbColor: AppColors.primary,
             activeTrackColor: AppColors.primary.withValues(alpha: 0.35),
             title: const Text('Recevoir la guidance quotidienne'),
-            subtitle: const Text('Optionnel, aucune donnǸe sensible stockǸe.'),
+            subtitle: const Text('Optionnel, aucune donnee sensible stockee.'),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Le paiement sera declenche pour debloquer le rapport complet. Vous recevrez un recu a cette adresse.',
+            style: TextStyle(color: AppColors.textMuted),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildResultsStep() {
+Widget _buildResultsStep() {
     if (_summary == null) {
       return const Center(child: CircularProgressIndicator(color: AppColors.primary));
     }
     final summary = _summary!;
+    final saveStatus = _buildSaveStatus();
     final partnerCards = [
       _partnerCard('Partenaire 1', summary.partnerA),
       _partnerCard('Partenaire 2', summary.partnerB),
@@ -881,10 +988,14 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Vos résultats',
+            'Vos resultats',
             style: GoogleFonts.philosopher(fontSize: 24, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 12),
+          if (saveStatus != null) ...[
+            saveStatus,
+            const SizedBox(height: 12),
+          ],
           _coupleCard(summary),
           const SizedBox(height: 12),
           _coupleDeepCard(summary),
@@ -901,7 +1012,62 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     );
   }
 
-  Widget _coupleCard(CompatibilitySummary summary) {
+
+  Widget? _buildSaveStatus() {
+    if (_repository == null) {
+      return _infoBox(
+        title: 'Sauvegarde inactive',
+        body: 'Ajoutez SUPABASE_URL et SUPABASE_ANON_KEY dans .env pour synchroniser vos rapports.',
+        tone: AppColors.block,
+      );
+    }
+    if (_isSaving) {
+      return _infoBox(
+        title: 'Enregistrement en cours',
+        body: 'Vos donnees sont envoyees de maniere securisee.',
+        tone: AppColors.block,
+      );
+    }
+    if (_saveError != null) {
+      return _infoBox(
+        title: 'Sauvegarde echouee',
+        body: _saveError!,
+        tone: AppColors.block,
+      );
+    }
+    if (_sessionId != null) {
+      final token = _clientToken ?? 'token en cours';
+      return _infoBox(
+        title: 'Rapport enregistre',
+        body: 'Session: $_sessionId\nToken de reprise: $token',
+        tone: AppColors.primary.withValues(alpha: 0.15),
+      );
+    }
+    return null;
+  }
+
+  Widget _infoBox({required String title, required String body, Color tone = AppColors.block}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: tone,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text(body),
+        ],
+      ),
+    );
+  }
+
+
+Widget _coupleCard(CompatibilitySummary summary) {
     final interpretation = _service.describeCoupleNumber(summary.coupleNumber);
     final label = _service.archetypeLabel(summary.coupleNumber);
     return Container(
@@ -922,7 +1088,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           Text(interpretation),
           const SizedBox(height: 10),
           Text(
-            'Calculé le ${DateFormat('dd/MM').format(summary.generatedAt)}',
+            'CalculÃƒÆ’Ã‚Â© le ${DateFormat('dd/MM').format(summary.generatedAt)}',
             style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
           ),
         ],
@@ -975,13 +1141,13 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           const SizedBox(height: 6),
           _numberRow('Signature relationnelle', report.nameNumber, _service.describeNameNumber(report.nameNumber)),
           const SizedBox(height: 6),
-          _numberRow('Tonalité intime', report.intimateNumber, _service.describeIntimateNumber(report.intimateNumber)),
+          _numberRow('TonalitÃƒÆ’Ã‚Â© intime', report.intimateNumber, _service.describeIntimateNumber(report.intimateNumber)),
           const SizedBox(height: 6),
           _numberRow('Style social', report.personalityNumber, _service.describePersonalityNumber(report.personalityNumber)),
           const SizedBox(height: 6),
           _numberRow('Racines', report.heredityNumber, _service.describeHeredityNumber(report.heredityNumber)),
           const SizedBox(height: 6),
-          _numberRow('Énergie complémentaire', report.kabbalahNumber, _service.describeKabbalahNumber(report.kabbalahNumber)),
+          _numberRow('ÃƒÆ’Ã¢â‚¬Â°nergie complÃƒÆ’Ã‚Â©mentaire', report.kabbalahNumber, _service.describeKabbalahNumber(report.kabbalahNumber)),
           const SizedBox(height: 6),
           _numberRow('Rythme annuel', report.personalYear, _service.describePersonalYear(report.personalYear)),
           const SizedBox(height: 8),
@@ -1004,7 +1170,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Points d’appui',
+            'Points dÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢appui',
             style: TextStyle(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 4),
@@ -1068,7 +1234,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           Text(hint.isEmpty ? 'Laissez-vous guider par vos cycles personnels.' : hint),
           const SizedBox(height: 6),
           const Text(
-            'Les cycles changent chaque jour : invitez l’utilisateur à revenir.',
+            'Les cycles changent chaque jour : invitez lÃƒÂ¢Ã¢â€šÂ¬Ã¢â€žÂ¢utilisateur ÃƒÆ’Ã‚Â  revenir.',
             style: TextStyle(color: AppColors.textMuted),
           ),
         ],
@@ -1088,16 +1254,21 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Contexte noté',
+            'Contexte notÃƒÆ’Ã‚Â©',
             style: GoogleFonts.philosopher(fontSize: 18, fontWeight: FontWeight.w700),
           ),
           if (_relationStatus != null) Text('Statut : $_relationStatus'),
-          if (_durationController.text.isNotEmpty) Text('Durée : ${_durationController.text}'),
+          if (_durationController.text.isNotEmpty) Text('DurÃƒÆ’Ã‚Â©e : ${_durationController.text}'),
           if (_meetingDate != null) Text('Rencontre : ${_formatDate(_meetingDate)}'),
-          if (_challenges.isNotEmpty) Text('Défis : ${_challenges.join(', ')}'),
+          if (_challenges.isNotEmpty) Text('DÃƒÆ’Ã‚Â©fis : ${_challenges.join(', ')}'),
         ],
       ),
     );
+  }
+
+  bool _isValidEmail(String value) {
+    final emailRegex = RegExp(r'^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$');
+    return emailRegex.hasMatch(value);
   }
 
   void _showSnack(String message) {
