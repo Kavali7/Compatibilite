@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Astrocartography Quiz – Step 3</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <a class="back" href="step2.html">←</a>
+      <div class="progress"><div style="width: 24%"></div></div>
+      <span class="steps">3/13</span>
+    </header>
+    <h1>When’s your birthday?</h1>
+    <p class="lead">Your date of birth allows us to calculate your
+      astrocartography chart. Please choose your month, day and year.</p>
+    <div class="picker-wrapper">
+      <select>
+        <option>January</option>
+        <option>February</option>
+        <option>March</option>
+        <option>April</option>
+        <option>May</option>
+        <option>June</option>
+        <option>July</option>
+        <option>August</option>
+        <option>September</option>
+        <option>October</option>
+        <option>November</option>
+        <option>December</option>
+      </select>
+      <select>
+        <!-- days 1–31 -->
+        <script>
+        for (let i = 1; i <= 31; i++) {
+          document.write(`<option>${i}</option>`);
+        }
+        </script>
+      </select>
+      <select>
+        <!-- years 1950–2010 -->
+        <script>
+        for (let y = 1950; y <= 2010; y++) {
+          document.write(`<option>${y}</option>`);
+        }
+        </script>
+      </select>
+    </div>
+    <div class="buttons">
+      <a class="btn" href="step4.html">Continue</a>
+    </div>
+  </div>
+</body>
+</html>

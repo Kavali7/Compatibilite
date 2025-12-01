@@ -1,0 +1,218 @@
+/*
+ * Stylesheet for the Astrocartography clone.
+ *
+ * The real Astroline astrocartography quiz uses a dark,
+ * teal‑tinted colour palette with soft gradients and rounded
+ * corners. In this clone we approximate the look and feel
+ * without relying on any external assets. Colours and fonts
+ * have been chosen to complement the dark theme and ensure
+ * legibility. Feel free to adjust the variables at the top
+ * to fine‑tune the appearance.
+ */
+
+:root {
+  --bg-colour: #0d253f;
+  --card-bg: #113b5d;
+  --primary-colour: #12b5b0;
+  --secondary-colour: #fccd4d;
+  --text-colour: #ffffff;
+  --muted-colour: #a3bcd6;
+  --border-radius: 12px;
+  --transition: 0.3s ease;
+  --max-width: 420px;
+  font-family: 'Arial', sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-colour);
+  color: var(--text-colour);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100vh;
+}
+
+.container {
+  width: 100%;
+  max-width: var(--max-width);
+  padding: 1.5rem;
+  box-sizing: border-box;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+header .back {
+  color: var(--primary-colour);
+  text-decoration: none;
+  font-size: 1.2rem;
+}
+
+header .progress {
+  flex-grow: 1;
+  height: 4px;
+  background: #0a3553;
+  margin: 0 0.5rem;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+header .progress > div {
+  height: 100%;
+  background: var(--primary-colour);
+  width: 0;
+  transition: width var(--transition);
+}
+
+header .steps {
+  font-size: 0.9rem;
+  color: var(--muted-colour);
+}
+
+h1 {
+  font-size: 1.5rem;
+  line-height: 1.3;
+  margin-top: 0.5rem;
+}
+
+p.lead {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--muted-colour);
+  margin-bottom: 1.5rem;
+}
+
+.options {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.option {
+  background: var(--card-bg);
+  border: 2px solid var(--card-bg);
+  border-radius: var(--border-radius);
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  flex-basis: 48%;
+  box-sizing: border-box;
+  text-align: center;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.option:hover,
+.option.active {
+  background: var(--primary-colour);
+  border-color: var(--primary-colour);
+  color: #0d253f;
+}
+
+.buttons {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: center;
+}
+
+.btn {
+  background: var(--primary-colour);
+  color: #0d253f;
+  padding: 0.75rem 2rem;
+  border: none;
+  border-radius: var(--border-radius);
+  font-weight: bold;
+  cursor: pointer;
+  transition: background var(--transition), transform var(--transition);
+}
+
+.btn:hover {
+  background: #0fa9a3;
+  transform: translateY(-2px);
+}
+
+footer {
+  margin-top: 2rem;
+  font-size: 0.7rem;
+  color: var(--muted-colour);
+  text-align: center;
+}
+
+footer a {
+  color: var(--primary-colour);
+  text-decoration: none;
+  margin: 0 0.25rem;
+  font-weight: bold;
+}
+
+/* Date and time pickers */
+.picker-wrapper {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 1rem;
+}
+.picker-wrapper select {
+  width: 32%;
+  padding: 0.5rem;
+  background: var(--card-bg);
+  border: 1px solid var(--primary-colour);
+  border-radius: var(--border-radius);
+  color: var(--text-colour);
+}
+
+/* Slide container for step6 */
+.slides {
+  position: relative;
+  min-height: 220px;
+  margin-bottom: 1rem;
+}
+.slide {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+.slide.active {
+  opacity: 1;
+}
+
+.slide .avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--primary-colour);
+  display: inline-block;
+  margin-bottom: 0.5rem;
+}
+.slide p {
+  font-size: 0.9rem;
+  color: var(--muted-colour);
+}
+
+/* Final summary styles */
+.summary {
+  background: var(--card-bg);
+  padding: 1rem;
+  border-radius: var(--border-radius);
+  margin-top: 1rem;
+}
+.summary ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.summary li {
+  margin-bottom: 0.5rem;
+}
+.summary .label {
+  font-weight: bold;
+  color: var(--primary-colour);
+}

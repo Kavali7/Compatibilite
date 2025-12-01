@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Astrocartography Quiz – Step 4</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <a class="back" href="step3.html">←</a>
+      <div class="progress"><div style="width: 32%"></div></div>
+      <span class="steps">4/13</span>
+    </header>
+    <h1>Do you know your birth time?</h1>
+    <p class="lead">If you know the hour and minute of your birth,
+      select it below. An accurate time helps refine your map.
+      If you don’t remember, you can skip this step.</p>
+    <div class="picker-wrapper">
+      <select>
+        <script>
+        for (let h = 0; h < 12; h++) {
+          let label = h === 0 ? 12 : h;
+          document.write(`<option>${label}</option>`);
+        }
+        </script>
+      </select>
+      <select>
+        <script>
+        for (let m = 0; m < 60; m += 5) {
+          let label = m.toString().padStart(2, '0');
+          document.write(`<option>${label}</option>`);
+        }
+        </script>
+      </select>
+      <select>
+        <option>AM</option>
+        <option>PM</option>
+      </select>
+    </div>
+    <div class="buttons" style="flex-direction: column; align-items: center;">
+      <a class="btn" href="step5.html">Continue</a>
+      <a href="step5.html" style="margin-top: 0.5rem; color: var(--primary-colour); text-decoration: underline; font-size: 0.9rem;">I don’t remember</a>
+    </div>
+  </div>
+</body>
+</html>
