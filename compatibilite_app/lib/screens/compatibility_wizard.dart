@@ -1267,7 +1267,7 @@ Widget _coupleCard(CompatibilitySummary summary) {
   }
 
   bool _isValidEmail(String value) {
-    final emailRegex = RegExp(r'^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$');
+    final emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
     return emailRegex.hasMatch(value);
   }
 
