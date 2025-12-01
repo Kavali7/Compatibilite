@@ -116,18 +116,19 @@ create policy "rapports_user_select" on rapports_partenaires
   );
 ```
 
-## Paiement (Stripe suggere)
-- Creer des cles publishable/secret Stripe.
-- Webhook a ecouter : `payment_intent.succeeded`, `payment_intent.payment_failed`.
-  - Succes : `update sessions_compatibilite set statut_paiement='paid', paye_le=now(), reference_paiement=<pi_id>, fournisseur_paiement='stripe' where reference_paiement=<pi_id>;`
-  - Echec : `statut_paiement='failed'` pour l intent.
-- L agent peut creer une Edge Function ou un webhook HTTP avec la cle `service_role` pour appliquer ces mises a jour.
+## Paiement (KKIAPAY)
+- Creer/recuperer les cles KKIAPAY (public/private/secret).
+- Configurer le callback KKIAPAY vers un endpoint (Edge Function ou webhook HTTP) protege par la `service_role`.
+- A la notification de paiement reussi, mettre a jour Supabase :
+  `update sessions_compatibilite set statut_paiement='paid', paye_le=now(), reference_paiement=<tx_id>, fournisseur_paiement='kkiapay' where reference_paiement=<tx_id>;`
+- En cas d echec : `statut_paiement='failed'` pour la transaction.
+- Ne jamais exposer la cle `service_role` dans l application cliente (uniquement cote serveur/webhook).
 
 ## Informations a remonter apres setup
 - SUPABASE_URL (projet)
 - SUPABASE_ANON_KEY (client)
 - SUPABASE_SERVICE_ROLE_KEY (serveur/webhooks)
-- Si paiement active : STRIPE_PUBLISHABLE_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
+- Si paiement active : KKIAPAY_PUBLIC_KEY, KKIAPAY_PRIVATE_KEY, KKIAPAY_SECRET
 - Confirmation : extensions actives, tables creees, RLS appliquees, webhook Stripe (URL + secret), OTP email active.
 
 ## Attentes cote app Flutter

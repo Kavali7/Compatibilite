@@ -30,6 +30,8 @@ class CompatibilityRepository {
     String? contactEmail,
     String? contactPhone,
     String paymentStatus = 'pending',
+    String paymentProvider = 'kkiapay',
+    String? paymentReference,
     String currency = 'EUR',
     int? amountCents,
   }) async {
@@ -50,6 +52,8 @@ class CompatibilityRepository {
       'email_contact': contactEmail,
       'telephone_contact': contactPhone,
       'statut_paiement': paymentStatus,
+      'fournisseur_paiement': paymentProvider,
+      'reference_paiement': paymentReference,
       'devise': currency,
       'montant_centimes': amountCents,
       'client_token': clientToken,
