@@ -93,6 +93,7 @@ class _SelectableCardState extends State<SelectableCard>
         );
       },
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTapDown: _handleTapDown,
         onTapUp: _handleTapUp,
         onTapCancel: _handleTapCancel,
@@ -319,6 +320,7 @@ class _AnimatedPrimaryButtonState extends State<AnimatedPrimaryButton>
         );
       },
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTapDown: (_) => _controller.forward(),
         onTapUp: (_) {
           _controller.reverse();

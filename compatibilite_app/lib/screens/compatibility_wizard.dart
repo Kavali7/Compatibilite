@@ -518,6 +518,11 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
       );
     }
 
+    // Hide navigation on welcome step (step 0) - we have a custom button there
+    if (_currentStep == 0) {
+      return const SizedBox.shrink();
+    }
+
     return Row(
       children: [
         if (_currentStep > 0)
