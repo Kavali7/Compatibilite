@@ -12,7 +12,9 @@ import 'package:compatibilite_app/main.dart';
 void main() {
   testWidgets('Affiche le header du parcours', (WidgetTester tester) async {
     await tester.pumpWidget(const CompatibiliteApp());
-    await tester.pumpAndSettle();
+    // Use pump with duration instead of pumpAndSettle since we have infinite animations
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.textContaining('Compatibilité'), findsWidgets);
     expect(find.textContaining('étape', findRichText: true), findsWidgets);

@@ -9,7 +9,9 @@ import '../services/numerology_service.dart';
 import '../services/compatibility_repository.dart';
 import '../services/supabase_manager.dart';
 import '../theme/app_theme.dart';
+import '../widgets/animated_background.dart';
 import '../widgets/hamburger_menu_overlay.dart';
+import '../widgets/selectable_card.dart';
 import 'legal_page.dart';
 
 class CompatibilityWizard extends StatefulWidget {
@@ -366,79 +368,77 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   Widget build(BuildContext context) {
     final header = _buildHeader();
     final menuEntries = _buildMenuEntries(context);
+    
+    // Determine background image based on current step
+    String? backgroundImage;
+    bool showFullAnimation = false;
+    
+    if (_currentStep == 0) {
+      // Welcome step - full animated background with image
+      backgroundImage = 'assets/images/backgrounds/bg_welcome.png';
+      showFullAnimation = true;
+    } else if (_currentStep == _totalSteps - 1) {
+      // Results step - celebration background
+      backgroundImage = 'assets/images/backgrounds/bg_results.png';
+      showFullAnimation = true;
+    }
+    
     return Scaffold(
       body: SafeArea(
-        child: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [AppColors.background, Color(0xFF0E1E2A)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+        child: showFullAnimation
+            ? AnimatedBackground(
+                backgroundImage: backgroundImage,
+                showStars: true,
+                showOrbs: true,
+                starCount: 40,
+                overlayOpacity: 0.55,
+                child: _buildContent(header, menuEntries),
+              )
+            : SubtleAnimatedBackground(
+                showStars: true,
+                child: _buildContent(header, menuEntries),
+              ),
+      ),
+    );
+  }
+  
+  Widget _buildContent(Widget header, List<MenuEntry> menuEntries) {
+    return Stack(
+      children: [
+        Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: header,
             ),
-          ),
-          child: Stack(
-            children: [
-              Positioned(
-                top: -60,
-                right: -30,
-                child: Container(
-                  width: 180,
-                  height: 180,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: -40,
-                left: -30,
-                child: Container(
-                  width: 200,
-                  height: 200,
-                  decoration: BoxDecoration(
-                    color: AppColors.secondary.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
-              Column(
+            Expanded(
+              child: PageView(
+                controller: _pageController,
+                physics: const NeverScrollableScrollPhysics(),
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                    child: header,
-                  ),
-                  Expanded(
-          child: PageView(
-            controller: _pageController,
-            physics: const NeverScrollableScrollPhysics(),
-            children: [
-              _buildWelcomeStep(),
-              _buildNamesStep(),
-              _buildBirthdatesStep(isFirst: true),
-              _buildBirthdatesStep(isFirst: false),
-              _buildContextStep(),
-              _buildContactStep(),
-              _buildResultsStep(),
-            ],
-          ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-                    child: _buildNavigation(),
-                  ),
+                  _buildWelcomeStep(),
+                  _buildNamesStep(),
+                  _buildBirthdatesStep(isFirst: true),
+                  _buildBirthdatesStep(isFirst: false),
+                  _buildContextStep(),
+                  _buildContactStep(),
+                  _buildResultsStep(),
                 ],
               ),
-              HamburgerMenuOverlay(
-                isOpen: _isMenuOpen,
-                onToggle: _toggleMenu,
-                entries: menuEntries,
-                isDark: true,
-              ),
-            ],
-          ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+              child: _buildNavigation(),
+            ),
+          ],
         ),
-      ),
+        HamburgerMenuOverlay(
+          isOpen: _isMenuOpen,
+          onToggle: _toggleMenu,
+          entries: menuEntries,
+          isDark: true,
+        ),
+      ],
     );
   }
 
@@ -550,69 +550,136 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   }
 
   Widget _buildWelcomeStep() {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 12),
-        Align(
-          alignment: Alignment.center,
-          child: Text(
-            'Bienvenue',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.philosopher(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textLight,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const SizedBox(height: 20),
+          // Main title with glow effect
+          ShaderMask(
+            shaderCallback: (bounds) => LinearGradient(
+              colors: [AppColors.textLight, AppColors.primary.withOpacity(0.8)],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ).createShader(bounds),
+            child: Text(
+              'Bienvenue',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.philosopher(
+                fontSize: 36,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 10),
-        const Align(
-          alignment: Alignment.center,
-          child: Padding(
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              'Découvrez la vibration de votre couple en 1 minute',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.philosopher(
+                fontSize: 18,
+                color: AppColors.textLight,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Padding(
             padding: EdgeInsets.symmetric(horizontal: 12),
             child: Text(
-              'Analyse la vibration de votre couple via un quiz d’une minute. Nous calculons le nombre du couple, les chemins de vie et un conseil quotidien.',
+              'Nous calculons votre nombre de couple, vos chemins de vie et vous offrons un conseil quotidien personnalisé.',
               textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 14),
             ),
           ),
-        ),
-        const SizedBox(height: 22),
+          const SizedBox(height: 32),
+          // Feature cards
+          _buildFeatureCard(
+            icon: Icons.favorite_rounded,
+            title: 'Compatibilité numérologique',
+            subtitle: 'Analyse basée sur vos dates de naissance',
+          ),
+          const SizedBox(height: 12),
+          _buildFeatureCard(
+            icon: Icons.auto_awesome_rounded,
+            title: 'Conseils personnalisés',
+            subtitle: 'Guidance quotidienne pour votre couple',
+          ),
+          const SizedBox(height: 12),
+          _buildFeatureCard(
+            icon: Icons.timer_rounded,
+            title: 'Rapide et gratuit',
+            subtitle: 'Résultats en moins de 60 secondes',
+          ),
+          const SizedBox(height: 40),
+          // CTA Button
+          AnimatedPrimaryButton(
+            label: 'Commencer le quiz',
+            icon: Icons.arrow_forward_rounded,
+            onPressed: _goNext,
+          ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeatureCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.block.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.primary.withOpacity(0.25)),
+      ),
+      child: Row(
+        children: [
           Container(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.block.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.primary.withOpacity(0.2),
+                  AppColors.secondary.withOpacity(0.15),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              shape: BoxShape.circle,
             ),
-            child: Row(
+            child: Icon(icon, color: AppColors.primary, size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppColors.textLight,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
                   ),
-                  child: const Icon(Icons.favorite, color: AppColors.primary),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    'Flow en étapes courtes : design nocturne et call-to-action clair.',
-                    style: TextStyle(color: AppColors.accentText.withValues(alpha: 0.9)),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: AppColors.textMuted.withOpacity(0.9),
+                    fontSize: 13,
                   ),
                 ),
               ],
             ),
           ),
-          const Spacer(),
-          ElevatedButton(
-            onPressed: _goNext,
-            child: const Text('Commencer'),
-          ),
-          const SizedBox(height: 12),
         ],
       ),
     );
@@ -628,40 +695,49 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           children: [
             Text(
               'Prénoms du couple',
-              style: GoogleFonts.philosopher(fontSize: 22, fontWeight: FontWeight.w700),
+              style: GoogleFonts.philosopher(fontSize: 24, fontWeight: FontWeight.w700),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             const Text(
-              'Commencez par les prénoms pour engager l’utilisateur avant les questions plus personnelles.',
+              'Entrez vos prénoms pour personnaliser votre analyse',
               style: TextStyle(color: AppColors.textMuted),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             TextFormField(
               controller: _nameAController,
-              decoration: const InputDecoration(labelText: 'Prénom partenaire 1'),
+              decoration: const InputDecoration(
+                labelText: 'Prénom partenaire 1',
+                prefixIcon: Icon(Icons.person_outline, color: AppColors.primary),
+              ),
               validator: (value) => (value == null || value.trim().isEmpty) ? 'Entrez un prénom' : null,
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _nameBController,
-              decoration: const InputDecoration(labelText: 'Prénom partenaire 2'),
+              decoration: const InputDecoration(
+                labelText: 'Prénom partenaire 2',
+                prefixIcon: Icon(Icons.person_outline, color: AppColors.secondary),
+              ),
               validator: (value) => (value == null || value.trim().isEmpty) ? 'Entrez un prénom' : null,
             ),
-            DropdownButtonFormField<String>(
-              decoration: const InputDecoration(labelText: 'Statut (facultatif)'),
-              initialValue: _relationStatus,
-              items: _relationStatuses
-                  .map(
-                    (item) => DropdownMenuItem(
-                      value: item,
-                      child: Text(item),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (value) => setState(() => _relationStatus = value),
+            const SizedBox(height: 24),
+            Text(
+              'Votre situation (optionnel)',
+              style: GoogleFonts.philosopher(fontSize: 18, fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: 8),
-            const Text('Exemple : Jean et Marie.'),
+            const SizedBox(height: 12),
+            SelectableCardGrid(
+              options: _relationStatuses,
+              selectedValue: _relationStatus,
+              onChanged: (value) => setState(() => _relationStatus = value),
+              icons: const [
+                Icons.favorite,
+                Icons.ring_volume,
+                Icons.celebration,
+                Icons.psychology,
+                Icons.help_outline,
+              ],
+            ),
           ],
         ),
       ),
