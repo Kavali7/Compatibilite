@@ -8,11 +8,15 @@ import '../models/compatibility_models.dart';
 import '../services/numerology_service.dart';
 import '../services/compatibility_repository.dart';
 import '../services/supabase_manager.dart';
+import '../services/auth_service.dart';
+import '../services/pricing_service.dart';
+import '../services/kkiapay_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/hamburger_menu_overlay.dart';
 import '../widgets/selectable_card.dart';
 import 'legal_page.dart';
+import 'admin_page.dart';
 
 class CompatibilityWizard extends StatefulWidget {
   const CompatibilityWizard({super.key});
@@ -29,6 +33,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   final _durationController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _passwordController = TextEditingController();
   final NumerologyService _service = NumerologyService();
   CompatibilityRepository? _repository;
 
@@ -53,11 +58,15 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   String? _sessionId;
   String? _clientToken;
   bool _isMenuOpen = false;
+  bool _paymentCompleted = false;
+  bool _isProcessingPayment = false;
+  String _selectedPlanType = 'consultation';
+  PricingPlan? _selectedPlan;
 
   static const _supportEmail = 'growpeak.agence@gmail.com';
   static const _supportPhone = '0022654255584';
 
-  static const _totalSteps = 7;
+  static const _totalSteps = 8; // Updated from 7 to include payment step
   static const _challengeOptions = [
     'Communication',
     'Confiance',
@@ -79,6 +88,14 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     if (SupabaseManager.isReady) {
       _repository = CompatibilityRepository(SupabaseManager.client);
     }
+    // Load pricing plans
+    PricingService.instance.fetchPlans().then((_) {
+      if (mounted) {
+        setState(() {
+          _selectedPlan = PricingService.instance.consultationPlan;
+        });
+      }
+    });
   }
 
   @override
@@ -89,16 +106,36 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     _durationController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
   Future<void> _goNext() async {
-    if (_isSaving) return;
+    if (_isSaving || _isProcessingPayment) return;
     if (!_validateCurrentStep()) return;
-    if (_currentStep == _totalSteps - 2) {
+    
+    // Step 5 (Contact) -> Step 6 (Payment): Compute summary first
+    if (_currentStep == 5) {
       _computeSummary();
       await _saveSessionIfPossible();
     }
+    
+    // Step 6 (Payment) -> Step 7 (Results): Process payment
+    if (_currentStep == 6) {
+      // Payment validation happens in _validateCurrentStep
+      // Only proceed if payment is completed or user has active subscription
+      if (!_paymentCompleted) {
+        // Check for active subscription
+        final email = _emailController.text.trim();
+        final hasSubscription = await AuthService.instance.hasActiveSubscription(email);
+        if (!hasSubscription) {
+          _showSnack('Veuillez compléter le paiement pour voir vos résultats.');
+          return;
+        }
+        _paymentCompleted = true;
+      }
+    }
+    
     if (_currentStep < _totalSteps - 1) {
       setState(() {
         _currentStep += 1;
@@ -114,7 +151,20 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   bool _validateCurrentStep() {
     switch (_currentStep) {
       case 1:
-        return _namesFormKey.currentState?.validate() ?? false;
+        // Try form validation first
+        if (_namesFormKey.currentState?.validate() ?? false) {
+          return true;
+        }
+        // Fallback: Check controllers manually if form state is issues or just to be safe
+        final nameA = _nameAController.text.trim();
+        final nameB = _nameBController.text.trim();
+        if (nameA.isEmpty || nameB.isEmpty) {
+           _showSnack('Veuillez entrer les deux prénoms pour continuer.');
+           return false;
+        }
+        // If controllers are fine but validate() returned false (or was null),
+        // it might be a weird state, but we can trust the text content.
+        return true;
       case 2:
         final hasDateA = _birthA != null;
         if (!hasDateA) {
@@ -129,11 +179,19 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         return hasDateB;
       case 5:
         final email = _emailController.text.trim();
+        final password = _passwordController.text;
         if (email.isEmpty || !_isValidEmail(email)) {
           _showSnack('Entrez un email valide pour recevoir le rapport.');
           return false;
         }
+        if (password.isEmpty || password.length < 6) {
+          _showSnack('Le mot de passe doit contenir au moins 6 caractères.');
+          return false;
+        }
         return true;
+      case 6:
+        // Payment step validation - check if payment completed or has subscription
+        return _paymentCompleted;
       default:
         return true;
     }
@@ -346,6 +404,12 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
       ),
       MenuEntry(label: 'Contacter Growpeak', onTap: () => _launchUri(_supportEmailUri)),
       MenuEntry(label: 'Appeler Growpeak', onTap: () => _launchUri(_supportPhoneUri)),
+      MenuEntry(
+        label: 'Administration',
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const AdminPage()),
+        ),
+      ),
     ];
   }
 
@@ -368,36 +432,48 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   Widget build(BuildContext context) {
     final header = _buildHeader();
     final menuEntries = _buildMenuEntries(context);
-    
+
     // Determine background image based on current step
     String? backgroundImage;
     bool showFullAnimation = false;
-    
+
     if (_currentStep == 0) {
-      // Welcome step - full animated background with image
+      // Welcome step
       backgroundImage = 'assets/images/backgrounds/bg_welcome.png';
       showFullAnimation = true;
     } else if (_currentStep == _totalSteps - 1) {
-      // Results step - celebration background
+      // Results step
       backgroundImage = 'assets/images/backgrounds/bg_results.png';
       showFullAnimation = true;
     }
-    
+
     return Scaffold(
-      body: SafeArea(
-        child: showFullAnimation
-            ? AnimatedBackground(
-                backgroundImage: backgroundImage,
-                showStars: true,
-                showOrbs: true,
-                starCount: 40,
-                overlayOpacity: 0.55,
-                child: _buildContent(header, menuEntries),
-              )
-            : SubtleAnimatedBackground(
-                showStars: true,
-                child: _buildContent(header, menuEntries),
-              ),
+      body: Stack(
+        children: [
+          // Layer 1: Background (Independent of content)
+          Positioned.fill(
+            child: showFullAnimation
+                ? AnimatedBackground(
+                    backgroundImage: backgroundImage,
+                    showStars: true,
+                    showOrbs: true,
+                    starCount: 40,
+                    overlayOpacity: 0.55,
+                    child: const SizedBox.shrink(), // Background doesn't hold content anymore
+                  )
+                : SubtleAnimatedBackground(
+                    showStars: true,
+                    child: const SizedBox.shrink(),
+                  ),
+          ),
+          
+          // Layer 2: Content (Stable widget tree)
+          Positioned.fill(
+            child: SafeArea(
+              child: _buildContent(header, menuEntries),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -422,6 +498,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
                   _buildBirthdatesStep(isFirst: false),
                   _buildContextStep(),
                   _buildContactStep(),
+                  _buildPaymentStep(),
                   _buildResultsStep(),
                 ],
               ),
@@ -1007,12 +1084,12 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Coordonnées & paiement',
+            'Créez votre compte',
             style: GoogleFonts.philosopher(fontSize: 22, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
           const Text(
-            'Email obligatoire pour recevoir le rapport et le reçu. Téléphone recommandé pour le support.',
+            'Votre compte vous permettra de reconsulter vos rapports à tout moment.',
             style: TextStyle(color: AppColors.textMuted),
           ),
           const SizedBox(height: 16),
@@ -1020,8 +1097,19 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
             decoration: const InputDecoration(
-              labelText: 'Email',
+              labelText: 'Email *',
               hintText: 'vous@example.com',
+              prefixIcon: Icon(Icons.email_outlined, color: AppColors.primary),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _passwordController,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: 'Mot de passe *',
+              hintText: 'Minimum 6 caractères',
+              prefixIcon: Icon(Icons.lock_outline, color: AppColors.primary),
             ),
           ),
           const SizedBox(height: 12),
@@ -1029,8 +1117,9 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
             controller: _phoneController,
             keyboardType: TextInputType.phone,
             decoration: const InputDecoration(
-              labelText: 'Telephone (optionnel)',
-              hintText: '+33...',
+              labelText: 'Téléphone (optionnel)',
+              hintText: '+226...',
+              prefixIcon: Icon(Icons.phone_outlined, color: AppColors.secondary),
             ),
           ),
           const SizedBox(height: 12),
@@ -1040,15 +1129,441 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
             activeThumbColor: AppColors.primary,
             activeTrackColor: AppColors.primary.withValues(alpha: 0.35),
             title: const Text('Recevoir la guidance quotidienne'),
-            subtitle: const Text('Optionnel, aucune donnee sensible stockee.'),
+            subtitle: const Text('Optionnel, par email.'),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Le paiement sera declenche pour debloquer le rapport complet. Vous recevrez un recu a cette adresse.',
-            style: TextStyle(color: AppColors.textMuted),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.block.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.info_outline, color: AppColors.primary.withValues(alpha: 0.8)),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Un compte sera créé automatiquement pour vous permettre de reconsulter vos rapports.',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  /// Payment step widget
+  Widget _buildPaymentStep() {
+    final pricingService = PricingService.instance;
+    final consultationPlan = pricingService.consultationPlan;
+    final subscriptionPlan = pricingService.subscriptionPlan;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Choisissez votre formule',
+            style: GoogleFonts.philosopher(fontSize: 22, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Sélectionnez un forfait pour accéder à votre rapport de compatibilité.',
+            style: TextStyle(color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 24),
+          
+          // Consultation plan
+          _buildPlanCard(
+            plan: consultationPlan,
+            isSelected: _selectedPlanType == 'consultation',
+            icon: Icons.description_outlined,
+            features: const [
+              'Rapport complet de compatibilité',
+              'Analyse numérologique des deux partenaires',
+              'Conseil du jour personnalisé',
+            ],
+            onTap: () {
+              setState(() {
+                _selectedPlanType = 'consultation';
+                _selectedPlan = consultationPlan;
+              });
+            },
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Subscription plan
+          _buildPlanCard(
+            plan: subscriptionPlan,
+            isSelected: _selectedPlanType == 'subscription',
+            icon: Icons.star_outline,
+            badge: 'MEILLEURE OFFRE',
+            features: const [
+              'Accès illimité pendant 30 jours',
+              'Tous les rapports inclus',
+              'Guidance quotidienne personnalisée',
+              'Nouveaux rapports sans frais',
+            ],
+            onTap: () {
+              setState(() {
+                _selectedPlanType = 'subscription';
+                _selectedPlan = subscriptionPlan;
+              });
+            },
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // Payment button
+          if (_paymentCompleted)
+            _buildPaymentSuccessCard()
+          else
+            _buildPaymentButton(),
+          
+          const SizedBox(height: 16),
+          
+          // Payment info
+          const Center(
+            child: Text(
+              'Paiement sécurisé par Kkiapay',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.phone_android, size: 20, color: AppColors.textMuted.withValues(alpha: 0.7)),
+              const SizedBox(width: 8),
+              Icon(Icons.credit_card, size: 20, color: AppColors.textMuted.withValues(alpha: 0.7)),
+              const SizedBox(width: 8),
+              Icon(Icons.account_balance, size: 20, color: AppColors.textMuted.withValues(alpha: 0.7)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlanCard({
+    required PricingPlan plan,
+    required bool isSelected,
+    required IconData icon,
+    required List<String> features,
+    required VoidCallback onTap,
+    String? badge,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected 
+              ? AppColors.primary.withValues(alpha: 0.15)
+              : AppColors.block.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.block,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: AppColors.primary),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        plan.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: AppColors.textLight,
+                        ),
+                      ),
+                      if (badge != null)
+                        Container(
+                          margin: const EdgeInsets.only(top: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.secondary,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            badge,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${plan.priceFcfa} FCFA',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isSelected ? AppColors.primary : AppColors.textLight,
+                      ),
+                    ),
+                    if (plan.isSubscription)
+                      const Text(
+                        '/mois',
+                        style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                      ),
+                  ],
+                ),
+                const SizedBox(width: 8),
+                Radio<String>(
+                  value: plan.planType,
+                  groupValue: _selectedPlanType,
+                  onChanged: (_) => onTap(),
+                  activeColor: AppColors.primary,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...features.map((feature) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.check_circle,
+                    size: 16,
+                    color: isSelected ? AppColors.primary : AppColors.textMuted,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      feature,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isSelected ? AppColors.textLight : AppColors.textMuted,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentButton() {
+    if (_isProcessingPayment) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(width: 12),
+            Text(
+              'Traitement en cours...',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final amount = _selectedPlan?.priceFcfa ?? 500;
+
+    return ElevatedButton(
+      onPressed: _initiatePayment,
+      style: ElevatedButton.styleFrom(
+        minimumSize: const Size(double.infinity, 56),
+        backgroundColor: AppColors.primary,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.lock, color: Colors.white),
+          const SizedBox(width: 8),
+          Text(
+            'Payer $amount FCFA',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaymentSuccessCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.green.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.green.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: const BoxDecoration(
+              color: Colors.green,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.check, color: Colors.white, size: 32),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Paiement réussi !',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.green,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Cliquez sur Continuer pour voir vos résultats.',
+            style: TextStyle(color: AppColors.textMuted),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _initiatePayment() async {
+    if (_selectedPlan == null) {
+      _showSnack('Veuillez sélectionner un forfait.');
+      return;
+    }
+
+    setState(() => _isProcessingPayment = true);
+
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final phone = _phoneController.text.trim();
+    final name = '${_nameAController.text} & ${_nameBController.text}';
+
+    KkiapayService.instance.startPayment(
+      context: context,
+      amount: _selectedPlan!.priceFcfa,
+      reason: _selectedPlan!.isSubscription
+          ? 'Abonnement mensuel Compatibilité'
+          : 'Rapport de compatibilité',
+      email: email,
+      name: name,
+      phone: phone.isNotEmpty ? phone : null,
+      callback: (success, transactionId, error) async {
+        if (!success || transactionId == null) {
+          setState(() => _isProcessingPayment = false);
+          _showSnack(error ?? 'Paiement échoué. Veuillez réessayer.');
+          return;
+        }
+
+        try {
+          // Create or sign in user
+          final authService = AuthService.instance;
+          AppUser? user;
+
+          if (await authService.emailExists(email)) {
+            user = await authService.signIn(email: email, password: password);
+          } else {
+            user = await authService.signUp(
+              email: email,
+              password: password,
+              name: name,
+            );
+          }
+
+          if (user == null) {
+            setState(() => _isProcessingPayment = false);
+            _showSnack('Erreur lors de la création du compte.');
+            return;
+          }
+
+          // Record payment
+          final payment = await KkiapayService.instance.recordPayment(
+            userId: user.id,
+            sessionId: _sessionId,
+            transactionId: transactionId,
+            amountFcfa: _selectedPlan!.priceFcfa,
+            status: PaymentStatus.success,
+            planType: _selectedPlan!.planType,
+          );
+
+          // If subscription, create subscription record
+          if (_selectedPlan!.isSubscription && _selectedPlan!.durationDays != null) {
+            await authService.createSubscription(
+              userId: user.id,
+              planId: _selectedPlan!.id,
+              paymentId: payment?.id ?? transactionId,
+              durationDays: _selectedPlan!.durationDays!,
+            );
+          }
+
+          // Link report to user
+          if (_sessionId != null) {
+            await KkiapayService.instance.linkReportToUser(
+              userId: user.id,
+              sessionId: _sessionId!,
+            );
+          }
+
+          setState(() {
+            _isProcessingPayment = false;
+            _paymentCompleted = true;
+          });
+
+          _showSnack('Paiement réussi ! Vous pouvez voir vos résultats.');
+        } catch (e) {
+          setState(() => _isProcessingPayment = false);
+          _showSnack('Erreur: ${e.toString()}');
+        }
+      },
     );
   }
 
