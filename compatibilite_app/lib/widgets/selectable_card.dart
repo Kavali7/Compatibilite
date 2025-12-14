@@ -44,7 +44,6 @@ class _SelectableCardState extends State<SelectableCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
-  bool _isPressed = false;
 
   @override
   void initState() {
@@ -65,18 +64,15 @@ class _SelectableCardState extends State<SelectableCard>
   }
 
   void _handleTapDown(TapDownDetails details) {
-    setState(() => _isPressed = true);
     _controller.forward();
   }
 
   void _handleTapUp(TapUpDetails details) {
-    setState(() => _isPressed = false);
     _controller.reverse();
     widget.onTap();
   }
 
   void _handleTapCancel() {
-    setState(() => _isPressed = false);
     _controller.reverse();
   }
 
@@ -104,19 +100,19 @@ class _SelectableCardState extends State<SelectableCard>
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: widget.isSelected
-                ? AppColors.primary.withOpacity(0.15)
-                : AppColors.block.withOpacity(0.7),
+                ? AppColors.primary.withValues(alpha: 0.15)
+                : AppColors.block.withValues(alpha: 0.7),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
               color: widget.isSelected
                   ? AppColors.primary
-                  : AppColors.primary.withOpacity(0.3),
+                  : AppColors.primary.withValues(alpha: 0.3),
               width: widget.isSelected ? 2 : 1,
             ),
             boxShadow: widget.isSelected
                 ? [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.2),
+                      color: AppColors.primary.withValues(alpha: 0.2),
                       blurRadius: 12,
                       spreadRadius: 1,
                     ),
@@ -131,8 +127,8 @@ class _SelectableCardState extends State<SelectableCard>
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: widget.isSelected
-                        ? AppColors.primary.withOpacity(0.2)
-                        : AppColors.primary.withOpacity(0.1),
+                        ? AppColors.primary.withValues(alpha: 0.2)
+                        : AppColors.primary.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
                   child: widget.iconWidget ??
@@ -342,7 +338,7 @@ class _AnimatedPrimaryButtonState extends State<AnimatedPrimaryButton>
             boxShadow: widget.onPressed != null
                 ? [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.4),
+                      color: AppColors.primary.withValues(alpha: 0.4),
                       blurRadius: 16,
                       offset: const Offset(0, 4),
                     ),

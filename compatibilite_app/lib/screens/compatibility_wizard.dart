@@ -641,7 +641,10 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           // Main title with glow effect
           ShaderMask(
             shaderCallback: (bounds) => LinearGradient(
-              colors: [AppColors.textLight, AppColors.primary.withOpacity(0.8)],
+              colors: [
+                AppColors.textLight,
+                AppColors.primary.withValues(alpha: 0.8),
+              ],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ).createShader(bounds),
@@ -717,9 +720,9 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.block.withOpacity(0.6),
+        color: AppColors.block.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.primary.withOpacity(0.25)),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
       ),
       child: Row(
         children: [
@@ -728,8 +731,8 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  AppColors.primary.withOpacity(0.2),
-                  AppColors.secondary.withOpacity(0.15),
+                  AppColors.primary.withValues(alpha: 0.2),
+                  AppColors.secondary.withValues(alpha: 0.15),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
@@ -755,7 +758,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
                 Text(
                   subtitle,
                   style: TextStyle(
-                    color: AppColors.textMuted.withOpacity(0.9),
+                    color: AppColors.textMuted.withValues(alpha: 0.9),
                     fontSize: 13,
                   ),
                 ),
@@ -1332,22 +1335,23 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
                         color: isSelected ? AppColors.primary : AppColors.textLight,
                       ),
                     ),
-                    if (plan.isSubscription)
-                      const Text(
-                        '/mois',
-                        style: TextStyle(color: AppColors.textMuted, fontSize: 12),
-                      ),
-                  ],
-                ),
-                const SizedBox(width: 8),
-                Radio<String>(
-                  value: plan.planType,
-                  groupValue: _selectedPlanType,
-                  onChanged: (_) => onTap(),
-                  activeColor: AppColors.primary,
-                ),
+                if (plan.isSubscription)
+                  const Text(
+                    '/mois',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                  ),
               ],
             ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: onTap,
+              child: Icon(
+                isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+                color: isSelected ? AppColors.primary : AppColors.textMuted,
+              ),
+            ),
+          ],
+        ),
             const SizedBox(height: 12),
             ...features.map((feature) => Padding(
               padding: const EdgeInsets.only(bottom: 6),

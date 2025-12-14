@@ -88,9 +88,9 @@ class AnimatedBackground extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withOpacity(overlayOpacity * 0.6),
-                    Colors.black.withOpacity(overlayOpacity * 0.8),
-                    Colors.black.withOpacity(overlayOpacity),
+                    Colors.black.withValues(alpha: overlayOpacity * 0.6),
+                    Colors.black.withValues(alpha: overlayOpacity * 0.8),
+                    Colors.black.withValues(alpha: overlayOpacity),
                   ],
                   stops: const [0.0, 0.5, 1.0],
                 ),
@@ -206,7 +206,7 @@ class SubtleAnimatedBackground extends StatelessWidget {
           Positioned.fill(
             child: AnimatedStarField(
               starCount: 20,
-              starColor: AppColors.textLight.withOpacity(0.5),
+              starColor: AppColors.textLight.withValues(alpha: 0.5),
               maxStarSize: 1.5,
               minStarSize: 0.5,
               speedFactor: 0.3,

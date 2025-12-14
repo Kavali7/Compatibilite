@@ -163,7 +163,7 @@ class _StarFieldPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     for (final star in stars) {
       final paint = Paint()
-        ..color = starColor.withOpacity(star.opacity)
+        ..color = starColor.withValues(alpha: star.opacity)
         ..maskFilter = MaskFilter.blur(BlurStyle.normal, star.size * 0.5);
 
       canvas.drawCircle(
@@ -174,7 +174,7 @@ class _StarFieldPainter extends CustomPainter {
 
       // Inner brighter core
       final corePaint = Paint()
-        ..color = Colors.white.withOpacity(star.opacity * 0.8);
+        ..color = Colors.white.withValues(alpha: star.opacity * 0.8);
       canvas.drawCircle(
         Offset(star.x, star.y),
         star.size * 0.4,

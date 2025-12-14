@@ -86,15 +86,15 @@ class _PulsatingOrbState extends State<PulsatingOrb>
               shape: BoxShape.circle,
               gradient: RadialGradient(
                 colors: [
-                  widget.color.withOpacity(_opacityAnimation.value),
-                  widget.color.withOpacity(_opacityAnimation.value * 0.5),
-                  widget.color.withOpacity(0),
+                  widget.color.withValues(alpha: _opacityAnimation.value),
+                  widget.color.withValues(alpha: _opacityAnimation.value * 0.5),
+                  widget.color.withValues(alpha: 0),
                 ],
                 stops: const [0.0, 0.5, 1.0],
               ),
               boxShadow: [
                 BoxShadow(
-                  color: widget.color.withOpacity(_opacityAnimation.value * 0.6),
+                  color: widget.color.withValues(alpha: _opacityAnimation.value * 0.6),
                   blurRadius: widget.blurRadius,
                   spreadRadius: widget.blurRadius * 0.3,
                 ),
@@ -190,15 +190,15 @@ class _FloatingOrbState extends State<FloatingOrb>
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    widget.color.withOpacity(0.2),
-                    widget.color.withOpacity(0.1),
-                    widget.color.withOpacity(0),
+                    widget.color.withValues(alpha: 0.2),
+                    widget.color.withValues(alpha: 0.1),
+                    widget.color.withValues(alpha: 0),
                   ],
                   stops: const [0.0, 0.6, 1.0],
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: widget.color.withOpacity(0.15),
+                    color: widget.color.withValues(alpha: 0.15),
                     blurRadius: 80,
                     spreadRadius: 30,
                   ),
