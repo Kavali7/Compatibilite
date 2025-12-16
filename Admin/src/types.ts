@@ -40,3 +40,49 @@ export type RapportPartenaire = {
   mois_personnel: number;
   jour_personnel: number;
 };
+
+// === NEW ADMIN TYPES ===
+
+export type Projet = {
+  id: string;
+  slug: string;
+  nom: string;
+  actif: boolean;
+};
+
+export type Interpretation = {
+  id: string;
+  projet_id?: string;
+  categorie: 'chemin_vie' | 'couple' | 'defi';
+  cle: string;
+  titre?: string;
+  contenu: string;
+};
+
+export type CodePromo = {
+  id: string;
+  projet_id?: string;
+  code: string;
+  type: 'pourcentage' | 'montant';
+  valeur: number;
+  date_expiration?: string;
+  utilisation_max?: number;
+  utilisation_actuelle: number;
+  actif: boolean;
+};
+
+export type PageLegale = {
+  id: string;
+  slug: string;
+  titre: string;
+  contenu: string;
+};
+
+export type PricingPlan = {
+  id: string;
+  name: string;
+  price_fcfa: number;
+  plan_type: 'consultation' | 'subscription';
+  duration_days?: number;
+  is_active: boolean;
+};
