@@ -1,0 +1,4 @@
+connected to 192.168.43.194:5555
+adb connect 192.168.43.194
+adb connect 192.168.139.126
+adb tcpip 5555
