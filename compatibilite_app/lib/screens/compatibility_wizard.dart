@@ -11,10 +11,12 @@ import '../services/supabase_manager.dart';
 import '../services/auth_service.dart';
 import '../services/pricing_service.dart';
 import '../services/kkiapay_service.dart';
+import '../services/temporal_report_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/hamburger_menu_overlay.dart';
 import '../widgets/selectable_card.dart';
+import '../widgets/temporal_report_card.dart';
 import 'legal_page.dart';
 import 'admin_page.dart';
 
@@ -62,6 +64,15 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   bool _isProcessingPayment = false;
   String _selectedPlanType = 'consultation';
   PricingPlan? _selectedPlan;
+  String? _genderA; // Gender for partner A: 'Homme', 'Femme', 'Autre'
+  String? _genderB; // Gender for partner B: 'Homme', 'Femme', 'Autre'
+  
+  // Temporal reports state
+  TemporalReport? _yearReport;
+  TemporalReport? _monthReport;
+  TemporalReport? _dayReport;
+  bool _isLoadingReports = false;
+  String? _reportsError;
 
   static const _supportEmail = 'growpeak.agence@gmail.com';
   static const _supportPhone = '0022654255584';
@@ -81,6 +92,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     'Relation complexe',
     'Célibataire curieux/se',
   ];
+  static const _genderOptions = ['Homme', 'Femme', 'Autre'];
 
   @override
   void initState() {
@@ -134,6 +146,8 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         }
         _paymentCompleted = true;
       }
+      // Load temporal reports after payment success
+      _loadTemporalReports();
     }
     
     if (_currentStep < _totalSteps - 1) {
@@ -148,11 +162,70 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     }
   }
 
+  /// Load temporal reports (year, month, day) for the current couple
+  Future<void> _loadTemporalReports() async {
+    if (!SupabaseManager.isReady) return;
+    if (_partnerAInput == null || _partnerBInput == null) return;
+    if (_birthA == null || _birthB == null) return;
+    
+    setState(() {
+      _isLoadingReports = true;
+      _reportsError = null;
+    });
+    
+    try {
+      final service = TemporalReportService.instance;
+      final now = DateTime.now();
+      
+      // Create or update couple profile first
+      await service.createCoupleProfile(
+        userFirstname: _nameAController.text.trim(),
+        userBirthdate: _birthA!,
+        userGender: _genderA ?? 'Autre',
+        partnerFirstname: _nameBController.text.trim(),
+        partnerBirthdate: _birthB!,
+        partnerGender: _genderB ?? 'Autre',
+      );
+      
+      // Fetch all three reports in parallel
+      final results = await Future.wait([
+        service.getYearReport(date: now),
+        service.getMonthReport(date: now),
+        service.getDayReport(date: now),
+      ]);
+      
+      if (mounted) {
+        setState(() {
+          _yearReport = results[0];
+          _monthReport = results[1];
+          _dayReport = results[2];
+          _isLoadingReports = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _reportsError = 'Impossible de charger les prévisions temporelles.';
+          _isLoadingReports = false;
+        });
+      }
+    }
+  }
+
   bool _validateCurrentStep() {
     switch (_currentStep) {
       case 1:
         // Try form validation first
         if (_namesFormKey.currentState?.validate() ?? false) {
+          // Also check gender selection
+          if (_genderA == null) {
+            _showSnack('Veuillez indiquer le sexe du partenaire 1.');
+            return false;
+          }
+          if (_genderB == null) {
+            _showSnack('Veuillez indiquer le sexe du partenaire 2.');
+            return false;
+          }
           return true;
         }
         // Fallback: Check controllers manually if form state is issues or just to be safe
@@ -161,6 +234,15 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         if (nameA.isEmpty || nameB.isEmpty) {
            _showSnack('Veuillez entrer les deux prénoms pour continuer.');
            return false;
+        }
+        // Check gender selection
+        if (_genderA == null) {
+          _showSnack('Veuillez indiquer le sexe du partenaire 1.');
+          return false;
+        }
+        if (_genderB == null) {
+          _showSnack('Veuillez indiquer le sexe du partenaire 2.');
+          return false;
         }
         // If controllers are fine but validate() returned false (or was null),
         // it might be a weird state, but we can trust the text content.
@@ -307,6 +389,8 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     _dayB = null;
     _meetingDate = null;
     _relationStatus = null;
+    _genderA = null;
+    _genderB = null;
     _challenges.clear();
     _wantsNotifications = true;
     _summary = null;
@@ -788,6 +872,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
               style: TextStyle(color: AppColors.textMuted),
             ),
             const SizedBox(height: 20),
+            // Partner 1 name
             TextFormField(
               controller: _nameAController,
               decoration: const InputDecoration(
@@ -796,7 +881,19 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
               ),
               validator: (value) => (value == null || value.trim().isEmpty) ? 'Entrez un prénom' : null,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            // Partner 1 gender selection
+            Text(
+              'Sexe du partenaire 1 *',
+              style: GoogleFonts.philosopher(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            _buildGenderSelector(
+              selectedValue: _genderA,
+              onChanged: (value) => setState(() => _genderA = value),
+            ),
+            const SizedBox(height: 20),
+            // Partner 2 name
             TextFormField(
               controller: _nameBController,
               decoration: const InputDecoration(
@@ -804,6 +901,17 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
                 prefixIcon: Icon(Icons.person_outline, color: AppColors.secondary),
               ),
               validator: (value) => (value == null || value.trim().isEmpty) ? 'Entrez un prénom' : null,
+            ),
+            const SizedBox(height: 12),
+            // Partner 2 gender selection
+            Text(
+              'Sexe du partenaire 2 *',
+              style: GoogleFonts.philosopher(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            _buildGenderSelector(
+              selectedValue: _genderB,
+              onChanged: (value) => setState(() => _genderB = value),
             ),
             const SizedBox(height: 24),
             Text(
@@ -826,6 +934,73 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildGenderSelector({
+    required String? selectedValue,
+    required ValueChanged<String> onChanged,
+  }) {
+    return Row(
+      children: _genderOptions.map((gender) {
+        final isSelected = selectedValue == gender;
+        final IconData icon;
+        switch (gender) {
+          case 'Homme':
+            icon = Icons.male;
+            break;
+          case 'Femme':
+            icon = Icons.female;
+            break;
+          default:
+            icon = Icons.transgender;
+        }
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(
+              right: gender != _genderOptions.last ? 8 : 0,
+            ),
+            child: GestureDetector(
+              onTap: () => onChanged(gender),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.primary.withValues(alpha: 0.15)
+                      : AppColors.block.withValues(alpha: 0.7),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.primary
+                        : AppColors.primary.withValues(alpha: 0.3),
+                    width: isSelected ? 2 : 1,
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      icon,
+                      color: isSelected ? AppColors.primary : AppColors.textMuted,
+                      size: 24,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      gender,
+                      style: TextStyle(
+                        color: isSelected ? AppColors.textLight : AppColors.textMuted,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -1143,12 +1318,13 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
               border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
             ),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.info_outline, color: AppColors.primary.withValues(alpha: 0.8)),
+                Icon(Icons.security, color: AppColors.primary.withValues(alpha: 0.8)),
                 const SizedBox(width: 12),
                 const Expanded(
                   child: Text(
-                    'Un compte sera créé automatiquement pour vous permettre de reconsulter vos rapports.',
+                    'Ce mot de passe sécurise l\'accès à votre rapport et protège vos données personnelles. Choisissez-le avec soin et mémorisez-le pour pouvoir retrouver vos analyses à tout moment.',
                     style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                   ),
                 ),
@@ -1607,6 +1783,83 @@ Widget _buildResultsStep() {
             const SizedBox(height: 12),
             _contextCard(),
           ],
+          
+          // Temporal Reports Section
+          const SizedBox(height: 24),
+          Text(
+            'Prévisions Temporelles',
+            style: GoogleFonts.philosopher(fontSize: 22, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Découvrez vos prévisions pour l\'année, le mois et la journée en cours.',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+          ),
+          const SizedBox(height: 16),
+          
+          // Loading state
+          if (_isLoadingReports) ...[
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    CircularProgressIndicator(color: AppColors.primary),
+                    SizedBox(height: 12),
+                    Text('Chargement des prévisions...'),
+                  ],
+                ),
+              ),
+            ),
+          ],
+          
+          // Error state
+          if (_reportsError != null) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.block,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.5)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning_amber, color: Colors.orange),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(_reportsError!)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          
+          // Show reports if available
+          if (!_isLoadingReports && _reportsError == null) ...[
+            // Year Report
+            if (_yearReport != null) ...[
+              TemporalReportCard(report: _yearReport!, isExpanded: false),
+            ],
+            
+            // Month Report
+            if (_monthReport != null) ...[
+              TemporalReportCard(report: _monthReport!, isExpanded: false),
+            ],
+            
+            // Day Report (expanded by default)
+            if (_dayReport != null) ...[
+              TemporalReportCard(report: _dayReport!, isExpanded: true),
+            ],
+          ],
+          
+          // CTA for tomorrow's report
+          const SizedBox(height: 24),
+          TomorrowReportCTA(
+            onTap: () {
+              _showSnack('Fonctionnalité bientôt disponible ! Achetez les prévisions de demain.');
+            },
+          ),
+          
+          const SizedBox(height: 24),
         ],
       ),
     );
