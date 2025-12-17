@@ -9,6 +9,8 @@ import Interpretations from './pages/compatibilite/Interpretations';
 import Pricing from './pages/compatibilite/Pricing';
 import Promos from './pages/compatibilite/Promos';
 import Sessions from './pages/compatibilite/Sessions';
+import ContentBricks from './pages/compatibilite/ContentBricks';
+import CanonicalPredictions from './pages/compatibilite/CanonicalPredictions';
 
 const router = createBrowserRouter([
   {
@@ -27,6 +29,8 @@ const router = createBrowserRouter([
           { path: 'pricing', element: <Pricing /> },
           { path: 'promos', element: <Promos /> },
           { path: 'sessions', element: <Sessions /> },
+          { path: 'content-bricks', element: <ContentBricks /> },
+          { path: 'canonical-predictions', element: <CanonicalPredictions /> },
         ],
       },
       { path: '*', element: <Navigate to="/" replace /> },

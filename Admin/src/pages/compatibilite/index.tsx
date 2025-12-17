@@ -9,6 +9,18 @@ export default function CompatibiliteIndex() {
             description: 'Gérer les textes numérologiques (chemins de vie, compatibilité, défis)',
         },
         {
+            to: '/compatibilite/content-bricks',
+            icon: '🧱',
+            title: 'Briques de Contenu',
+            description: 'Gérer les briques personnalisées (énergie, focus, conseils, etc.)',
+        },
+        {
+            to: '/compatibilite/canonical-predictions',
+            icon: '📜',
+            title: 'Prédictions Canon',
+            description: 'Modifier les textes du PDF pour chaque numéro et période',
+        },
+        {
             to: '/compatibilite/pricing',
             icon: '💳',
             title: 'Plans & Tarifs',
