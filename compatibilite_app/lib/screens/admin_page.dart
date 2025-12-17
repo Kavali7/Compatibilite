@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../services/pricing_service.dart';
 import '../services/kkiapay_service.dart';
+import '../services/supabase_manager.dart';
 import '../theme/app_theme.dart';
 
 /// Admin page for managing pricing plans and viewing transactions
@@ -20,12 +22,14 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
   final _passwordController = TextEditingController();
   List<PricingPlan> _plans = [];
   List<PaymentRecord> _payments = [];
+  int _contentBricksCount = 0;
+  int _predictionsCount = 0;
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _loadData();
   }
 
@@ -42,6 +46,15 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
       await PricingService.instance.fetchPlans();
       _plans = PricingService.instance.plans;
       _payments = await KkiapayService.instance.getRecentPayments();
+      
+      // Load content stats from Supabase
+      if (SupabaseManager.isReady) {
+        final client = SupabaseManager.client;
+        final bricksResult = await client.from('content_bricks').select('id').count(CountOption.exact);
+        final predsResult = await client.from('canonical_predictions').select('id').count(CountOption.exact);
+        _contentBricksCount = bricksResult.count;
+        _predictionsCount = predsResult.count;
+      }
     } catch (e) {
       debugPrint('Admin loadData error: $e');
     }
@@ -80,6 +93,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
           tabs: const [
             Tab(text: 'Forfaits', icon: Icon(Icons.attach_money)),
             Tab(text: 'Transactions', icon: Icon(Icons.receipt_long)),
+            Tab(text: 'Contenus', icon: Icon(Icons.article)),
           ],
           indicatorColor: AppColors.primary,
           labelColor: AppColors.primary,
@@ -90,6 +104,7 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
         children: [
           _buildPricingTab(),
           _buildTransactionsTab(),
+          _buildContentsTab(),
         ],
       ),
     );
@@ -514,6 +529,222 @@ class _AdminPageState extends State<AdminPage> with SingleTickerProviderStateMix
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+  Widget _buildContentsTab() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      color: AppColors.primary,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Stats Cards
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatCard(
+                    title: 'Briques de Contenu',
+                    count: _contentBricksCount,
+                    icon: Icons.view_module,
+                    color: Colors.blue,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildStatCard(
+                    title: 'Prédictions Canon',
+                    count: _predictionsCount,
+                    icon: Icons.auto_stories,
+                    color: Colors.purple,
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Content Bricks Section
+            Text(
+              'Briques de Contenu',
+              style: GoogleFonts.philosopher(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Les briques personnalisent les rapports temporels (énergie, focus, conseils, etc.)',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            _buildContentInfoCard(
+              title: 'content_bricks',
+              description: 'Bloc 1: Énergie, Focus, Alerte, Conseil\nBloc 2: Posture, Levier, Risque\nBloc 3: Acte, Rituel, Couple, Travail, Argent, Santé, Feu',
+              count: _contentBricksCount,
+              onViewPressed: () => _openSupabaseTable('content_bricks'),
+            ),
+            
+            const SizedBox(height: 20),
+            
+            // Canonical Predictions Section
+            Text(
+              'Prédictions Canoniques',
+              style: GoogleFonts.philosopher(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Textes du PDF pour chaque numéro (1-9, 11, 22, 33) × 3 périodes',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            _buildContentInfoCard(
+              title: 'canonical_predictions',
+              description: '12 numéros × 3 périodes (année, mois, jour)\nContenu: Climat, Travail, Vie sentimentale, Finances, Conseil',
+              count: _predictionsCount,
+              onViewPressed: () => _openSupabaseTable('canonical_predictions'),
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Generated Reports Section
+            Text(
+              'Rapports Générés',
+              style: GoogleFonts.philosopher(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Cache des rapports déjà générés pour les utilisateurs',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              color: AppColors.block,
+              child: ListTile(
+                leading: const Icon(Icons.cached, color: AppColors.primary),
+                title: const Text('generated_reports'),
+                subtitle: const Text('Voir dans Supabase Dashboard'),
+                trailing: const Icon(Icons.open_in_new),
+                onTap: () => _openSupabaseTable('generated_reports'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatCard({
+    required String title,
+    required int count,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Card(
+      color: AppColors.block,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Icon(icon, size: 32, color: color),
+            const SizedBox(height: 8),
+            Text(
+              count.toString(),
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContentInfoCard({
+    required String title,
+    required String description,
+    required int count,
+    required VoidCallback onViewPressed,
+  }) {
+    return Card(
+      color: AppColors.block,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                Chip(
+                  label: Text('$count records'),
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              description,
+              style: const TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: onViewPressed,
+                icon: const Icon(Icons.open_in_new),
+                label: const Text('Voir dans Supabase'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openSupabaseTable(String tableName) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Ouvrez Supabase Dashboard → Table Editor → $tableName'),
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'OK',
+          onPressed: () {},
         ),
       ),
     );
