@@ -27,6 +27,16 @@ export default function ContentBricks() {
     const [filter, setFilter] = useState({ bloc: '', type_brique: '', actif: '' });
     const [stats, setStats] = useState({ total: 0, bloc1: 0, bloc2: 0, bloc3: 0 });
 
+    // Edit state
+    const [editingBrick, setEditingBrick] = useState<ContentBrick | null>(null);
+    const [editForm, setEditForm] = useState({
+        modele_texte: '',
+        ton: '',
+        poids: 1,
+        jours_refroidissement: 0,
+        actif: true,
+    });
+
     useEffect(() => {
         loadBricks();
         loadStats();
@@ -64,6 +74,38 @@ export default function ContentBricks() {
         }
     }
 
+    function startEdit(brick: ContentBrick) {
+        setEditingBrick(brick);
+        setEditForm({
+            modele_texte: brick.modele_texte || '',
+            ton: brick.ton || '',
+            poids: brick.poids || 1,
+            jours_refroidissement: brick.jours_refroidissement || 0,
+            actif: brick.actif,
+        });
+    }
+
+    async function saveEdit() {
+        if (!editingBrick) return;
+        try {
+            const { error: updateError } = await supabase
+                .from('content_bricks')
+                .update({
+                    modele_texte: editForm.modele_texte,
+                    ton: editForm.ton,
+                    poids: editForm.poids,
+                    jours_refroidissement: editForm.jours_refroidissement,
+                    actif: editForm.actif,
+                })
+                .eq('id', editingBrick.id);
+            if (updateError) throw updateError;
+            setEditingBrick(null);
+            loadBricks();
+        } catch (e: any) {
+            alert('Erreur: ' + e.message);
+        }
+    }
+
     async function toggleActive(brick: ContentBrick) {
         try {
             const { error: updateError } = await supabase
@@ -82,6 +124,8 @@ export default function ContentBricks() {
         'posture', 'levier', 'risque',
         'acte', 'rituel', 'couple', 'travail', 'argent', 'sante', 'feu'
     ];
+
+    const tonOptions = ['neutre', 'encourageant', 'avertissement', 'motivant', 'reflexif'];
 
     return (
         <div className="page content-bricks">
@@ -142,8 +186,9 @@ export default function ContentBricks() {
                         <tr style={{ background: 'var(--card-bg)' }}>
                             <th style={{ padding: '0.75rem', textAlign: 'left' }}>Bloc</th>
                             <th style={{ padding: '0.75rem', textAlign: 'left' }}>Type</th>
-                            <th style={{ padding: '0.75rem', textAlign: 'left' }}>Numéro</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'left' }}>N°</th>
                             <th style={{ padding: '0.75rem', textAlign: 'left' }}>Texte</th>
+                            <th style={{ padding: '0.75rem', textAlign: 'center' }}>Ton</th>
                             <th style={{ padding: '0.75rem', textAlign: 'center' }}>Actif</th>
                             <th style={{ padding: '0.75rem', textAlign: 'center' }}>Actions</th>
                         </tr>
@@ -159,15 +204,18 @@ export default function ContentBricks() {
                                         color: 'white',
                                         fontSize: '0.85rem'
                                     }}>
-                                        Bloc {brick.bloc}
+                                        {brick.bloc}
                                     </span>
                                 </td>
-                                <td style={{ padding: '0.75rem' }}>{brick.type_brique}</td>
+                                <td style={{ padding: '0.75rem', fontSize: '0.9rem' }}>{brick.type_brique}</td>
                                 <td style={{ padding: '0.75rem' }}>{brick.numero_cible}</td>
-                                <td style={{ padding: '0.75rem', maxWidth: '400px' }}>
-                                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                <td style={{ padding: '0.75rem', maxWidth: '300px' }}>
+                                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.85rem' }}>
                                         {brick.modele_texte}
                                     </div>
+                                </td>
+                                <td style={{ padding: '0.75rem', textAlign: 'center', fontSize: '0.85rem' }}>
+                                    {brick.ton || '-'}
                                 </td>
                                 <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                                     <span style={{ color: brick.actif ? '#10b981' : '#ef4444' }}>
@@ -175,6 +223,20 @@ export default function ContentBricks() {
                                     </span>
                                 </td>
                                 <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                                    <button
+                                        onClick={() => startEdit(brick)}
+                                        style={{
+                                            padding: '0.25rem 0.5rem',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            cursor: 'pointer',
+                                            background: 'var(--primary)',
+                                            color: 'white',
+                                            marginRight: '0.25rem'
+                                        }}
+                                    >
+                                        ✏️
+                                    </button>
                                     <button
                                         onClick={() => toggleActive(brick)}
                                         style={{
@@ -186,7 +248,7 @@ export default function ContentBricks() {
                                             color: brick.actif ? '#dc2626' : '#059669'
                                         }}
                                     >
-                                        {brick.actif ? 'Désactiver' : 'Activer'}
+                                        {brick.actif ? '✗' : '✓'}
                                     </button>
                                 </td>
                             </tr>
@@ -198,6 +260,161 @@ export default function ContentBricks() {
             <p style={{ marginTop: '1rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
                 Affichage limité à 100 résultats. Utilisez les filtres pour affiner.
             </p>
+
+            {/* Edit Modal */}
+            {editingBrick && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0,0,0,0.7)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000,
+                }}>
+                    <div style={{
+                        background: 'var(--card-bg, #2a2a3e)',
+                        borderRadius: '12px',
+                        padding: '1.5rem',
+                        maxWidth: '600px',
+                        width: '90%',
+                        maxHeight: '90vh',
+                        overflow: 'auto',
+                    }}>
+                        <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>
+                            ✏️ Modifier Brique
+                            <span style={{
+                                marginLeft: '0.5rem',
+                                padding: '0.25rem 0.5rem',
+                                background: editingBrick.bloc === 1 ? '#3b82f6' : editingBrick.bloc === 2 ? '#8b5cf6' : '#10b981',
+                                color: 'white',
+                                borderRadius: '4px',
+                                fontSize: '0.8rem'
+                            }}>
+                                Bloc {editingBrick.bloc}
+                            </span>
+                        </h3>
+
+                        <div style={{ marginBottom: '0.75rem' }}>
+                            <strong>Type:</strong> {editingBrick.type_brique} |
+                            <strong> Numéro:</strong> {editingBrick.numero_cible} |
+                            <strong> Période:</strong> {editingBrick.periode}
+                        </div>
+
+                        <div style={{ marginBottom: '1rem' }}>
+                            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.25rem' }}>
+                                Texte du modèle:
+                            </label>
+                            <textarea
+                                value={editForm.modele_texte}
+                                onChange={e => setEditForm({ ...editForm, modele_texte: e.target.value })}
+                                style={{
+                                    width: '100%',
+                                    minHeight: '150px',
+                                    padding: '0.75rem',
+                                    borderRadius: '8px',
+                                    border: '1px solid var(--border-color, #444)',
+                                    background: 'var(--input-bg, #1a1a2e)',
+                                    color: 'inherit',
+                                    fontSize: '0.95rem',
+                                    lineHeight: '1.5',
+                                }}
+                            />
+                            <small style={{ color: 'var(--text-muted)' }}>
+                                Utilisez {'{user}'} et {'{partner}'} pour les placeholders
+                            </small>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                            <div>
+                                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.25rem' }}>
+                                    Ton:
+                                </label>
+                                <select
+                                    value={editForm.ton}
+                                    onChange={e => setEditForm({ ...editForm, ton: e.target.value })}
+                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px' }}
+                                >
+                                    <option value="">Non défini</option>
+                                    {tonOptions.map(t => <option key={t} value={t}>{t}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.25rem' }}>
+                                    Poids (priorité):
+                                </label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max="10"
+                                    value={editForm.poids}
+                                    onChange={e => setEditForm({ ...editForm, poids: parseInt(e.target.value) || 1 })}
+                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px' }}
+                                />
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+                            <div>
+                                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.25rem' }}>
+                                    Jours de refroidissement:
+                                </label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={editForm.jours_refroidissement}
+                                    onChange={e => setEditForm({ ...editForm, jours_refroidissement: parseInt(e.target.value) || 0 })}
+                                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px' }}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', paddingTop: '1.5rem' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={editForm.actif}
+                                        onChange={e => setEditForm({ ...editForm, actif: e.target.checked })}
+                                        style={{ marginRight: '0.5rem', width: '18px', height: '18px' }}
+                                    />
+                                    <span style={{ fontWeight: 'bold' }}>Brique active</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                            <button
+                                onClick={() => setEditingBrick(null)}
+                                style={{
+                                    padding: '0.5rem 1rem',
+                                    background: '#6b7280',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                onClick={saveEdit}
+                                style={{
+                                    padding: '0.5rem 1.5rem',
+                                    background: '#10b981',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontWeight: 'bold',
+                                }}
+                            >
+                                ✓ Enregistrer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
