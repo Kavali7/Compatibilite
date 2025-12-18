@@ -98,6 +98,15 @@ class KkiapayService {
     String? email,
     String? name,
   }) {
+    debugPrint('=== KKIAPAY DEBUG ===');
+    debugPrint('Creating KKiaPay widget:');
+    debugPrint('  - Amount: $amount FCFA');
+    debugPrint('  - Sandbox: $isSandbox');
+    debugPrint('  - API Key: ${_apiKey.substring(0, 10)}...');
+    debugPrint('  - Phone: $phone');
+    debugPrint('  - Email: $email');
+    debugPrint('====================');
+    
     return KKiaPay(
       amount: amount,
       apikey: _apiKey,
@@ -110,6 +119,9 @@ class KkiapayService {
       countries: ['BJ', 'CI', 'SN', 'TG', 'BF', 'ML', 'NE'],
       paymentMethods: ['momo', 'card'],
       callback: (response, context) {
+        debugPrint('=== KKIAPAY CALLBACK RECEIVED ===');
+        debugPrint('Response: $response');
+        debugPrint('================================');
         _handlePaymentCallback(response, context, callback);
       },
     );
@@ -135,6 +147,16 @@ class KkiapayService {
       case PAYMENT_CANCELLED:
         Navigator.of(context).pop();
         callback(false, null, 'Paiement annulé');
+        break;
+
+      case 'PAYMENT_FAILED':
+        // Extract error reason if available
+        final data = response['data'] as Map<String, dynamic>?;
+        final reason = data?['reason'] as Map<String, dynamic>?;
+        final errorMessage = reason?['message'] as String? ?? 'Erreur inconnue';
+        debugPrint('Payment failed: $errorMessage');
+        Navigator.of(context).pop();
+        callback(false, null, 'Paiement échoué: $errorMessage');
         break;
 
       case PENDING_PAYMENT:
@@ -196,19 +218,40 @@ class KkiapayService {
       return;
     }
 
-    final widget = createPaymentWidget(
+    debugPrint('=== KKIAPAY WEB DEBUG ===');
+    debugPrint('Creating KKiaPay for web:');
+    debugPrint('  - Amount: $amount FCFA');
+    debugPrint('  - Sandbox: $isSandbox');
+    debugPrint('  - API Key: ${_apiKey.substring(0, 10)}...');
+    debugPrint('=========================');
+
+    // Create widget WITHOUT callback (callback goes to pay() method for web)
+    final widget = KKiaPay(
       amount: amount,
+      apikey: _apiKey,
+      sandbox: isSandbox,
+      phone: phone ?? '',
+      name: name ?? '',
+      email: email ?? '',
       reason: reason,
-      callback: callback,
-      phone: phone,
-      email: email,
-      name: name,
+      theme: '#9C27B0',
+      countries: ['BJ', 'CI', 'SN', 'TG', 'BF', 'ML', 'NE'],
+      paymentMethods: ['momo', 'card'],
+      // NOTE: For web, callback should be passed to pay() method, not here
+      callback: (response, ctx) {
+        debugPrint('=== WIDGET CALLBACK (web) ===');
+        debugPrint('Response: $response');
+      },
     );
 
+    // Use the platform-specific pay method with callback
     KkiapayFlutterSdkPlatform.instance.pay(
       widget,
       context,
       (response, ctx) {
+        debugPrint('=== PAY() CALLBACK RECEIVED ===');
+        debugPrint('Response: $response');
+        debugPrint('===============================');
         _handlePaymentCallback(response, ctx, callback);
       },
     );
