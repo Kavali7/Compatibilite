@@ -19,6 +19,7 @@ import '../widgets/selectable_card.dart';
 import '../widgets/temporal_report_card.dart';
 import 'legal_page.dart';
 import 'admin_page.dart';
+import 'temporal_purchase_screen.dart';
 
 class CompatibilityWizard extends StatefulWidget {
   const CompatibilityWizard({super.key});
@@ -163,6 +164,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   }
 
   /// Load temporal reports (year, month, day) for the current couple
+  /// Only loads reports that are enabled as bonuses in app_settings
   Future<void> _loadTemporalReports() async {
     if (!SupabaseManager.isReady) return;
     if (_partnerAInput == null || _partnerBInput == null) return;
@@ -175,7 +177,6 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     
     try {
       final service = TemporalReportService.instance;
-      final now = DateTime.now();
       
       // Create or update couple profile first
       await service.createCoupleProfile(
@@ -187,22 +188,19 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         partnerGender: _genderB ?? 'Autre',
       );
       
-      // Fetch all three reports in parallel
-      final results = await Future.wait([
-        service.getYearReport(date: now),
-        service.getMonthReport(date: now),
-        service.getDayReport(date: now),
-      ]);
+      // Fetch bonus reports (respects app_settings configuration)
+      final bonusReports = await service.getBonusReports();
       
       if (mounted) {
         setState(() {
-          _yearReport = results[0];
-          _monthReport = results[1];
-          _dayReport = results[2];
+          _yearReport = bonusReports['annee'];
+          _monthReport = bonusReports['mois'];
+          _dayReport = bonusReports['jour'];
           _isLoadingReports = false;
         });
       }
     } catch (e) {
+      debugPrint('Error loading temporal reports: $e');
       if (mounted) {
         setState(() {
           _reportsError = 'Impossible de charger les prévisions temporelles.';
@@ -1855,7 +1853,12 @@ Widget _buildResultsStep() {
           const SizedBox(height: 24),
           TomorrowReportCTA(
             onTap: () {
-              _showSnack('Fonctionnalité bientôt disponible ! Achetez les prévisions de demain.');
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const TemporalPurchaseScreen(),
+                ),
+              );
             },
           ),
           

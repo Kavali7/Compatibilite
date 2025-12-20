@@ -38,6 +38,12 @@ export default function CompatibiliteIndex() {
             title: 'Sessions',
             description: 'Consulter les sessions utilisateurs (support)',
         },
+        {
+            to: '/compatibilite/temporal-purchases',
+            icon: '🔮',
+            title: 'Prévisions Temporelles',
+            description: 'Gérer les achats de prévisions (jour, mois, année)',
+        },
     ];
 
     return (

@@ -2,6 +2,27 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_manager.dart';
 
+/// Settings for temporal bonuses included with base report
+class TemporalBonusSettings {
+  final bool enabled;
+  final bool yearEnabled;
+  final bool monthEnabled;
+  final bool dayEnabled;
+
+  const TemporalBonusSettings({
+    this.enabled = true,
+    this.yearEnabled = true,
+    this.monthEnabled = true,
+    this.dayEnabled = true,
+  });
+
+  /// Default settings with all bonuses enabled
+  factory TemporalBonusSettings.defaults() => const TemporalBonusSettings();
+
+  /// Check if any bonus is enabled
+  bool get hasAnyBonus => enabled && (yearEnabled || monthEnabled || dayEnabled);
+}
+
 /// Model class representing a generated temporal report
 class TemporalReport {
   final String id;
@@ -124,6 +145,92 @@ class TemporalReportService {
   static final TemporalReportService instance = TemporalReportService._();
 
   SupabaseClient? get _client => SupabaseManager.isReady ? SupabaseManager.client : null;
+
+  // Cache for bonus settings
+  TemporalBonusSettings? _cachedBonusSettings;
+  DateTime? _settingsLastFetched;
+
+  /// Get temporal bonus settings from app_settings table
+  /// Returns settings indicating which bonuses are enabled
+  Future<TemporalBonusSettings> getTemporalBonusSettings({bool forceRefresh = false}) async {
+    // Return cached settings if fresh (less than 5 minutes old)
+    if (!forceRefresh && 
+        _cachedBonusSettings != null && 
+        _settingsLastFetched != null &&
+        DateTime.now().difference(_settingsLastFetched!).inMinutes < 5) {
+      return _cachedBonusSettings!;
+    }
+
+    final client = _client;
+    if (client == null) {
+      debugPrint('TemporalReportService: Supabase client not ready, using defaults');
+      return TemporalBonusSettings.defaults();
+    }
+
+    try {
+      final response = await client
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'temporal_bonuses')
+          .maybeSingle();
+
+      if (response == null || response['value'] == null) {
+        debugPrint('TemporalReportService: No bonus settings found, using defaults');
+        return TemporalBonusSettings.defaults();
+      }
+
+      final value = response['value'] as Map<String, dynamic>;
+      _cachedBonusSettings = TemporalBonusSettings(
+        enabled: value['enabled'] as bool? ?? true,
+        yearEnabled: value['year'] as bool? ?? true,
+        monthEnabled: value['month'] as bool? ?? true,
+        dayEnabled: value['day'] as bool? ?? true,
+      );
+      _settingsLastFetched = DateTime.now();
+      
+      return _cachedBonusSettings!;
+    } catch (e) {
+      debugPrint('TemporalReportService: Error fetching bonus settings: $e');
+      return TemporalBonusSettings.defaults();
+    }
+  }
+
+  /// Get all bonus reports based on current settings
+  /// Only returns reports for enabled bonuses
+  Future<Map<String, TemporalReport?>> getBonusReports({DateTime? date}) async {
+    final settings = await getTemporalBonusSettings();
+    
+    if (!settings.enabled) {
+      debugPrint('TemporalReportService: Bonuses are disabled');
+      return {'annee': null, 'mois': null, 'jour': null};
+    }
+
+    final targetDate = date ?? DateTime.now();
+    final futures = <String, Future<TemporalReport?>>{};
+
+    if (settings.yearEnabled) {
+      futures['annee'] = getYearReport(date: targetDate);
+    }
+    if (settings.monthEnabled) {
+      futures['mois'] = getMonthReport(date: targetDate);
+    }
+    if (settings.dayEnabled) {
+      futures['jour'] = getDayReport(date: targetDate);
+    }
+
+    final results = <String, TemporalReport?>{
+      'annee': null,
+      'mois': null,
+      'jour': null,
+    };
+
+    // Fetch enabled reports in parallel
+    await Future.wait(futures.entries.map((entry) async {
+      results[entry.key] = await entry.value;
+    }));
+
+    return results;
+  }
 
   /// Generate or fetch a cached report for the given period and date
   /// Calls the RPC function rpc_generer_rapport
