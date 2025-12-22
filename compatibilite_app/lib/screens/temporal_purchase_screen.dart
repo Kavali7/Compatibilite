@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/kkiapay_service.dart';
+import '../services/pricing_service.dart';
 import '../services/temporal_report_service.dart';
 import '../widgets/animated_background.dart';
 
@@ -19,21 +20,55 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
   DateTime? _endDate; // For ranges
   bool _isRange = false;
   bool _isProcessingPayment = false;
+  bool _isLoadingPrices = true;
 
-  // Pricing (in FCFA)
-  static const int priceDayFcfa = 100;
-  static const int priceMonthFcfa = 500;
-  static const int priceYearFcfa = 2000;
+  // Pricing (in FCFA) - loaded from database, with fallback defaults
+  int _priceDayFcfa = 100;
+  int _priceMonthFcfa = 500;
+  int _priceYearFcfa = 2000;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPricesFromDatabase();
+  }
+
+  Future<void> _loadPricesFromDatabase() async {
+    try {
+      final pricingService = PricingService.instance;
+      await pricingService.fetchPlans();
+      
+      // Look for temporal pricing plans
+      for (final plan in pricingService.plans) {
+        final planType = plan.planType.toLowerCase();
+        if (planType.contains('jour') && planType.contains('temporel')) {
+          _priceDayFcfa = plan.priceFcfa;
+        } else if (planType.contains('mois') && planType.contains('temporel')) {
+          _priceMonthFcfa = plan.priceFcfa;
+        } else if ((planType.contains('annee') || planType.contains('année')) && planType.contains('temporel')) {
+          _priceYearFcfa = plan.priceFcfa;
+        }
+      }
+      
+      debugPrint('TemporalPurchaseScreen: Loaded prices - Day: $_priceDayFcfa, Month: $_priceMonthFcfa, Year: $_priceYearFcfa');
+    } catch (e) {
+      debugPrint('TemporalPurchaseScreen: Error loading prices: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingPrices = false);
+      }
+    }
+  }
 
   int get _basePrice {
     switch (_selectedPeriod) {
       case 'annee':
-        return priceYearFcfa;
+        return _priceYearFcfa;
       case 'mois':
-        return priceMonthFcfa;
+        return _priceMonthFcfa;
       case 'jour':
       default:
-        return priceDayFcfa;
+        return _priceDayFcfa;
     }
   }
 
@@ -47,9 +82,9 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
         // Count months in range
         final months = ((_endDate!.year - _selectedDate.year) * 12 + 
             _endDate!.month - _selectedDate.month) + 1;
-        return priceMonthFcfa * months;
+        return _priceMonthFcfa * months;
       case 'jour':
-        return priceDayFcfa * days;
+        return _priceDayFcfa * days;
       default:
         return _basePrice;
     }

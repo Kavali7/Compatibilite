@@ -168,25 +168,29 @@ class TemporalReportService {
     }
 
     try {
+      // Note: The database uses French key 'bonus_temporels' with French property names
       final response = await client
           .from('app_settings')
           .select('value')
-          .eq('key', 'temporal_bonuses')
+          .eq('key', 'bonus_temporels')
           .maybeSingle();
 
       if (response == null || response['value'] == null) {
-        debugPrint('TemporalReportService: No bonus settings found, using defaults');
+        debugPrint('TemporalReportService: No bonus settings found (key: bonus_temporels), using defaults');
         return TemporalBonusSettings.defaults();
       }
 
       final value = response['value'] as Map<String, dynamic>;
+      // Map French keys to English properties
       _cachedBonusSettings = TemporalBonusSettings(
-        enabled: value['enabled'] as bool? ?? true,
-        yearEnabled: value['year'] as bool? ?? true,
-        monthEnabled: value['month'] as bool? ?? true,
-        dayEnabled: value['day'] as bool? ?? true,
+        enabled: value['activé'] as bool? ?? value['enabled'] as bool? ?? true,
+        yearEnabled: value['année'] as bool? ?? value['year'] as bool? ?? true,
+        monthEnabled: value['mois'] as bool? ?? value['month'] as bool? ?? true,
+        dayEnabled: value['jour'] as bool? ?? value['day'] as bool? ?? true,
       );
       _settingsLastFetched = DateTime.now();
+      
+      debugPrint('TemporalReportService: Loaded bonus settings - enabled: ${_cachedBonusSettings!.enabled}, year: ${_cachedBonusSettings!.yearEnabled}, month: ${_cachedBonusSettings!.monthEnabled}, day: ${_cachedBonusSettings!.dayEnabled}');
       
       return _cachedBonusSettings!;
     } catch (e) {
@@ -197,7 +201,8 @@ class TemporalReportService {
 
   /// Get all bonus reports based on current settings
   /// Only returns reports for enabled bonuses
-  Future<Map<String, TemporalReport?>> getBonusReports({DateTime? date}) async {
+  /// userId parameter supports custom auth systems
+  Future<Map<String, TemporalReport?>> getBonusReports({DateTime? date, String? userId}) async {
     final settings = await getTemporalBonusSettings();
     
     if (!settings.enabled) {
@@ -209,13 +214,13 @@ class TemporalReportService {
     final futures = <String, Future<TemporalReport?>>{};
 
     if (settings.yearEnabled) {
-      futures['annee'] = getYearReport(date: targetDate);
+      futures['annee'] = getYearReport(date: targetDate, userId: userId);
     }
     if (settings.monthEnabled) {
-      futures['mois'] = getMonthReport(date: targetDate);
+      futures['mois'] = getMonthReport(date: targetDate, userId: userId);
     }
     if (settings.dayEnabled) {
-      futures['jour'] = getDayReport(date: targetDate);
+      futures['jour'] = getDayReport(date: targetDate, userId: userId);
     }
 
     final results = <String, TemporalReport?>{
@@ -275,18 +280,18 @@ class TemporalReportService {
   }
 
   /// Get the year report for the current year
-  Future<TemporalReport?> getYearReport({DateTime? date}) async {
-    return generateReport(periode: 'annee', date: date ?? DateTime.now());
+  Future<TemporalReport?> getYearReport({DateTime? date, String? userId}) async {
+    return generateReport(periode: 'annee', date: date ?? DateTime.now(), userId: userId);
   }
 
   /// Get the month report for the current month
-  Future<TemporalReport?> getMonthReport({DateTime? date}) async {
-    return generateReport(periode: 'mois', date: date ?? DateTime.now());
+  Future<TemporalReport?> getMonthReport({DateTime? date, String? userId}) async {
+    return generateReport(periode: 'mois', date: date ?? DateTime.now(), userId: userId);
   }
 
   /// Get the day report for today
-  Future<TemporalReport?> getDayReport({DateTime? date}) async {
-    return generateReport(periode: 'jour', date: date ?? DateTime.now());
+  Future<TemporalReport?> getDayReport({DateTime? date, String? userId}) async {
+    return generateReport(periode: 'jour', date: date ?? DateTime.now(), userId: userId);
   }
 
   /// Get all three temporal reports (year, month, day) for a given date
@@ -332,6 +337,7 @@ class TemporalReportService {
 
   /// Create a couple profile for the current user
   /// This is required before generating reports
+  /// userId parameter supports custom auth systems (like the custom users table)
   Future<bool> createCoupleProfile({
     required String userFirstname,
     required DateTime userBirthdate,
@@ -339,16 +345,20 @@ class TemporalReportService {
     required String partnerFirstname,
     required DateTime partnerBirthdate,
     required String partnerGender,
+    String? userId, // Optional: pass for custom auth systems
   }) async {
     final client = _client;
     if (client == null) return false;
 
     try {
-      final userId = client.auth.currentUser?.id;
-      if (userId == null) {
-        debugPrint('TemporalReportService: No authenticated user');
+      // Use provided userId or fall back to Supabase auth
+      final effectiveUserId = userId ?? client.auth.currentUser?.id;
+      if (effectiveUserId == null) {
+        debugPrint('TemporalReportService: No authenticated user (userId not provided and supabase.auth.currentUser is null)');
         return false;
       }
+      
+      debugPrint('TemporalReportService: Creating couple profile for user: $effectiveUserId');
 
       // Convert gender strings to enum values
       String mapGender(String gender) {
@@ -366,7 +376,7 @@ class TemporalReportService {
       }
 
       await client.from('couple_profiles').upsert({
-        'user_id': userId,
+        'user_id': effectiveUserId,
         'user_firstname': userFirstname,
         'user_birthdate': userBirthdate.toIso8601String().split('T').first,
         'user_gender': mapGender(userGender),
@@ -375,6 +385,7 @@ class TemporalReportService {
         'partner_gender': mapGender(partnerGender),
       }, onConflict: 'user_id');
 
+      debugPrint('TemporalReportService: Couple profile created successfully');
       return true;
     } catch (e) {
       debugPrint('TemporalReportService: Error creating profile: $e');

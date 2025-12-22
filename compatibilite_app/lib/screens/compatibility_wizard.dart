@@ -166,9 +166,20 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   /// Load temporal reports (year, month, day) for the current couple
   /// Only loads reports that are enabled as bonuses in app_settings
   Future<void> _loadTemporalReports() async {
-    if (!SupabaseManager.isReady) return;
-    if (_partnerAInput == null || _partnerBInput == null) return;
-    if (_birthA == null || _birthB == null) return;
+    debugPrint('_loadTemporalReports: Starting...');
+    
+    if (!SupabaseManager.isReady) {
+      debugPrint('_loadTemporalReports: Supabase not ready, skipping');
+      return;
+    }
+    if (_partnerAInput == null || _partnerBInput == null) {
+      debugPrint('_loadTemporalReports: Partner inputs null, skipping');
+      return;
+    }
+    if (_birthA == null || _birthB == null) {
+      debugPrint('_loadTemporalReports: Birth dates null, skipping');
+      return;
+    }
     
     setState(() {
       _isLoadingReports = true;
@@ -178,18 +189,47 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     try {
       final service = TemporalReportService.instance;
       
+      // Get userId from custom AuthService (not supabase.auth)
+      final authUser = AuthService.instance.currentUser;
+      if (authUser == null) {
+        debugPrint('_loadTemporalReports: No authenticated user from AuthService');
+        if (mounted) {
+          setState(() {
+            _reportsError = 'Utilisateur non authentifié. Veuillez réessayer.';
+            _isLoadingReports = false;
+          });
+        }
+        return;
+      }
+      
       // Create or update couple profile first
-      await service.createCoupleProfile(
+      debugPrint('_loadTemporalReports: Creating couple profile for user ${authUser.id}...');
+      final profileCreated = await service.createCoupleProfile(
         userFirstname: _nameAController.text.trim(),
         userBirthdate: _birthA!,
         userGender: _genderA ?? 'Autre',
         partnerFirstname: _nameBController.text.trim(),
         partnerBirthdate: _birthB!,
         partnerGender: _genderB ?? 'Autre',
+        userId: authUser.id, // Pass userId from custom auth
       );
+      debugPrint('_loadTemporalReports: Profile created: $profileCreated');
+      
+      if (!profileCreated) {
+        debugPrint('_loadTemporalReports: Failed to create profile');
+        if (mounted) {
+          setState(() {
+            _reportsError = 'Profil couple non créé. Veuillez réessayer.';
+            _isLoadingReports = false;
+          });
+        }
+        return;
+      }
       
       // Fetch bonus reports (respects app_settings configuration)
-      final bonusReports = await service.getBonusReports();
+      debugPrint('_loadTemporalReports: Fetching bonus reports for user ${authUser.id}...');
+      final bonusReports = await service.getBonusReports(userId: authUser.id);
+      debugPrint('_loadTemporalReports: Received reports - Year: ${bonusReports['annee'] != null}, Month: ${bonusReports['mois'] != null}, Day: ${bonusReports['jour'] != null}');
       
       if (mounted) {
         setState(() {
@@ -200,7 +240,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         });
       }
     } catch (e) {
-      debugPrint('Error loading temporal reports: $e');
+      debugPrint('_loadTemporalReports: Error: $e');
       if (mounted) {
         setState(() {
           _reportsError = 'Impossible de charger les prévisions temporelles.';
