@@ -22,10 +22,10 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
   bool _isProcessingPayment = false;
   bool _isLoadingPrices = true;
 
-  // Pricing (in FCFA) - loaded from database, with fallback defaults
-  int _priceDayFcfa = 100;
-  int _priceMonthFcfa = 500;
-  int _priceYearFcfa = 2000;
+  // Pricing (in FCFA) - loaded from database, null if not configured
+  int? _priceDayFcfa;
+  int? _priceMonthFcfa;
+  int? _priceYearFcfa;
 
   @override
   void initState() {
@@ -60,7 +60,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
     }
   }
 
-  int get _basePrice {
+  int? get _basePrice {
     switch (_selectedPeriod) {
       case 'annee':
         return _priceYearFcfa;
@@ -72,8 +72,12 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
     }
   }
 
+  bool get _isPriceConfigured => _basePrice != null;
+
   int get _totalPrice {
-    if (!_isRange || _endDate == null) return _basePrice;
+    final base = _basePrice;
+    if (base == null) return 0;
+    if (!_isRange || _endDate == null) return base;
     
     // Calculate range price
     final days = _endDate!.difference(_selectedDate).inDays + 1;
@@ -82,11 +86,11 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
         // Count months in range
         final months = ((_endDate!.year - _selectedDate.year) * 12 + 
             _endDate!.month - _selectedDate.month) + 1;
-        return _priceMonthFcfa * months;
+        return (_priceMonthFcfa ?? 0) * months;
       case 'jour':
-        return _priceDayFcfa * days;
+        return (_priceDayFcfa ?? 0) * days;
       default:
-        return _basePrice;
+        return base;
     }
   }
 

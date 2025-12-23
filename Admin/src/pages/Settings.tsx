@@ -29,12 +29,19 @@ export default function Settings() {
             const { data, error } = await supabase
                 .from('app_settings')
                 .select('value')
-                .eq('key', 'temporal_bonuses')
+                .eq('key', 'bonus_temporels')
                 .maybeSingle();
 
             if (error) throw error;
             if (data?.value) {
-                setBonusSettings(data.value as TemporalBonusSettings);
+                // Map French keys to English for internal state
+                const frValue = data.value as { activé?: boolean; année?: boolean; mois?: boolean; jour?: boolean };
+                setBonusSettings({
+                    enabled: frValue.activé ?? true,
+                    year: frValue.année ?? true,
+                    month: frValue.mois ?? true,
+                    day: frValue.jour ?? true,
+                });
             }
         } catch (e) {
             console.error('Load settings error:', e);
@@ -46,11 +53,19 @@ export default function Settings() {
         setSaving(true);
         setSaveStatus(null);
         try {
+            // Map English keys to French for database storage
+            const frValue = {
+                activé: bonusSettings.enabled,
+                année: bonusSettings.year,
+                mois: bonusSettings.month,
+                jour: bonusSettings.day,
+            };
+            
             const { error } = await supabase
                 .from('app_settings')
                 .upsert({
-                    key: 'temporal_bonuses',
-                    value: bonusSettings,
+                    key: 'bonus_temporels',
+                    value: frValue,
                     updated_at: new Date().toISOString(),
                 });
 

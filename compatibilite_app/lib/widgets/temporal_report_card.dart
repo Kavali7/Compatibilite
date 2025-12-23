@@ -316,12 +316,15 @@ class TomorrowReportCTA extends StatelessWidget {
                 children: [
                   const Icon(Icons.auto_awesome, color: Colors.white, size: 20),
                   const SizedBox(width: 8),
-                  Text(
-                    'Prévisions de demain',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 15,
+                  Flexible(
+                    child: Text(
+                      'Prévisions de demain',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],

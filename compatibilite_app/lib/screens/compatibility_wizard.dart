@@ -21,6 +21,13 @@ import 'legal_page.dart';
 import 'admin_page.dart';
 import 'temporal_purchase_screen.dart';
 
+// ===========================================
+// DEBUG: Mettre à true pour bypasser le paiement
+// IMPORTANT: Remettre à false avant la production!
+// ===========================================
+const bool kDebugBypassPayment = false;
+
+
 class CompatibilityWizard extends StatefulWidget {
   const CompatibilityWizard({super.key});
 
@@ -135,6 +142,36 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     
     // Step 6 (Payment) -> Step 7 (Results): Process payment
     if (_currentStep == 6) {
+      // DEBUG: Bypass payment for testing
+      if (kDebugBypassPayment) {
+        debugPrint('⚠️ DEBUG MODE: Bypassing payment validation!');
+        _paymentCompleted = true;
+        
+        // Also create/auth the test user so temporal reports work
+        final email = _emailController.text.trim();
+        final password = _passwordController.text;
+        if (email.isNotEmpty && password.isNotEmpty) {
+          debugPrint('⚠️ DEBUG MODE: Creating/authenticating test user: $email');
+          try {
+            // Try to sign up or sign in
+            var user = await AuthService.instance.signIn(email: email, password: password);
+            user ??= await AuthService.instance.signUp(
+              email: email,
+              password: password,
+              name: _nameAController.text.trim(),
+            );
+            debugPrint('⚠️ DEBUG MODE: User authenticated: ${user?.id}');
+            
+            // CRITICAL: Save profile now that user exists
+            if (user != null) {
+              await _saveCoupleProfile(); 
+            }
+          } catch (e) {
+            debugPrint('⚠️ DEBUG MODE: Auth error: $e');
+          }
+        }
+      }
+      
       // Payment validation happens in _validateCurrentStep
       // Only proceed if payment is completed or user has active subscription
       if (!_paymentCompleted) {
@@ -146,7 +183,19 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           return;
         }
         _paymentCompleted = true;
+        
+        // If coming from subscription check, ensure we have a local user session
+        if (!AuthService.instance.isLoggedIn) {
+           // We might need to silently login or handle this case
+           // For now assuming existing flow handles it elsewhere or relies on local state
+        }
       }
+
+      // Final check: ensure profile exists before loading reports
+      if (AuthService.instance.isLoggedIn) {
+         await _saveCoupleProfile();
+      }
+
       // Load temporal reports after payment success
       _loadTemporalReports();
     }
@@ -165,19 +214,21 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
 
   /// Load temporal reports (year, month, day) for the current couple
   /// Only loads reports that are enabled as bonuses in app_settings
+  /// This method is "best effort" - it won't block results if it fails
   Future<void> _loadTemporalReports() async {
     debugPrint('_loadTemporalReports: Starting...');
     
+    // Early exit conditions - just skip silently, don't block results
     if (!SupabaseManager.isReady) {
-      debugPrint('_loadTemporalReports: Supabase not ready, skipping');
+      debugPrint('_loadTemporalReports: Supabase not ready, skipping bonus reports');
       return;
     }
     if (_partnerAInput == null || _partnerBInput == null) {
-      debugPrint('_loadTemporalReports: Partner inputs null, skipping');
+      debugPrint('_loadTemporalReports: Partner inputs null, skipping bonus reports');
       return;
     }
     if (_birthA == null || _birthB == null) {
-      debugPrint('_loadTemporalReports: Birth dates null, skipping');
+      debugPrint('_loadTemporalReports: Birth dates null, skipping bonus reports');
       return;
     }
     
@@ -192,38 +243,39 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
       // Get userId from custom AuthService (not supabase.auth)
       final authUser = AuthService.instance.currentUser;
       if (authUser == null) {
-        debugPrint('_loadTemporalReports: No authenticated user from AuthService');
+        debugPrint('_loadTemporalReports: No authenticated user, bonus reports unavailable');
         if (mounted) {
           setState(() {
-            _reportsError = 'Utilisateur non authentifié. Veuillez réessayer.';
+            _reportsError = 'Connectez-vous pour voir les prévisions temporelles.';
             _isLoadingReports = false;
           });
         }
-        return;
+        return; // Don't block - just show warning
       }
       
       // Create or update couple profile first
       debugPrint('_loadTemporalReports: Creating couple profile for user ${authUser.id}...');
-      final profileCreated = await service.createCoupleProfile(
-        userFirstname: _nameAController.text.trim(),
-        userBirthdate: _birthA!,
-        userGender: _genderA ?? 'Autre',
-        partnerFirstname: _nameBController.text.trim(),
-        partnerBirthdate: _birthB!,
-        partnerGender: _genderB ?? 'Autre',
-        userId: authUser.id, // Pass userId from custom auth
-      );
+      bool profileCreated = false;
+      try {
+        profileCreated = await service.createCoupleProfile(
+          userFirstname: _nameAController.text.trim(),
+          userBirthdate: _birthA!,
+          userGender: _genderA ?? 'Autre',
+          partnerFirstname: _nameBController.text.trim(),
+          partnerBirthdate: _birthB!,
+          partnerGender: _genderB ?? 'Autre',
+          userId: authUser.id,
+        );
+      } catch (profileError) {
+        debugPrint('_loadTemporalReports: Error creating profile: $profileError');
+        // Continue anyway - profile might already exist
+        profileCreated = true; 
+      }
       debugPrint('_loadTemporalReports: Profile created: $profileCreated');
       
       if (!profileCreated) {
-        debugPrint('_loadTemporalReports: Failed to create profile');
-        if (mounted) {
-          setState(() {
-            _reportsError = 'Profil couple non créé. Veuillez réessayer.';
-            _isLoadingReports = false;
-          });
-        }
-        return;
+        debugPrint('_loadTemporalReports: Profile not created, using existing or skipping');
+        // Don't block - try to fetch reports anyway, profile might exist
       }
       
       // Fetch bonus reports (respects app_settings configuration)
@@ -237,18 +289,24 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           _monthReport = bonusReports['mois'];
           _dayReport = bonusReports['jour'];
           _isLoadingReports = false;
+          // Clear any previous error if we got at least one report
+          if (_yearReport != null || _monthReport != null || _dayReport != null) {
+            _reportsError = null;
+          }
         });
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('_loadTemporalReports: Error: $e');
+      debugPrint('_loadTemporalReports: Stack trace: $stackTrace');
       if (mounted) {
         setState(() {
-          _reportsError = 'Impossible de charger les prévisions temporelles.';
+          _reportsError = 'Prévisions temporelles indisponibles pour le moment.';
           _isLoadingReports = false;
         });
       }
     }
   }
+
 
   bool _validateCurrentStep() {
     switch (_currentStep) {
@@ -311,6 +369,8 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         return true;
       case 6:
         // Payment step validation - check if payment completed or has subscription
+        // DEBUG: Bypass payment validation for testing
+        if (kDebugBypassPayment) return true;
         return _paymentCompleted;
       default:
         return true;
@@ -346,6 +406,30 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
       _partnerAInput = partnerA;
       _partnerBInput = partnerB;
     });
+  }
+
+  Future<void> _saveCoupleProfile() async {
+    final user = AuthService.instance.currentUser;
+    if (user == null) return;
+    
+    // Check required fields
+    if (_birthA == null || _birthB == null) return;
+
+    try {
+      debugPrint('Saving couple profile for user ${user.id}...');
+      await TemporalReportService.instance.createCoupleProfile(
+        userFirstname: _nameAController.text.trim(),
+        userBirthdate: _birthA!,
+        userGender: _genderA ?? 'Autre',
+        partnerFirstname: _nameBController.text.trim(),
+        partnerBirthdate: _birthB!,
+        partnerGender: _genderB ?? 'Autre',
+        userId: user.id,
+      );
+      debugPrint('Couple profile saved successfully');
+    } catch (e) {
+      debugPrint('Error saving couple profile: $e');
+    }
   }
 
   Future<void> _saveSessionIfPossible() async {
