@@ -249,7 +249,7 @@ begin
       and cb.periode in (p_periode, 'toutes')
       and cb.type_brique = p_type_brique
       and cb.numero_cible = p_numero
-      and cb.ton = p_ton
+      -- Ton filter removed for flexibility (any active brick matches)
       and cb.etat_relationnel in ('indifferent', p_etat)
       and cb.statut_utilisateur in ('indifferent', p_statut)
       and cb.langue = p_langue
@@ -401,11 +401,10 @@ begin
 
   v_etat := public.fn_etat_relationnel(p_periode, v_nb_couple, v_year_c, v_month_c, v_day_c);
 
-  -- Seed stable
-  v_seed := encode(digest(
-    v_uid::text || '|' || v_ref_date::text || '|' || p_periode::text || '|' || v_num_periode::text,
-    'sha256'
-  ), 'hex');
+  -- Seed stable (using md5 - native PostgreSQL function, no extension needed)
+  v_seed := md5(
+    v_uid::text || '|' || v_ref_date::text || '|' || p_periode::text || '|' || v_num_periode::text
+  );
 
   -- Canon : chercher numéro exact (incluant 11/22/33)
   select * into v_canon
@@ -437,38 +436,38 @@ begin
 
   -- Bloc 1 (energie, focus, alerte, conseil)
   select id, modele_texte into b1_energy_id, b1_energy_tpl
-  from public.fn_choisir_brique(v_uid, 1, v_periode_contenu, 'energie', v_num_periode::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+  from public.fn_choisir_brique(v_uid, 1, v_periode_contenu, 'energie', v_num_periode::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
   limit 1;
   if b1_energy_id is null then
     select id, modele_texte into b1_energy_id, b1_energy_tpl
-    from public.fn_choisir_brique(v_uid, 1, v_periode_contenu, 'energie', v_num_base::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+    from public.fn_choisir_brique(v_uid, 1, v_periode_contenu, 'energie', v_num_base::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
     limit 1;
   end if;
 
   select id, modele_texte into b1_focus_id, b1_focus_tpl
-  from public.fn_choisir_brique(v_uid, 1, v_periode_contenu, 'focus', v_num_periode::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+  from public.fn_choisir_brique(v_uid, 1, v_periode_contenu, 'focus', v_num_periode::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
   limit 1;
   if b1_focus_id is null then
     select id, modele_texte into b1_focus_id, b1_focus_tpl
-    from public.fn_choisir_brique(v_uid, 1, v_periode_contenu, 'focus', v_num_base::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+    from public.fn_choisir_brique(v_uid, 1, v_periode_contenu, 'focus', v_num_base::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
     limit 1;
   end if;
 
   select id, modele_texte into b1_alert_id, b1_alert_tpl
-  from public.fn_choisir_brique(v_uid, 1, v_periode_contenu, 'alerte', v_num_periode::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+  from public.fn_choisir_brique(v_uid, 1, v_periode_contenu, 'alerte', v_num_periode::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
   limit 1;
   if b1_alert_id is null then
     select id, modele_texte into b1_alert_id, b1_alert_tpl
-    from public.fn_choisir_brique(v_uid, 1, v_periode_contenu, 'alerte', v_num_base::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+    from public.fn_choisir_brique(v_uid, 1, v_periode_contenu, 'alerte', v_num_base::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
     limit 1;
   end if;
 
   select id, modele_texte into b1_advice_id, b1_advice_tpl
-  from public.fn_choisir_brique(v_uid, 1, v_periode_contenu, 'conseil', v_num_periode::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+  from public.fn_choisir_brique(v_uid, 1, v_periode_contenu, 'conseil', v_num_periode::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
   limit 1;
   if b1_advice_id is null then
     select id, modele_texte into b1_advice_id, b1_advice_tpl
-    from public.fn_choisir_brique(v_uid, 1, v_periode_contenu, 'conseil', v_num_base::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+    from public.fn_choisir_brique(v_uid, 1, v_periode_contenu, 'conseil', v_num_base::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
     limit 1;
   end if;
 
@@ -481,29 +480,29 @@ begin
 
   -- Bloc 2 (posture, levier, risque)
   select id, modele_texte into b2_posture_id, b2_posture_tpl
-  from public.fn_choisir_brique(v_uid, 2, v_periode_contenu, 'posture', v_num_periode::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+  from public.fn_choisir_brique(v_uid, 2, v_periode_contenu, 'posture', v_num_periode::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
   limit 1;
   if b2_posture_id is null then
     select id, modele_texte into b2_posture_id, b2_posture_tpl
-    from public.fn_choisir_brique(v_uid, 2, v_periode_contenu, 'posture', v_num_base::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+    from public.fn_choisir_brique(v_uid, 2, v_periode_contenu, 'posture', v_num_base::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
     limit 1;
   end if;
 
   select id, modele_texte into b2_levier_id, b2_levier_tpl
-  from public.fn_choisir_brique(v_uid, 2, v_periode_contenu, 'levier', v_num_periode::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+  from public.fn_choisir_brique(v_uid, 2, v_periode_contenu, 'levier', v_num_periode::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
   limit 1;
   if b2_levier_id is null then
     select id, modele_texte into b2_levier_id, b2_levier_tpl
-    from public.fn_choisir_brique(v_uid, 2, v_periode_contenu, 'levier', v_num_base::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+    from public.fn_choisir_brique(v_uid, 2, v_periode_contenu, 'levier', v_num_base::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
     limit 1;
   end if;
 
   select id, modele_texte into b2_risque_id, b2_risque_tpl
-  from public.fn_choisir_brique(v_uid, 2, v_periode_contenu, 'risque', v_num_periode::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+  from public.fn_choisir_brique(v_uid, 2, v_periode_contenu, 'risque', v_num_periode::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
   limit 1;
   if b2_risque_id is null then
     select id, modele_texte into b2_risque_id, b2_risque_tpl
-    from public.fn_choisir_brique(v_uid, 2, v_periode_contenu, 'risque', v_num_base::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+    from public.fn_choisir_brique(v_uid, 2, v_periode_contenu, 'risque', v_num_base::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
     limit 1;
   end if;
 
@@ -515,65 +514,65 @@ begin
 
   -- Bloc 3 (checklist premium)
   select id, modele_texte into b3_acte_id, b3_acte_tpl
-  from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'acte', v_num_periode::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+  from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'acte', v_num_periode::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
   limit 1;
   if b3_acte_id is null then
     select id, modele_texte into b3_acte_id, b3_acte_tpl
-    from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'acte', v_num_base::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+    from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'acte', v_num_base::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
     limit 1;
   end if;
 
   select id, modele_texte into b3_rituel_id, b3_rituel_tpl
-  from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'rituel', v_num_periode::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+  from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'rituel', v_num_periode::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
   limit 1;
   if b3_rituel_id is null then
     select id, modele_texte into b3_rituel_id, b3_rituel_tpl
-    from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'rituel', v_num_base::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+    from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'rituel', v_num_base::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
     limit 1;
   end if;
 
   select id, modele_texte into b3_couple_id, b3_couple_tpl
-  from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'couple', v_num_periode::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+  from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'couple', v_num_periode::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
   limit 1;
   if b3_couple_id is null then
     select id, modele_texte into b3_couple_id, b3_couple_tpl
-    from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'couple', v_num_base::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+    from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'couple', v_num_base::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
     limit 1;
   end if;
 
   select id, modele_texte into b3_travail_id, b3_travail_tpl
-  from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'travail', v_num_periode::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+  from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'travail', v_num_periode::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
   limit 1;
   if b3_travail_id is null then
     select id, modele_texte into b3_travail_id, b3_travail_tpl
-    from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'travail', v_num_base::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+    from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'travail', v_num_base::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
     limit 1;
   end if;
 
   select id, modele_texte into b3_argent_id, b3_argent_tpl
-  from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'argent', v_num_periode::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+  from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'argent', v_num_periode::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
   limit 1;
   if b3_argent_id is null then
     select id, modele_texte into b3_argent_id, b3_argent_tpl
-    from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'argent', v_num_base::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+    from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'argent', v_num_base::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
     limit 1;
   end if;
 
   select id, modele_texte into b3_sante_id, b3_sante_tpl
-  from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'sante', v_num_periode::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+  from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'sante', v_num_periode::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
   limit 1;
   if b3_sante_id is null then
     select id, modele_texte into b3_sante_id, b3_sante_tpl
-    from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'sante', v_num_base::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+    from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'sante', v_num_base::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
     limit 1;
   end if;
 
   select id, modele_texte into b3_feu_id, b3_feu_tpl
-  from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'feu', v_num_periode::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+  from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'feu', v_num_periode::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
   limit 1;
   if b3_feu_id is null then
     select id, modele_texte into b3_feu_id, b3_feu_tpl
-    from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'feu', v_num_base::public.numero_vibration, 'direct_doux', v_etat, v_statut, v_ref_date, v_seed)
+    from public.fn_choisir_brique(v_uid, 3, v_periode_contenu, 'feu', v_num_base::public.numero_vibration, 'neutre', v_etat, v_statut, v_ref_date, v_seed)
     limit 1;
   end if;
 
@@ -673,6 +672,7 @@ end;
 $$;
 
 -- Sécuriser l'exécution : uniquement utilisateurs authentifiés
-revoke all on function public.rpc_generer_rapport(public.periode_rapport, date) from public;
-grant execute on function public.rpc_generer_rapport(public.periode_rapport, date) to authenticated;
+revoke all on function public.rpc_generer_rapport(public.periode_rapport, date, uuid) from public;
+grant execute on function public.rpc_generer_rapport(public.periode_rapport, date, uuid) to authenticated;
+
 

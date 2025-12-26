@@ -18,8 +18,9 @@ import '../widgets/hamburger_menu_overlay.dart';
 import '../widgets/selectable_card.dart';
 import '../widgets/temporal_report_card.dart';
 import 'legal_page.dart';
-import 'admin_page.dart';
+
 import 'temporal_purchase_screen.dart';
+import 'login_page.dart';
 
 // ===========================================
 // DEBUG: Mettre à true pour bypasser le paiement
@@ -116,6 +117,74 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         });
       }
     });
+    
+    // Check for existing session/profile
+    _checkSession();
+  }
+
+  Future<void> _checkSession() async {
+    // If not logged in, nothing to restore
+    if (!AuthService.instance.isLoggedIn) return;
+
+    final user = AuthService.instance.currentUser;
+    if (user == null) return;
+
+    debugPrint('Wizard: Found active user session ${user.id}, attempting to restore profile...');
+    
+    // Try to fetch couple profile
+    try {
+      final client = SupabaseManager.client;
+      final profile = await client
+          .from('couple_profiles')
+          .select()
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+      if (profile != null) {
+        debugPrint('Wizard: Profile found, restoring state...');
+        // Restore state
+        setState(() {
+          _nameAController.text = profile['user_firstname'] ?? '';
+          _birthA = DateTime.parse(profile['user_birthdate']);
+          _genderA = _mapGenderFromDb(profile['user_gender']);
+          
+          _nameBController.text = profile['partner_firstname'] ?? '';
+          _birthB = DateTime.parse(profile['partner_birthdate']);
+          _genderB = _mapGenderFromDb(profile['partner_gender']);
+          
+          // Populate partner inputs for reports
+          _partnerAInput = PartnerInput(name: _nameAController.text, birthDate: _birthA!, role: 'Partenaire 1');
+          _partnerBInput = PartnerInput(name: _nameBController.text, birthDate: _birthB!, role: 'Partenaire 2');
+          
+          // Recompute summary
+          _summary = _service.buildSummary(_partnerAInput!, _partnerBInput!);
+          
+          // Mark payment as done if user has subscription
+          _paymentCompleted = user.hasActiveSubscription;
+        });
+
+        // If we have data, jump to results
+        // Wait a bit for the UI to build
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            _loadTemporalReports();
+            setState(() => _currentStep = _totalSteps - 1); // Jump to results
+            _pageController.jumpToPage(_totalSteps - 1);
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Wizard: Error restoring session: $e');
+    }
+  }
+
+  String? _mapGenderFromDb(String? dbGender) {
+    if (dbGender == null) return 'Autre';
+    switch (dbGender) {
+      case 'homme': return 'Homme';
+      case 'femme': return 'Femme';
+      default: return 'Autre';
+    }
   }
 
   @override
@@ -578,8 +647,43 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
 
   List<MenuEntry> _buildMenuEntries(BuildContext context) {
     return [
+      // Account / Login
+      if (AuthService.instance.isLoggedIn)
+        MenuEntry(
+          label: 'Mon Compte',
+          onTap: () {
+            // TODO: Show account details modal?
+            _showSnack('Compte: ${AuthService.instance.currentUser?.email}');
+          },
+        )
+      else
+        MenuEntry(
+          label: 'Se connecter',
+          onTap: () async {
+            final result = await Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const LoginPage()),
+            );
+            if (result == true) {
+              // Login successful, restore session
+              _checkSession();
+            }
+          },
+        ),
+        
+      if (AuthService.instance.isLoggedIn)
+         MenuEntry(
+          label: 'Se déconnecter',
+          onTap: () {
+            AuthService.instance.signOut();
+            setState(() {
+               _reset(); // Clear data
+            });
+            _showSnack('Vous êtes déconnecté.');
+          },
+        ),
+
       MenuEntry(
-        label: 'Politique de confidentialite',
+        label: 'Politique de confidentialité',
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => LegalPage.confidentialite()),
         ),
@@ -597,7 +701,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         ),
       ),
       MenuEntry(
-        label: 'Remboursements & retractation',
+        label: 'Remboursements & rétractation',
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => LegalPage.remboursement()),
         ),
@@ -610,12 +714,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
       ),
       MenuEntry(label: 'Contacter Growpeak', onTap: () => _launchUri(_supportEmailUri)),
       MenuEntry(label: 'Appeler Growpeak', onTap: () => _launchUri(_supportPhoneUri)),
-      MenuEntry(
-        label: 'Administration',
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const AdminPage()),
-        ),
-      ),
+      // Admin menu removed as requested
     ];
   }
 
@@ -1709,7 +1808,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
       );
     }
 
-    final amount = _selectedPlan?.priceFcfa ?? 500;
+    final amount = _selectedPlan?.priceFcfa ?? 0; // No hardcoded fallback - must come from DB
 
     return ElevatedButton(
       onPressed: _initiatePayment,

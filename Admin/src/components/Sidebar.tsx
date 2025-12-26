@@ -19,6 +19,9 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
     const compatibiliteSubItems = [
         { to: '/compatibilite/interpretations', label: 'Interprétations' },
+        { to: '/compatibilite/content-bricks', label: 'Briques de Contenu' },
+        { to: '/compatibilite/canonical-predictions', label: 'Prédictions Canon' },
+        { to: '/compatibilite/temporal-purchases', label: 'Prévisions Temporelles' },
         { to: '/compatibilite/pricing', label: 'Plans & Tarifs' },
         { to: '/compatibilite/promos', label: 'Codes Promo' },
         { to: '/compatibilite/sessions', label: 'Sessions' },

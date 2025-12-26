@@ -203,7 +203,9 @@ class TemporalReportService {
   /// Only returns reports for enabled bonuses
   /// userId parameter supports custom auth systems
   Future<Map<String, TemporalReport?>> getBonusReports({DateTime? date, String? userId}) async {
+    debugPrint('>>> getBonusReports called with userId: $userId, date: $date');
     final settings = await getTemporalBonusSettings();
+    debugPrint('>>> getBonusReports settings - enabled: ${settings.enabled}, year: ${settings.yearEnabled}, month: ${settings.monthEnabled}, day: ${settings.dayEnabled}');
     
     if (!settings.enabled) {
       debugPrint('TemporalReportService: Bonuses are disabled');
@@ -211,6 +213,7 @@ class TemporalReportService {
     }
 
     final targetDate = date ?? DateTime.now();
+    debugPrint('>>> getBonusReports targetDate: $targetDate');
     final futures = <String, Future<TemporalReport?>>{};
 
     if (settings.yearEnabled) {
@@ -265,16 +268,21 @@ class TemporalReportService {
         params['p_user_id'] = userId;
       }
 
+      debugPrint('>>> generateReport calling RPC with params: $params');
       final response = await client.rpc('rpc_generer_rapport', params: params);
+      debugPrint('>>> generateReport RPC response: $response');
       
       if (response == null) {
         debugPrint('TemporalReportService: No response from RPC');
         return null;
       }
 
-      return TemporalReport.fromJson(response as Map<String, dynamic>);
-    } catch (e) {
+      final report = TemporalReport.fromJson(response as Map<String, dynamic>);
+      debugPrint('>>> generateReport parsed report ID: ${report.id}, periode: ${report.periode}');
+      return report;
+    } catch (e, stackTrace) {
       debugPrint('TemporalReportService: Error generating report: $e');
+      debugPrint('TemporalReportService: Stack trace: $stackTrace');
       return null;
     }
   }

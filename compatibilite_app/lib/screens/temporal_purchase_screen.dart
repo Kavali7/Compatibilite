@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../services/kkiapay_service.dart';
 import '../services/pricing_service.dart';
 import '../services/temporal_report_service.dart';
+import '../services/auth_service.dart';
 import '../widgets/animated_background.dart';
 
 /// Screen for purchasing temporal predictions (year, month, day)
@@ -639,6 +640,13 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
   }
 
   void _initiatePurchase() {
+    // Check if user is logged in
+    final user = AuthService.instance.currentUser;
+    if (user == null) {
+      _showSnack('Veuillez vous identifier pour effectuer cet achat.');
+      return;
+    }
+
     setState(() => _isProcessingPayment = true);
     
     KkiapayService.instance.startPayment(
@@ -658,6 +666,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
           final report = await service.generateReport(
             periode: _selectedPeriod,
             date: _selectedDate,
+            userId: user.id,
           );
           
           setState(() => _isProcessingPayment = false);
