@@ -2058,12 +2058,12 @@ Widget _buildResultsStep() {
           if (!_isLoadingReports && _reportsError == null) ...[
             // Year Report
             if (_yearReport != null) ...[
-              TemporalReportCard(report: _yearReport!, isExpanded: false),
+              TemporalReportCard(report: _yearReport!, isExpanded: true),
             ],
             
             // Month Report
             if (_monthReport != null) ...[
-              TemporalReportCard(report: _monthReport!, isExpanded: false),
+              TemporalReportCard(report: _monthReport!, isExpanded: true),
             ],
             
             // Day Report (expanded by default)

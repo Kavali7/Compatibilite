@@ -121,23 +121,23 @@ class TemporalReportCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Vibration number badge
-                if (report.numeroPeriode != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '${report.numeroPeriode}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
+                // Vibration number badge - Hidden for suspense
+                // if (report.numeroPeriode != null)
+                //   Container(
+                //     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                //     decoration: BoxDecoration(
+                //       color: AppColors.primary,
+                //       borderRadius: BorderRadius.circular(12),
+                //     ),
+                //     child: Text(
+                //       '\${report.numeroPeriode}',
+                //       style: const TextStyle(
+                //         color: Colors.white,
+                //         fontWeight: FontWeight.bold,
+                //         fontSize: 16,
+                //       ),
+                //     ),
+                //   ),
               ],
             ),
           ),
@@ -194,7 +194,31 @@ class TemporalReportCard extends StatelessWidget {
     );
   }
 
+  /// Filter out numerological references for suspense and clean markdown
+  String _filterNumerologyTerms(String content) {
+    // Remove patterns like "VIBRATION 7", "vibration du 1", "La vibration mensuelle du 3", etc.
+    var filtered = content
+        .replaceAll(RegExp(r'VIBRATION\s+\d+\s*[-–—]?\s*', caseSensitive: false), '')
+        .replaceAll(RegExp(r'[Ll]a vibration (mensuelle|annuelle|du jour|journalière)?\s*(du|de la)?\s*\d+\s*', caseSensitive: false), '')
+        .replaceAll(RegExp(r'vibration\s+\d+', caseSensitive: false), '')
+        .replaceAll(RegExp(r'numéro\s+\d+', caseSensitive: false), '')
+        .replaceAll(RegExp(r'nombre\s+\d+', caseSensitive: false), '')
+        .replaceAll(RegExp(r'\(\s*\d+\s*\)', caseSensitive: false), '') // Remove standalone numbers in parentheses
+        .trim();
+    
+    // Remove markdown bold markers (**text** → text, __text__ → text)
+    filtered = filtered.replaceAll(RegExp(r'\*\*([^*]+)\*\*'), r'\1');
+    filtered = filtered.replaceAll(RegExp(r'__([^_]+)__'), r'\1');
+    // Remove markdown italic markers (*text* → text, _text_ → text) - careful not to match already processed
+    filtered = filtered.replaceAll(RegExp(r'(?<!\*)\*([^*]+)\*(?!\*)'), r'\1');
+    
+    // Clean up multiple spaces
+    filtered = filtered.replaceAll(RegExp(r'\s{2,}'), ' ');
+    return filtered;
+  }
+
   Widget _buildContentBlock(String title, String content, {bool isMain = false}) {
+    final displayContent = _filterNumerologyTerms(content);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Column(
@@ -221,7 +245,7 @@ class TemporalReportCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              content,
+              displayContent,
               style: TextStyle(
                 color: AppColors.textLight,
                 fontSize: isMain ? 15 : 14,
