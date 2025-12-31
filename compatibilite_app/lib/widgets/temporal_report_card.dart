@@ -206,15 +206,21 @@ class TemporalReportCard extends StatelessWidget {
         .replaceAll(RegExp(r'\(\s*\d+\s*\)', caseSensitive: false), '') // Remove standalone numbers in parentheses
         .trim();
     
-    // Remove markdown bold markers (**text** → text, __text__ → text)
-    filtered = filtered.replaceAll(RegExp(r'\*\*([^*]+)\*\*'), r'\1');
+    // Remove "ANNEE 7 POUR LE COUPLE", "MOIS 1 POUR LE COUPLE", "JOUR 3 POUR LE COUPLE" patterns
+    filtered = filtered.replaceAll(RegExp(r'(ANNEE|ANNÉE|MOIS|JOUR)\s+\d+\s+(POUR LE COUPLE|pour le couple)\s*[-–—:]?\s*', caseSensitive: false), '');
+    filtered = filtered.replaceAll(RegExp(r"L'ANNÉE DE LA SAGESSE\s*", caseSensitive: false), '');
+    filtered = filtered.replaceAll(RegExp(r"(CLIMAT|Climat)\s+(GÉNÉRAL|Général|MENSUEL|Mensuel|DU JOUR|ANNUEL)\s*:\s*", caseSensitive: false), '');
+    
+    // Keep **text** for bold rendering, remove other markdown markers
+    // filtered = filtered.replaceAll(RegExp(r'\*\*([^*]+)\*\*'), r'\1'); // Keep for bold!
     filtered = filtered.replaceAll(RegExp(r'__([^_]+)__'), r'\1');
-    // Remove markdown italic markers (*text* → text, _text_ → text) - careful not to match already processed
+    // Remove markdown italic markers (*text* → text, _text_ → text)
     filtered = filtered.replaceAll(RegExp(r'(?<!\*)\*([^*]+)\*(?!\*)'), r'\1');
     
-    // Clean up multiple spaces
+    // Clean up multiple spaces and leading/trailing newlines
     filtered = filtered.replaceAll(RegExp(r'\s{2,}'), ' ');
-    return filtered;
+    filtered = filtered.replaceAll(RegExp(r'^\n+'), '');
+    return filtered.trim();
   }
 
   Widget _buildContentBlock(String title, String content, {bool isMain = false}) {
@@ -244,18 +250,53 @@ class TemporalReportCard extends StatelessWidget {
                   : AppColors.block.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Text(
-              displayContent,
-              style: TextStyle(
-                color: AppColors.textLight,
-                fontSize: isMain ? 15 : 14,
-                height: 1.5,
+            child: RichText(
+              text: _buildFormattedText(
+                displayContent,
+                TextStyle(
+                  color: AppColors.textLight,
+                  fontSize: isMain ? 15 : 14,
+                  height: 1.5,
+                ),
               ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  /// Build formatted TextSpan with bold for **text** patterns
+  TextSpan _buildFormattedText(String text, TextStyle baseStyle) {
+    final spans = <TextSpan>[];
+    final boldPattern = RegExp(r'\*\*([^*]+)\*\*');
+    int lastEnd = 0;
+    
+    for (final match in boldPattern.allMatches(text)) {
+      // Add text before the match
+      if (match.start > lastEnd) {
+        spans.add(TextSpan(
+          text: text.substring(lastEnd, match.start),
+          style: baseStyle,
+        ));
+      }
+      // Add bold text
+      spans.add(TextSpan(
+        text: match.group(1),
+        style: baseStyle.copyWith(fontWeight: FontWeight.bold),
+      ));
+      lastEnd = match.end;
+    }
+    
+    // Add remaining text
+    if (lastEnd < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(lastEnd),
+        style: baseStyle,
+      ));
+    }
+    
+    return TextSpan(children: spans);
   }
 }
 
