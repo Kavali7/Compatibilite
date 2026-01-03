@@ -206,10 +206,13 @@ class TemporalReportCard extends StatelessWidget {
         .replaceAll(RegExp(r'\(\s*\d+\s*\)', caseSensitive: false), '') // Remove standalone numbers in parentheses
         .trim();
     
-    // Remove "ANNEE 7 POUR LE COUPLE", "MOIS 1 POUR LE COUPLE", "JOUR 3 POUR LE COUPLE" patterns
-    filtered = filtered.replaceAll(RegExp(r'(ANNEE|ANNÉE|MOIS|JOUR)\s+\d+\s+(POUR LE COUPLE|pour le couple)\s*[-–—:]?\s*', caseSensitive: false), '');
+    // Remove "ANNEE 7 POUR LE COUPLE", "MOIS 1 POUR LE COUPLE", "JOUR 3 POUR LE COUPLE" and variations
+    // More flexible: matches with/without spaces, different separators, accents
+    filtered = filtered.replaceAll(RegExp(r'(ANNEE|ANNÉE|Année|année|MOIS|Mois|mois|JOUR|Jour|jour)\s*\d+\s*(POUR LE COUPLE|Pour Le Couple|pour le couple|POUR LE COUPLE|Pour le couple)\s*[-–—:\n]*', caseSensitive: false), '');
+    // Also catch standalone headers like "ANNÉE 7 - L'ANNÉE DE LA SAGESSE"
+    filtered = filtered.replaceAll(RegExp(r'(ANNEE|ANNÉE)\s*\d+\s*[-–—]\s*[^\n]+\n?', caseSensitive: false), '');
     filtered = filtered.replaceAll(RegExp(r"L'ANNÉE DE LA SAGESSE\s*", caseSensitive: false), '');
-    filtered = filtered.replaceAll(RegExp(r"(CLIMAT|Climat)\s+(GÉNÉRAL|Général|MENSUEL|Mensuel|DU JOUR|ANNUEL)\s*:\s*", caseSensitive: false), '');
+    filtered = filtered.replaceAll(RegExp(r"(CLIMAT|Climat)\s+(GÉNÉRAL|Général|MENSUEL|Mensuel|DU JOUR|du jour|ANNUEL|Annuel)\s*:?\s*", caseSensitive: false), '');
     
     // Keep **text** for bold rendering, remove other markdown markers
     // filtered = filtered.replaceAll(RegExp(r'\*\*([^*]+)\*\*'), r'\1'); // Keep for bold!
