@@ -20,10 +20,11 @@ import '../widgets/hamburger_menu_overlay.dart';
 import '../widgets/selectable_card.dart';
 import '../widgets/temporal_report_card.dart';
 import 'dynamic_legal_page.dart'; // Added
-import 'legal_page.dart'; // Kept for backward compat if needed, but redundant
+// legal_page.dart removed - using dynamic_legal_page.dart and legal_models.dart instead
 
 import 'temporal_purchase_screen.dart';
 import 'login_page.dart';
+import 'simple_signup_screen.dart';
 
 // ===========================================
 // DEBUG: Mettre à true pour bypasser le paiement
@@ -84,9 +85,13 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   TemporalReport? _monthReport;
   TemporalReport? _dayReport;
   bool _isLoadingReports = false;
-  bool _isLoadingReports = false;
   String? _reportsError;
   List<LegalPage> _legalPages = []; // Dynamic legal pages
+  
+  // Email verification state
+  bool _isCheckingEmail = false;
+  bool _emailExists = false;
+  String? _emailCheckError;
 
 
   static const _supportEmail = 'growpeak.agence@gmail.com';
@@ -270,7 +275,8 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         final email = _emailController.text.trim();
         final hasSubscription = await AuthService.instance.hasActiveSubscription(email);
         if (!hasSubscription) {
-          _showSnack('Veuillez compléter le paiement pour voir vos résultats.');
+          // Trigger payment flow instead of blocking
+          _initiatePayment();
           return;
         }
         _paymentCompleted = true;
@@ -459,10 +465,9 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         }
         return true;
       case 6:
-        // Payment step validation - check if payment completed or has subscription
-        // DEBUG: Bypass payment validation for testing
-        if (kDebugBypassPayment) return true;
-        return _paymentCompleted;
+        // Payment step - always return true here
+        // The actual payment check/trigger happens in _goNext()
+        return true;
       default:
         return true;
     }
@@ -687,6 +692,18 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
             );
             if (result == true) {
               // Login successful, restore session
+              _checkSession();
+            }
+          },
+        ),
+        MenuEntry(
+          label: 'Créer un compte',
+          onTap: () async {
+            final result = await Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SimpleSignupScreen()),
+            );
+            if (result == true) {
+              // Signup successful, restore session
               _checkSession();
             }
           },
@@ -938,11 +955,11 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
 
   Widget _buildWelcomeStep() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const SizedBox(height: 20),
+          const SizedBox(height: 0),
           // Main title with glow effect
           ShaderMask(
             shaderCallback: (bounds) => LinearGradient(
@@ -963,7 +980,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
@@ -985,33 +1002,33 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
               style: TextStyle(color: AppColors.textMuted, fontSize: 14),
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 16),
           // Feature cards
           _buildFeatureCard(
-            icon: Icons.favorite_rounded,
-            title: 'Compatibilité numérologique',
-            subtitle: 'Analyse basée sur vos dates de naissance',
+            icon: Icons.check_circle_outline_rounded,
+            title: 'Ne restez plus dans le doute',
+            subtitle: 'Découvrez les blocages cachés qui freinent votre épanouissement',
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           _buildFeatureCard(
-            icon: Icons.auto_awesome_rounded,
-            title: 'Conseils personnalisés',
-            subtitle: 'Guidance quotidienne pour votre couple',
+            icon: Icons.calendar_month_rounded,
+            title: 'Évitez les conflits inutiles',
+            subtitle: 'Anticipez les tensions grâce à vos prévisions jour après jour',
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           _buildFeatureCard(
             icon: Icons.timer_rounded,
-            title: 'Rapide et gratuit',
-            subtitle: 'Résultats en moins de 60 secondes',
+            title: 'Des réponses claires, tout de suite',
+            subtitle: 'Obtenez votre diagnostic amoureux complet en 1 minute',
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 24),
           // CTA Button
           AnimatedPrimaryButton(
             label: 'Commencer le quiz',
             icon: Icons.arrow_forward_rounded,
             onPressed: _goNext,
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 12),
         ],
       ),
     );
@@ -1483,34 +1500,70 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Créez votre compte',
+            _emailExists ? 'Bon retour parmi nous !' : 'Créez votre compte',
             style: GoogleFonts.philosopher(fontSize: 22, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Votre compte vous permettra de reconsulter vos rapports à tout moment.',
-            style: TextStyle(color: AppColors.textMuted),
+          Text(
+            _emailExists 
+                ? 'Ce compte existe déjà. Entrez votre mot de passe pour vous connecter.'
+                : 'Votre compte vous permettra de reconsulter vos rapports à tout moment.',
+            style: const TextStyle(color: AppColors.textMuted),
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Email *',
               hintText: 'vous@example.com',
-              prefixIcon: Icon(Icons.email_outlined, color: AppColors.primary),
+              prefixIcon: const Icon(Icons.email_outlined, color: AppColors.primary),
+              suffixIcon: _isCheckingEmail 
+                  ? const SizedBox(
+                      width: 20, 
+                      height: 20, 
+                      child: Padding(
+                        padding: EdgeInsets.all(12),
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : _emailExists 
+                      ? const Icon(Icons.check_circle, color: Colors.green)
+                      : null,
             ),
+            onChanged: _onEmailChanged,
           ),
+          if (_emailCheckError != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                _emailCheckError!,
+                style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+              ),
+            ),
           const SizedBox(height: 12),
           TextField(
             controller: _passwordController,
             obscureText: true,
-            decoration: const InputDecoration(
-              labelText: 'Mot de passe *',
-              hintText: 'Minimum 6 caractères',
-              prefixIcon: Icon(Icons.lock_outline, color: AppColors.primary),
+            decoration: InputDecoration(
+              labelText: _emailExists ? 'Mot de passe *' : 'Créer un mot de passe *',
+              hintText: _emailExists ? 'Entrez votre mot de passe' : 'Minimum 6 caractères',
+              prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primary),
             ),
           ),
+          if (_emailExists)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    _showSnack('Fonctionnalité bientôt disponible.');
+                  },
+                  child: const Text('Mot de passe oublié ?'),
+                ),
+              ),
+            ),
           const SizedBox(height: 12),
           TextField(
             controller: _phoneController,
@@ -1543,10 +1596,12 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
               children: [
                 Icon(Icons.security, color: AppColors.primary.withValues(alpha: 0.8)),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Ce mot de passe sécurise l\'accès à votre rapport et protège vos données personnelles. Choisissez-le avec soin et mémorisez-le pour pouvoir retrouver vos analyses à tout moment.',
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                    _emailExists
+                        ? 'Connectez-vous pour retrouver vos précédentes analyses et vos éventuels abonnements actifs.'
+                        : 'Ce mot de passe sécurise l\'accès à votre rapport et protège vos données personnelles. Choisissez-le avec soin et mémorisez-le pour pouvoir retrouver vos analyses à tout moment.',
+                    style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
                   ),
                 ),
               ],
@@ -1555,6 +1610,42 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         ],
       ),
     );
+  }
+
+  /// Check if email exists when user changes it
+  void _onEmailChanged(String email) {
+    // Reset state
+    setState(() {
+      _emailCheckError = null;
+    });
+    
+    // Debounce: only check after user stops typing
+    Future.delayed(const Duration(milliseconds: 800), () async {
+      if (_emailController.text.trim() != email) return; // User still typing
+      if (!_isValidEmail(email)) {
+        setState(() => _emailExists = false);
+        return;
+      }
+      
+      setState(() => _isCheckingEmail = true);
+      
+      try {
+        final exists = await AuthService.instance.emailExists(email);
+        if (mounted && _emailController.text.trim() == email) {
+          setState(() {
+            _emailExists = exists;
+            _isCheckingEmail = false;
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _isCheckingEmail = false;
+            _emailCheckError = 'Vérification impossible. Continuez quand même.';
+          });
+        }
+      }
+    });
   }
 
   /// Payment step widget
@@ -1621,11 +1712,9 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           
           const SizedBox(height: 24),
           
-          // Payment button
-          if (_paymentCompleted)
-            _buildPaymentSuccessCard()
-          else
-            _buildPaymentButton(),
+        // Payment button removed - use the main navigation button "Voir mes résultats"
+        if (_paymentCompleted)
+          _buildPaymentSuccessCard(),
           
           const SizedBox(height: 16),
           
@@ -1877,9 +1966,20 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   }
 
   Future<void> _initiatePayment() async {
+    // Auto-select consultation plan if not already selected
     if (_selectedPlan == null) {
-      _showSnack('Veuillez sélectionner un forfait.');
-      return;
+      // Try to get from service
+      final plans = PricingService.instance.plans;
+      if (plans.isEmpty) {
+        // Fetch if not loaded
+        await PricingService.instance.fetchPlans();
+      }
+      _selectedPlan = PricingService.instance.consultationPlan;
+      
+      if (_selectedPlan == null) {
+        _showSnack('Erreur: impossible de charger les forfaits.');
+        return;
+      }
     }
 
     setState(() => _isProcessingPayment = true);
@@ -1921,7 +2021,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           }
 
           if (user == null) {
-            setState(() => _isProcessingPayment = false);
+            if (mounted) setState(() => _isProcessingPayment = false);
             _showSnack('Erreur lors de la création du compte.');
             return;
           }
@@ -1954,14 +2054,30 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
             );
           }
 
-          setState(() {
-            _isProcessingPayment = false;
-            _paymentCompleted = true;
-          });
+          if (mounted) {
+            setState(() {
+              _isProcessingPayment = false;
+              _paymentCompleted = true;
+            });
+          }
 
-          _showSnack('Paiement réussi ! Vous pouvez voir vos résultats.');
+          _showSnack('Paiement réussi !');
+          
+          // Directly advance to results step instead of calling _goNext()
+          // to avoid re-checking payment conditions
+          if (mounted) {
+            _loadTemporalReports();
+            setState(() {
+              _currentStep = _totalSteps - 1; // Jump to results
+            });
+            _pageController.animateToPage(
+              _totalSteps - 1,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
         } catch (e) {
-          setState(() => _isProcessingPayment = false);
+          if (mounted) setState(() => _isProcessingPayment = false);
           _showSnack('Erreur: ${e.toString()}');
         }
       },

@@ -72,10 +72,16 @@ class AuthService {
         throw Exception('Échec de l\'inscription');
       }
 
+      final userId = response.user!.id;
+      final userEmail = response.user!.email!;
+
+      // Note: With Supabase Auth, user is in auth.users
+      // Foreign keys now reference auth.users(id) directly
+
       // Sync with local model
       _currentUser = AppUser(
-        id: response.user!.id,
-        email: response.user!.email!,
+        id: userId,
+        email: userEmail,
         name: name,
       );
       
@@ -106,10 +112,17 @@ class AuthService {
         throw Exception('Email ou mot de passe incorrect');
       }
 
+      final userId = response.user!.id;
+      final userEmail = response.user!.email!;
+      final userName = response.user!.userMetadata?['name'] as String?;
+
+      // Note: With Supabase Auth, user is in auth.users
+      // Foreign keys now reference auth.users(id) directly
+
       _currentUser = AppUser(
-        id: response.user!.id,
-        email: response.user!.email!,
-        name: response.user!.userMetadata?['name'] as String?,
+        id: userId,
+        email: userEmail,
+        name: userName,
       );
 
       return await _checkAndUpdateSubscription(_currentUser!);

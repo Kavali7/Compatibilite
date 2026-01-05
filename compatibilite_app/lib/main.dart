@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'screens/compatibility_wizard.dart';
+import 'screens/temporal_purchase_screen.dart';
 import 'services/supabase_manager.dart';
+import 'services/app_settings_service.dart';
 import 'theme/app_theme.dart';
 
 Future<void> main() async {
@@ -46,6 +48,9 @@ Future<void> main() async {
       url: dotenv.env['SUPABASE_URL'],
       anonKey: dotenv.env['SUPABASE_ANON_KEY'],
     );
+    
+    // Load app settings after Supabase is ready
+    await AppSettingsService.instance.loadSettings();
   } catch (e) {
     debugPrint('Supabase init failed: $e');
     // Continue anyway, app will work with limited functionality
@@ -63,7 +68,22 @@ class CompatibiliteApp extends StatelessWidget {
       title: 'Compatibilité & Guidance',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
-      home: const CompatibilityWizard(),
+      home: _buildHomeScreen(),
     );
   }
+
+  /// Build the appropriate home screen based on admin settings
+  Widget _buildHomeScreen() {
+    final service = AppSettingsService.instance.primaryService;
+    
+    switch (service) {
+      case PrimaryService.previsionJour:
+      case PrimaryService.previsionMois:
+      case PrimaryService.previsionAnnee:
+        return const TemporalPurchaseScreen();
+      case PrimaryService.compatibilite:
+        return const CompatibilityWizard();
+    }
+  }
 }
+

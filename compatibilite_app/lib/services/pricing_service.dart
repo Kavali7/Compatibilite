@@ -57,9 +57,23 @@ class PricingService {
   List<PricingPlan> _cachedPlans = [];
   List<PricingPlan> get plans => _cachedPlans;
 
-  /// Default plans - NO HARDCODED PRICES
-  /// Prices must come from Supabase database
-  static final List<PricingPlan> defaultPlans = [];
+  /// Default plans - fallback ONLY if Supabase fails
+  /// Real prices come from the database (pricing_plans table)
+  static final List<PricingPlan> defaultPlans = [
+    PricingPlan(
+      id: 'default-consultation',
+      planType: 'consultation',
+      name: 'Rapport de base compatibilité',
+      priceFcfa: 2, // Test price - real price comes from Supabase
+    ),
+    PricingPlan(
+      id: 'default-subscription',
+      planType: 'subscription',
+      name: 'Abonnement mensuel',
+      priceFcfa: 2, // Test price - real price comes from Supabase
+      durationDays: 30,
+    ),
+  ];
 
   /// Get the consultation plan
   PricingPlan get consultationPlan {
