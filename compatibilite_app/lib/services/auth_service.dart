@@ -62,24 +62,26 @@ class AuthService {
     }
 
     try {
-      final passwordHash = _hashPassword(password);
-      final userId = _uuid.v4();
+      final response = await _client!.auth.signUp(
+        email: email.trim(),
+        password: password,
+        data: name != null ? {'name': name} : null,
+      );
 
-      final result = await _client!.from(_tableUsers).insert({
-        'id': userId,
-        'email': email.toLowerCase().trim(),
-        'password_hash': passwordHash,
-        'name': name,
-      }).select().single();
+      if (response.user == null) {
+        throw Exception('Échec de l\'inscription');
+      }
 
-      _currentUser = AppUser.fromJson(result);
+      // Sync with local model
+      _currentUser = AppUser(
+        id: response.user!.id,
+        email: response.user!.email!,
+        name: name,
+      );
+      
       return _currentUser;
     } catch (e) {
       debugPrint('AuthService signUp error: $e');
-      // If user already exists, try to sign in
-      if (e.toString().contains('duplicate') || e.toString().contains('unique')) {
-        return signIn(email: email, password: password);
-      }
       rethrow;
     }
   }
@@ -95,24 +97,21 @@ class AuthService {
     }
 
     try {
-      final passwordHash = _hashPassword(password);
-      final result = await _client!
-          .from(_tableUsers)
-          .select()
-          .eq('email', email.toLowerCase().trim())
-          .eq('password_hash', passwordHash)
-          .maybeSingle();
+      final response = await _client!.auth.signInWithPassword(
+        email: email.trim(),
+        password: password,
+      );
 
-      if (result == null) {
+      if (response.user == null) {
         throw Exception('Email ou mot de passe incorrect');
       }
 
-      // Update last login
-      await _client!.from(_tableUsers).update({
-        'last_login': DateTime.now().toIso8601String(),
-      }).eq('id', result['id']);
+      _currentUser = AppUser(
+        id: response.user!.id,
+        email: response.user!.email!,
+        name: response.user!.userMetadata?['name'] as String?,
+      );
 
-      _currentUser = AppUser.fromJson(result);
       return await _checkAndUpdateSubscription(_currentUser!);
     } catch (e) {
       debugPrint('AuthService signIn error: $e');
@@ -126,6 +125,8 @@ class AuthService {
 
     try {
       final now = DateTime.now().toIso8601String();
+      // NOTE: RLS might block this if policies aren't set yet.
+      // But we are migrating to Supabase Auth to ENABLE RLS.
       final subscription = await _client!
           .from(_tableSubscriptions)
           .select()
@@ -148,49 +149,20 @@ class AuthService {
   }
 
   /// Check if email exists
+  /// Note: Supabase Admin API is needed to check existence reliably without login.
+  /// For client side, we can only try to sign up or sign in.
   Future<bool> emailExists(String email) async {
-    if (_client == null) return false;
-
-    try {
-      final result = await _client!
-          .from(_tableUsers)
-          .select('id')
-          .eq('email', email.toLowerCase().trim())
-          .maybeSingle();
-      return result != null;
-    } catch (e) {
-      debugPrint('AuthService emailExists error: $e');
-      return false;
-    }
+    // Client-side existence check is discouraged for security (enumeration attacks).
+    // Returning false by default to prompt sign-up or let sign-in fail naturally.
+    return false; 
   }
 
   /// Check if email has active subscription (without full login)
+  /// This legacy check is tricky with RLS. We'll simplify.
   Future<bool> hasActiveSubscription(String email) async {
-    if (_client == null) return false;
-
-    try {
-      final user = await _client!
-          .from(_tableUsers)
-          .select('id')
-          .eq('email', email.toLowerCase().trim())
-          .maybeSingle();
-
-      if (user == null) return false;
-
-      final now = DateTime.now().toIso8601String();
-      final subscription = await _client!
-          .from(_tableSubscriptions)
-          .select()
-          .eq('user_id', user['id'])
-          .eq('is_active', true)
-          .gte('expires_at', now)
-          .maybeSingle();
-
-      return subscription != null;
-    } catch (e) {
-      debugPrint('AuthService hasActiveSubscription error: $e');
-      return false;
-    }
+    // Cannot check subscription of another user securely.
+    // Assuming false until logged in.
+    return false;
   }
 
   /// Create or update subscription after payment
@@ -215,7 +187,7 @@ class AuthService {
         'is_active': true,
       });
 
-      // Update current user
+      // Update current user state if it matches
       if (_currentUser?.id == userId) {
         _currentUser = AppUser(
           id: _currentUser!.id,
@@ -231,7 +203,8 @@ class AuthService {
   }
 
   /// Sign out current user
-  void signOut() {
+  Future<void> signOut() async {
+    await _client?.auth.signOut();
     _currentUser = null;
   }
 }

@@ -12,6 +12,7 @@ import Sessions from './pages/compatibilite/Sessions';
 import ContentBricks from './pages/compatibilite/ContentBricks';
 import CanonicalPredictions from './pages/compatibilite/CanonicalPredictions';
 import TemporalPurchases from './pages/compatibilite/TemporalPurchases';
+import ReportSections from './pages/compatibilite/ReportSections';
 
 const router = createBrowserRouter([
   {
@@ -33,6 +34,7 @@ const router = createBrowserRouter([
           { path: 'content-bricks', element: <ContentBricks /> },
           { path: 'canonical-predictions', element: <CanonicalPredictions /> },
           { path: 'temporal-purchases', element: <TemporalPurchases /> },
+          { path: 'report-sections', element: <ReportSections /> },
         ],
       },
       { path: '*', element: <Navigate to="/" replace /> },

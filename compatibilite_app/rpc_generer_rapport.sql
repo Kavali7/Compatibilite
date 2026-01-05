@@ -340,7 +340,18 @@ declare
 
   v_briques uuid[];
   v_new public.generated_reports%rowtype;
+  
+  -- Configuration dynamique des sections
+  v_config jsonb;
 begin
+  -- Chargement de la configuration (titres et activation)
+  select jsonb_object_agg(code, jsonb_build_object('label', label_fr, 'is_active', is_active))
+  into v_config
+  from public.report_sections;
+
+  -- Fallback si la table est vide (sécurité)
+  v_config := coalesce(v_config, '{}'::jsonb);
+
   if v_uid is null then
     raise exception 'Utilisateur non authentifié';
   end if;
@@ -576,34 +587,78 @@ begin
     limit 1;
   end if;
 
-  -- Labels selon période
-  v_bloc3 :=
-    case
-      when p_periode = 'jour' then
-        '**Acte du jour :** ' || coalesce(public.fn_appliquer_placeholders(b3_acte_tpl,   v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n' ||
-        '**Rituel :** '      || coalesce(public.fn_appliquer_placeholders(b3_rituel_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n\n' ||
-        '**Couple :** '      || coalesce(public.fn_appliquer_placeholders(b3_couple_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n' ||
-        '**Travail/Affaires :** ' || coalesce(public.fn_appliquer_placeholders(b3_travail_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n' ||
-        '**Argent :** '      || coalesce(public.fn_appliquer_placeholders(b3_argent_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n' ||
-        '**Énergie/Santé :** '|| coalesce(public.fn_appliquer_placeholders(b3_sante_tpl,  v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n' ||
-        '**Feu du jour :** ' || coalesce(public.fn_appliquer_placeholders(b3_feu_tpl,    v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'')
-      when p_periode = 'mois' then
-        '**Acte du mois :** ' || coalesce(public.fn_appliquer_placeholders(b3_acte_tpl,   v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n' ||
-        '**Rituel :** '       || coalesce(public.fn_appliquer_placeholders(b3_rituel_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n\n' ||
-        '**Couple :** '       || coalesce(public.fn_appliquer_placeholders(b3_couple_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n' ||
-        '**Travail/Affaires :** ' || coalesce(public.fn_appliquer_placeholders(b3_travail_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n' ||
-        '**Argent :** '       || coalesce(public.fn_appliquer_placeholders(b3_argent_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n' ||
-        '**Énergie/Santé :** '|| coalesce(public.fn_appliquer_placeholders(b3_sante_tpl,  v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n' ||
-        '**Feu du mois :** '  || coalesce(public.fn_appliquer_placeholders(b3_feu_tpl,    v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'')
-      else
-        '**Acte de l''année :** ' || coalesce(public.fn_appliquer_placeholders(b3_acte_tpl,   v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n' ||
-        '**Rituel :** '           || coalesce(public.fn_appliquer_placeholders(b3_rituel_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n\n' ||
-        '**Couple :** '           || coalesce(public.fn_appliquer_placeholders(b3_couple_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n' ||
-        '**Travail/Affaires :** ' || coalesce(public.fn_appliquer_placeholders(b3_travail_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n' ||
-        '**Argent :** '           || coalesce(public.fn_appliquer_placeholders(b3_argent_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n' ||
-        '**Énergie/Santé :** '    || coalesce(public.fn_appliquer_placeholders(b3_sante_tpl,  v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n' ||
-        '**Feu de l''année :** '  || coalesce(public.fn_appliquer_placeholders(b3_feu_tpl,    v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'')
-    end;
+  v_bloc3 := '';
+
+  -- Construction dynamique selon la période
+  if p_periode = 'jour' then
+     if (v_config->'b3_acte_jour'->>'is_active')::boolean is not false then
+        v_bloc3 := v_bloc3 || (v_config->'b3_acte_jour'->>'label') || ' ' || coalesce(public.fn_appliquer_placeholders(b3_acte_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n';
+     end if;
+     if (v_config->'b3_rituel_jour'->>'is_active')::boolean is not false then
+        v_bloc3 := v_bloc3 || (v_config->'b3_rituel_jour'->>'label') || ' ' || coalesce(public.fn_appliquer_placeholders(b3_rituel_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n\n';
+     end if;
+     if (v_config->'b3_couple_jour'->>'is_active')::boolean is not false then
+        v_bloc3 := v_bloc3 || (v_config->'b3_couple_jour'->>'label') || ' ' || coalesce(public.fn_appliquer_placeholders(b3_couple_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n';
+     end if;
+     if (v_config->'b3_travail_jour'->>'is_active')::boolean is not false then
+        v_bloc3 := v_bloc3 || (v_config->'b3_travail_jour'->>'label') || ' ' || coalesce(public.fn_appliquer_placeholders(b3_travail_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n';
+     end if;
+     if (v_config->'b3_argent_jour'->>'is_active')::boolean is not false then
+        v_bloc3 := v_bloc3 || (v_config->'b3_argent_jour'->>'label') || ' ' || coalesce(public.fn_appliquer_placeholders(b3_argent_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n';
+     end if;
+     if (v_config->'b3_sante_jour'->>'is_active')::boolean is not false then
+        v_bloc3 := v_bloc3 || (v_config->'b3_sante_jour'->>'label') || ' ' || coalesce(public.fn_appliquer_placeholders(b3_sante_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n';
+     end if;
+     if (v_config->'b3_feu_jour'->>'is_active')::boolean is not false then
+        v_bloc3 := v_bloc3 || (v_config->'b3_feu_jour'->>'label') || ' ' || coalesce(public.fn_appliquer_placeholders(b3_feu_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'');
+     end if;
+
+  elsif p_periode = 'mois' then
+     if (v_config->'b3_acte_mois'->>'is_active')::boolean is not false then
+        v_bloc3 := v_bloc3 || (v_config->'b3_acte_mois'->>'label') || ' ' || coalesce(public.fn_appliquer_placeholders(b3_acte_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n';
+     end if;
+     if (v_config->'b3_rituel_mois'->>'is_active')::boolean is not false then
+        v_bloc3 := v_bloc3 || (v_config->'b3_rituel_mois'->>'label') || ' ' || coalesce(public.fn_appliquer_placeholders(b3_rituel_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n\n';
+     end if;
+     if (v_config->'b3_couple_mois'->>'is_active')::boolean is not false then
+        v_bloc3 := v_bloc3 || (v_config->'b3_couple_mois'->>'label') || ' ' || coalesce(public.fn_appliquer_placeholders(b3_couple_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n';
+     end if;
+     if (v_config->'b3_travail_mois'->>'is_active')::boolean is not false then
+        v_bloc3 := v_bloc3 || (v_config->'b3_travail_mois'->>'label') || ' ' || coalesce(public.fn_appliquer_placeholders(b3_travail_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n';
+     end if;
+     if (v_config->'b3_argent_mois'->>'is_active')::boolean is not false then
+        v_bloc3 := v_bloc3 || (v_config->'b3_argent_mois'->>'label') || ' ' || coalesce(public.fn_appliquer_placeholders(b3_argent_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n';
+     end if;
+     if (v_config->'b3_sante_mois'->>'is_active')::boolean is not false then
+        v_bloc3 := v_bloc3 || (v_config->'b3_sante_mois'->>'label') || ' ' || coalesce(public.fn_appliquer_placeholders(b3_sante_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n';
+     end if;
+     if (v_config->'b3_feu_mois'->>'is_active')::boolean is not false then
+        v_bloc3 := v_bloc3 || (v_config->'b3_feu_mois'->>'label') || ' ' || coalesce(public.fn_appliquer_placeholders(b3_feu_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'');
+     end if;
+
+  else -- annee
+     if (v_config->'b3_acte_annee'->>'is_active')::boolean is not false then
+        v_bloc3 := v_bloc3 || (v_config->'b3_acte_annee'->>'label') || ' ' || coalesce(public.fn_appliquer_placeholders(b3_acte_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n';
+     end if;
+     if (v_config->'b3_rituel_annee'->>'is_active')::boolean is not false then
+        v_bloc3 := v_bloc3 || (v_config->'b3_rituel_annee'->>'label') || ' ' || coalesce(public.fn_appliquer_placeholders(b3_rituel_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n\n';
+     end if;
+     if (v_config->'b3_couple_annee'->>'is_active')::boolean is not false then
+        v_bloc3 := v_bloc3 || (v_config->'b3_couple_annee'->>'label') || ' ' || coalesce(public.fn_appliquer_placeholders(b3_couple_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n';
+     end if;
+     if (v_config->'b3_travail_annee'->>'is_active')::boolean is not false then
+        v_bloc3 := v_bloc3 || (v_config->'b3_travail_annee'->>'label') || ' ' || coalesce(public.fn_appliquer_placeholders(b3_travail_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n';
+     end if;
+     if (v_config->'b3_argent_annee'->>'is_active')::boolean is not false then
+        v_bloc3 := v_bloc3 || (v_config->'b3_argent_annee'->>'label') || ' ' || coalesce(public.fn_appliquer_placeholders(b3_argent_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n';
+     end if;
+     if (v_config->'b3_sante_annee'->>'is_active')::boolean is not false then
+        v_bloc3 := v_bloc3 || (v_config->'b3_sante_annee'->>'label') || ' ' || coalesce(public.fn_appliquer_placeholders(b3_sante_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'') || E'\n';
+     end if;
+     if (v_config->'b3_feu_annee'->>'is_active')::boolean is not false then
+        v_bloc3 := v_bloc3 || (v_config->'b3_feu_annee'->>'label') || ' ' || coalesce(public.fn_appliquer_placeholders(b3_feu_tpl, v_profile.user_firstname, v_profile.partner_firstname, v_profile.user_gender, v_profile.partner_gender),'');
+     end if;
+  end if;
 
   -- Liste des briques utilisées (sans null)
   v_briques := array_remove(ARRAY[

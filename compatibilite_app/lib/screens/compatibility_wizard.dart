@@ -5,6 +5,7 @@ import 'package:step_progress_indicator/step_progress_indicator.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/compatibility_models.dart';
+import '../models/legal_models.dart'; // Added
 import '../services/numerology_service.dart';
 import '../services/compatibility_repository.dart';
 import '../services/supabase_manager.dart';
@@ -12,12 +13,14 @@ import '../services/auth_service.dart';
 import '../services/pricing_service.dart';
 import '../services/kkiapay_service.dart';
 import '../services/temporal_report_service.dart';
+import '../services/legal_repository.dart'; // Added
 import '../theme/app_theme.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/hamburger_menu_overlay.dart';
 import '../widgets/selectable_card.dart';
 import '../widgets/temporal_report_card.dart';
-import 'legal_page.dart';
+import 'dynamic_legal_page.dart'; // Added
+import 'legal_page.dart'; // Kept for backward compat if needed, but redundant
 
 import 'temporal_purchase_screen.dart';
 import 'login_page.dart';
@@ -81,7 +84,10 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   TemporalReport? _monthReport;
   TemporalReport? _dayReport;
   bool _isLoadingReports = false;
+  bool _isLoadingReports = false;
   String? _reportsError;
+  List<LegalPage> _legalPages = []; // Dynamic legal pages
+
 
   static const _supportEmail = 'growpeak.agence@gmail.com';
   static const _supportPhone = '0022654255584';
@@ -120,6 +126,22 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     
     // Check for existing session/profile
     _checkSession();
+    
+    // Load dynamic legal pages
+    _loadLegalPages();
+  }
+  
+  Future<void> _loadLegalPages() async {
+    try {
+      final pages = await LegalRepository.instance.getActivePages();
+      if (mounted) {
+        setState(() {
+          _legalPages = pages;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading legal pages: $e');
+    }
   }
 
   Future<void> _checkSession() async {
@@ -682,36 +704,14 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           },
         ),
 
-      MenuEntry(
-        label: 'Politique de confidentialité',
+      // Dynamic Legal Pages
+      ..._legalPages.map((page) => MenuEntry(
+        label: page.title,
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => LegalPage.confidentialite()),
+          MaterialPageRoute(builder: (_) => DynamicLegalPage(page: page)),
         ),
-      ),
-      MenuEntry(
-        label: "Conditions d'utilisation",
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => LegalPage.conditions()),
-        ),
-      ),
-      MenuEntry(
-        label: 'Facturation / Paiements',
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => LegalPage.facturation()),
-        ),
-      ),
-      MenuEntry(
-        label: 'Remboursements & rétractation',
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => LegalPage.remboursement()),
-        ),
-      ),
-      MenuEntry(
-        label: 'Cookies & suivi',
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => LegalPage.cookies()),
-        ),
-      ),
+      )),
+
       MenuEntry(label: 'Contacter Growpeak', onTap: () => _launchUri(_supportEmailUri)),
       MenuEntry(label: 'Appeler Growpeak', onTap: () => _launchUri(_supportPhoneUri)),
       // Admin menu removed as requested

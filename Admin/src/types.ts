@@ -86,3 +86,12 @@ export type PricingPlan = {
   duration_days?: number;
   is_active: boolean;
 };
+
+export type ReportSection = {
+  code: string;
+  label_fr: string;
+  is_active: boolean;
+  display_order: number;
+  periode: string;
+  description: string;
+};

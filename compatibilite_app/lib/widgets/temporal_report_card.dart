@@ -220,8 +220,12 @@ class TemporalReportCard extends StatelessWidget {
     // Remove markdown italic markers (*text* → text, _text_ → text)
     filtered = filtered.replaceAll(RegExp(r'(?<!\*)\*([^*]+)\*(?!\*)'), r'\1');
     
-    // Clean up multiple spaces and leading/trailing newlines
-    filtered = filtered.replaceAll(RegExp(r'\s{2,}'), ' ');
+    // Clean up multiple spaces (but keep newlines) and leading/trailing newlines
+    // 1. Collapse multiple horizontal spaces (tabs, spaces) into one
+    filtered = filtered.replaceAll(RegExp(r'[ \t]{2,}'), ' ');
+    // 2. Normalize multiple newlines to a maximum of 2 (preserving paragraphs)
+    filtered = filtered.replaceAll(RegExp(r'\n\s*\n+'), '\n\n');
+
     filtered = filtered.replaceAll(RegExp(r'^\n+'), '');
     return filtered.trim();
   }
