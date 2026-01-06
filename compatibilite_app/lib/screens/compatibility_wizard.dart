@@ -348,9 +348,14 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
       }
       
       // Fetch bonus reports (respects app_settings configuration)
-      debugPrint('_loadTemporalReports: Fetching bonus reports for user ${authUser.id}...');
+      debugPrint('>>> _loadTemporalReports: Fetching bonus reports for user ${authUser.id}...');
+      debugPrint('>>> _loadTemporalReports: Calling getBonusReports...');
       final bonusReports = await service.getBonusReports(userId: authUser.id);
-      debugPrint('_loadTemporalReports: Received reports - Year: ${bonusReports['annee'] != null}, Month: ${bonusReports['mois'] != null}, Day: ${bonusReports['jour'] != null}');
+      debugPrint('>>> _loadTemporalReports: getBonusReports returned');
+      debugPrint('>>> _loadTemporalReports: Received reports - Year: ${bonusReports['annee'] != null}, Month: ${bonusReports['mois'] != null}, Day: ${bonusReports['jour'] != null}');
+      debugPrint('>>> _loadTemporalReports: Year report details: ${bonusReports['annee']?.titre ?? "null"}');
+      debugPrint('>>> _loadTemporalReports: Month report details: ${bonusReports['mois']?.titre ?? "null"}');
+      debugPrint('>>> _loadTemporalReports: Day report details: ${bonusReports['jour']?.titre ?? "null"}');
       
       if (mounted) {
         setState(() {
