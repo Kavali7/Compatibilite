@@ -6,6 +6,9 @@ import '../services/pricing_service.dart';
 import '../services/temporal_report_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/animated_background.dart';
+import '../widgets/hamburger_menu_overlay.dart';
+import 'simple_signup_screen.dart';
+import 'login_page.dart';
 
 /// Screen for purchasing temporal predictions (year, month, day)
 class TemporalPurchaseScreen extends StatefulWidget {
@@ -22,6 +25,20 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
   bool _isRange = false;
   bool _isProcessingPayment = false;
   bool _isLoadingPrices = true;
+  bool _isMenuOpen = false;
+  
+  // Couple profile state
+  bool _hasCoupleProfile = false;
+  bool _isCheckingProfile = true;
+  bool _showCoupleForm = false;
+  
+  // Couple info form controllers
+  final _userNameController = TextEditingController();
+  final _partnerNameController = TextEditingController();
+  DateTime? _userBirthdate;
+  DateTime? _partnerBirthdate;
+  String _userGender = 'Autre';
+  String _partnerGender = 'Autre';
 
   // Pricing (in FCFA) - loaded from database, null if not configured
   int? _priceDayFcfa;
@@ -32,6 +49,40 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
   void initState() {
     super.initState();
     _loadPricesFromDatabase();
+    _checkCoupleProfile();
+  }
+
+  @override
+  void dispose() {
+    _userNameController.dispose();
+    _partnerNameController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _checkCoupleProfile() async {
+    final user = AuthService.instance.currentUser;
+    if (user == null) {
+      setState(() {
+        _hasCoupleProfile = false;
+        _isCheckingProfile = false;
+      });
+      return;
+    }
+
+    try {
+      final hasProfile = await TemporalReportService.instance.hasCoupleProfile();
+      if (mounted) {
+        setState(() {
+          _hasCoupleProfile = hasProfile;
+          _isCheckingProfile = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error checking couple profile: $e');
+      if (mounted) {
+        setState(() => _isCheckingProfile = false);
+      }
+    }
   }
 
   Future<void> _loadPricesFromDatabase() async {
@@ -143,80 +194,374 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
     return AnimatedBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: AppColors.textLight),
-            onPressed: () => Navigator.pop(context),
-          ),
-          title: Text(
-            'Prévisions Temporelles',
+        body: Stack(
+          children: [
+            SafeArea(
+              child: Column(
+                children: [
+                  // Custom app bar
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 8, 60, 0),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back, color: AppColors.textLight),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                        Expanded(
+                          child: Text(
+                            'Prévisions Temporelles',
+                            style: GoogleFonts.philosopher(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textLight,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Main content
+                  Expanded(
+                    child: _showCoupleForm
+                        ? _buildCoupleProfileForm()
+                        : _buildMainContent(),
+                  ),
+                ],
+              ),
+            ),
+            // Hamburger menu
+            HamburgerMenuOverlay(
+              isOpen: _isMenuOpen,
+              onToggle: _toggleMenu,
+              entries: _buildMenuEntries(),
+              isDark: true,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMainContent() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Text(
+            'Choisissez votre prévision',
             style: GoogleFonts.philosopher(
-              fontSize: 22,
+              fontSize: 24,
               fontWeight: FontWeight.w700,
               color: AppColors.textLight,
             ),
           ),
-        ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 8),
+          const Text(
+            'Anticipez les énergies de votre couple pour mieux naviguer ensemble.',
+            style: TextStyle(color: AppColors.textMuted),
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // Period selector
+          _buildPeriodSelector(),
+          
+          const SizedBox(height: 20),
+          
+          // Date picker
+          _buildDatePicker(),
+          
+          const SizedBox(height: 20),
+          
+          // Range toggle (for month/day)
+          if (_selectedPeriod != 'annee') _buildRangeToggle(),
+          
+          const SizedBox(height: 24),
+          
+          // Summary card
+          _buildSummaryCard(),
+          
+          const SizedBox(height: 24),
+          
+          // Purchase button
+          _buildPurchaseButton(),
+          
+          const SizedBox(height: 16),
+          
+          // Payment info
+          const Center(
+            child: Text(
+              'Paiement sécurisé par Kkiapay',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCoupleProfileForm() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.block.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+            ),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.favorite_outline,
+                    color: AppColors.primary,
+                    size: 40,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Profil Couple',
+                  style: GoogleFonts.philosopher(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textLight,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Pour générer votre prévision, nous avons besoin des informations de votre couple.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.textMuted),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Your info section
+          _buildSectionTitle('Vos informations'),
+          const SizedBox(height: 12),
+          _buildNameField(_userNameController, 'Votre prénom'),
+          const SizedBox(height: 12),
+          _buildDatePickerField(
+            label: 'Votre date de naissance',
+            value: _userBirthdate,
+            onPicked: (date) => setState(() => _userBirthdate = date),
+          ),
+          const SizedBox(height: 12),
+          _buildGenderSelector(
+            value: _userGender,
+            onChanged: (val) => setState(() => _userGender = val),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Partner info section
+          _buildSectionTitle('Informations de votre partenaire'),
+          const SizedBox(height: 12),
+          _buildNameField(_partnerNameController, 'Prénom du partenaire'),
+          const SizedBox(height: 12),
+          _buildDatePickerField(
+            label: 'Date de naissance du partenaire',
+            value: _partnerBirthdate,
+            onPicked: (date) => setState(() => _partnerBirthdate = date),
+          ),
+          const SizedBox(height: 12),
+          _buildGenderSelector(
+            value: _partnerGender,
+            onChanged: (val) => setState(() => _partnerGender = val),
+          ),
+
+          const SizedBox(height: 32),
+
+          // Submit buttons
+          Row(
             children: [
-              // Header
-              Text(
-                'Choisissez votre prévision',
-                style: GoogleFonts.philosopher(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textLight,
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => setState(() => _showCoupleForm = false),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 50),
+                    side: const BorderSide(color: AppColors.textMuted),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Annuler', style: TextStyle(color: AppColors.textMuted)),
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Anticipez les énergies de votre couple pour mieux naviguer ensemble.',
-                style: TextStyle(color: AppColors.textMuted),
-              ),
-              
-              const SizedBox(height: 24),
-              
-              // Period selector
-              _buildPeriodSelector(),
-              
-              const SizedBox(height: 20),
-              
-              // Date picker
-              _buildDatePicker(),
-              
-              const SizedBox(height: 20),
-              
-              // Range toggle (for month/day)
-              if (_selectedPeriod != 'annee') _buildRangeToggle(),
-              
-              const SizedBox(height: 24),
-              
-              // Summary card
-              _buildSummaryCard(),
-              
-              const SizedBox(height: 24),
-              
-              // Purchase button
-              _buildPurchaseButton(),
-              
-              const SizedBox(height: 16),
-              
-              // Payment info
-              const Center(
-                child: Text(
-                  'Paiement sécurisé par Kkiapay',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+              const SizedBox(width: 12),
+              Expanded(
+                flex: 2,
+                child: ElevatedButton(
+                  onPressed: _isProcessingPayment ? null : _createCoupleProfileAndPay,
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(0, 50),
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _isProcessingPayment
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text(
+                          'Continuer vers le paiement',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
                 ),
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: GoogleFonts.philosopher(
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+        color: AppColors.textLight,
+      ),
+    );
+  }
+
+  Widget _buildNameField(TextEditingController controller, String label) {
+    return TextFormField(
+      controller: controller,
+      style: const TextStyle(color: AppColors.textLight),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: AppColors.textMuted),
+        prefixIcon: const Icon(Icons.person_outline, color: AppColors.textMuted),
+        filled: true,
+        fillColor: AppColors.block.withValues(alpha: 0.6),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.primary),
         ),
       ),
+    );
+  }
+
+  Widget _buildDatePickerField({
+    required String label,
+    required DateTime? value,
+    required Function(DateTime) onPicked,
+  }) {
+    return GestureDetector(
+      onTap: () async {
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: value ?? DateTime(1990, 1, 1),
+          firstDate: DateTime(1920),
+          lastDate: DateTime.now(),
+          builder: (context, child) {
+            return Theme(
+              data: ThemeData.dark().copyWith(
+                colorScheme: const ColorScheme.dark(
+                  primary: AppColors.primary,
+                  surface: AppColors.block,
+                ),
+              ),
+              child: child!,
+            );
+          },
+        );
+        if (picked != null) onPicked(picked);
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.block.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.calendar_today, color: AppColors.textMuted),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                value != null
+                    ? '${value.day}/${value.month}/${value.year}'
+                    : label,
+                style: TextStyle(
+                  color: value != null ? AppColors.textLight : AppColors.textMuted,
+                ),
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppColors.textMuted),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGenderSelector({
+    required String value,
+    required Function(String) onChanged,
+  }) {
+    final options = ['Homme', 'Femme', 'Autre'];
+    return Row(
+      children: options.map((option) {
+        final isSelected = value == option;
+        return Expanded(
+          child: GestureDetector(
+            onTap: () => onChanged(option),
+            child: Container(
+              margin: EdgeInsets.only(right: option != options.last ? 8 : 0),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppColors.primary.withValues(alpha: 0.2)
+                    : AppColors.block.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected ? AppColors.primary : AppColors.primary.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  option,
+                  style: TextStyle(
+                    color: isSelected ? AppColors.primary : AppColors.textMuted,
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -643,10 +988,110 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
     // Check if user is logged in
     final user = AuthService.instance.currentUser;
     if (user == null) {
-      _showSnack('Veuillez vous identifier pour effectuer cet achat.');
+      _showLoginRequired();
       return;
     }
 
+    // Check if couple profile exists
+    if (!_hasCoupleProfile) {
+      setState(() => _showCoupleForm = true);
+      return;
+    }
+
+    _proceedWithPayment(user.id);
+  }
+
+  void _showLoginRequired() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.block,
+        title: const Text('Connexion requise', style: TextStyle(color: AppColors.textLight)),
+        content: const Text(
+          'Veuillez créer un compte ou vous connecter pour effectuer cet achat.',
+          style: TextStyle(color: AppColors.textMuted),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SimpleSignupScreen()),
+              );
+              if (result == true) {
+                _checkCoupleProfile();
+              }
+            },
+            child: const Text('Créer un compte'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginPage()),
+              );
+              if (result == true) {
+                _checkCoupleProfile();
+              }
+            },
+            child: const Text('Se connecter'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _createCoupleProfileAndPay() async {
+    final user = AuthService.instance.currentUser;
+    if (user == null) return;
+
+    // Validate form
+    if (_userNameController.text.trim().isEmpty ||
+        _partnerNameController.text.trim().isEmpty ||
+        _userBirthdate == null ||
+        _partnerBirthdate == null) {
+      _showSnack('Veuillez remplir tous les champs du profil couple.');
+      return;
+    }
+
+    setState(() => _isProcessingPayment = true);
+
+    try {
+      // Create couple profile
+      final created = await TemporalReportService.instance.createCoupleProfile(
+        userFirstname: _userNameController.text.trim(),
+        userBirthdate: _userBirthdate!,
+        userGender: _userGender,
+        partnerFirstname: _partnerNameController.text.trim(),
+        partnerBirthdate: _partnerBirthdate!,
+        partnerGender: _partnerGender,
+        userId: user.id,
+      );
+
+      if (created) {
+        setState(() {
+          _hasCoupleProfile = true;
+          _showCoupleForm = false;
+        });
+        // Now proceed with payment
+        _proceedWithPayment(user.id);
+      } else {
+        setState(() => _isProcessingPayment = false);
+        _showSnack('Erreur lors de la création du profil couple.');
+      }
+    } catch (e) {
+      setState(() => _isProcessingPayment = false);
+      _showSnack('Erreur: ${e.toString()}');
+    }
+  }
+
+  void _proceedWithPayment(String userId) {
     setState(() => _isProcessingPayment = true);
     
     KkiapayService.instance.startPayment(
@@ -666,7 +1111,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
           final report = await service.generateReport(
             periode: _selectedPeriod,
             date: _selectedDate,
-            userId: user.id,
+            userId: userId,
           );
           
           setState(() => _isProcessingPayment = false);
@@ -683,6 +1128,52 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
         }
       },
     );
+  }
+
+  void _toggleMenu() => setState(() => _isMenuOpen = !_isMenuOpen);
+
+  List<MenuEntry> _buildMenuEntries() {
+    return [
+      if (AuthService.instance.isLoggedIn)
+        MenuEntry(
+          label: 'Mon Compte',
+          onTap: () => _showSnack('Compte: ${AuthService.instance.currentUser?.email}'),
+        )
+      else
+        MenuEntry(
+          label: 'Se connecter',
+          onTap: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const LoginPage()),
+            );
+            if (result == true) _checkCoupleProfile();
+          },
+        ),
+      if (!AuthService.instance.isLoggedIn)
+        MenuEntry(
+          label: 'Créer un compte',
+          onTap: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SimpleSignupScreen()),
+            );
+            if (result == true) _checkCoupleProfile();
+          },
+        ),
+      if (AuthService.instance.isLoggedIn)
+        MenuEntry(
+          label: 'Se déconnecter',
+          onTap: () {
+            AuthService.instance.signOut();
+            setState(() {
+              _hasCoupleProfile = false;
+              _showCoupleForm = false;
+            });
+            _showSnack('Vous êtes déconnecté.');
+          },
+        ),
+    ];
   }
 
   void _showSnack(String message) {
