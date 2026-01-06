@@ -21,9 +21,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
   DateTime? _endDate; // For ranges
   bool _isRange = false;
   bool _isProcessingPayment = false;
-  
-  // Couple profile state
-  bool _hasCoupleProfile = false;
+  bool _isLoadingPrices = true;
 
   // Pricing (in FCFA) - loaded from database, null if not configured
   int? _priceDayFcfa;
@@ -34,20 +32,6 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
   void initState() {
     super.initState();
     _loadPricesFromDatabase();
-    _checkCoupleProfile();
-  }
-
-  Future<void> _checkCoupleProfile() async {
-    try {
-      final hasProfile = await TemporalReportService.instance.hasCoupleProfile();
-      if (mounted) {
-        setState(() {
-          _hasCoupleProfile = hasProfile;
-        });
-      }
-    } catch (e) {
-      debugPrint('Error checking couple profile: $e');
-    }
   }
 
   Future<void> _loadPricesFromDatabase() async {
@@ -70,6 +54,10 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
       debugPrint('TemporalPurchaseScreen: Loaded prices - Day: $_priceDayFcfa, Month: $_priceMonthFcfa, Year: $_priceYearFcfa');
     } catch (e) {
       debugPrint('TemporalPurchaseScreen: Error loading prices: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingPrices = false);
+      }
     }
   }
 
@@ -84,6 +72,8 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
         return _priceDayFcfa;
     }
   }
+
+  bool get _isPriceConfigured => _basePrice != null;
 
   int get _totalPrice {
     final base = _basePrice;
@@ -657,215 +647,6 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
       return;
     }
 
-    // If no couple profile exists, collect info first
-    if (!_hasCoupleProfile) {
-      _showCoupleProfileDialog(user.id);
-      return;
-    }
-
-    // Profile exists, proceed with payment
-    _proceedWithPayment(user.id);
-  }
-
-  /// Show dialog to collect couple profile info
-  Future<void> _showCoupleProfileDialog(String userId) async {
-    final userNameController = TextEditingController();
-    final partnerNameController = TextEditingController();
-    DateTime? userBirthdate;
-    DateTime? partnerBirthdate;
-    String userGender = 'non_precise';
-    String partnerGender = 'non_precise';
-
-    final result = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          backgroundColor: AppColors.block,
-          title: Text(
-            'Informations du couple',
-            style: GoogleFonts.philosopher(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textLight,
-            ),
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Pour générer votre prévision, nous avons besoin des informations suivantes :',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-                ),
-                const SizedBox(height: 16),
-                
-                // User info
-                const Text('Votre prénom', style: TextStyle(color: AppColors.textLight, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: userNameController,
-                  style: const TextStyle(color: AppColors.textLight),
-                  decoration: InputDecoration(
-                    hintText: 'Votre prénom',
-                    hintStyle: const TextStyle(color: AppColors.textMuted),
-                    filled: true,
-                    fillColor: AppColors.background,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                
-                const Text('Votre date de naissance', style: TextStyle(color: AppColors.textLight, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 6),
-                GestureDetector(
-                  onTap: () async {
-                    final date = await showDatePicker(
-                      context: ctx,
-                      initialDate: DateTime(1990, 1, 1),
-                      firstDate: DateTime(1920),
-                      lastDate: DateTime.now(),
-                    );
-                    if (date != null) setDialogState(() => userBirthdate = date);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          userBirthdate != null 
-                              ? '${userBirthdate!.day}/${userBirthdate!.month}/${userBirthdate!.year}'
-                              : 'Sélectionner...',
-                          style: TextStyle(color: userBirthdate != null ? AppColors.textLight : AppColors.textMuted),
-                        ),
-                        const Icon(Icons.calendar_today, color: AppColors.primary, size: 20),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                
-                // Divider
-                Divider(color: AppColors.textMuted.withValues(alpha: 0.3)),
-                const SizedBox(height: 12),
-                
-                // Partner info
-                const Text('Prénom du partenaire', style: TextStyle(color: AppColors.textLight, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: partnerNameController,
-                  style: const TextStyle(color: AppColors.textLight),
-                  decoration: InputDecoration(
-                    hintText: 'Prénom du partenaire',
-                    hintStyle: const TextStyle(color: AppColors.textMuted),
-                    filled: true,
-                    fillColor: AppColors.background,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                
-                const Text('Date de naissance du partenaire', style: TextStyle(color: AppColors.textLight, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 6),
-                GestureDetector(
-                  onTap: () async {
-                    final date = await showDatePicker(
-                      context: ctx,
-                      initialDate: DateTime(1990, 1, 1),
-                      firstDate: DateTime(1920),
-                      lastDate: DateTime.now(),
-                    );
-                    if (date != null) setDialogState(() => partnerBirthdate = date);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.grey),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          partnerBirthdate != null 
-                              ? '${partnerBirthdate!.day}/${partnerBirthdate!.month}/${partnerBirthdate!.year}'
-                              : 'Sélectionner...',
-                          style: TextStyle(color: partnerBirthdate != null ? AppColors.textLight : AppColors.textMuted),
-                        ),
-                        const Icon(Icons.calendar_today, color: AppColors.primary, size: 20),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Annuler'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                // Validate
-                if (userNameController.text.trim().isEmpty ||
-                    partnerNameController.text.trim().isEmpty ||
-                    userBirthdate == null ||
-                    partnerBirthdate == null) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    const SnackBar(content: Text('Veuillez remplir tous les champs')),
-                  );
-                  return;
-                }
-                Navigator.pop(ctx, true);
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-              child: const Text('Continuer', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (result == true) {
-      // Create couple profile
-      try {
-        setState(() => _isProcessingPayment = true);
-        
-        final created = await TemporalReportService.instance.createCoupleProfile(
-          userFirstname: userNameController.text.trim(),
-          userBirthdate: userBirthdate!,
-          userGender: userGender,
-          partnerFirstname: partnerNameController.text.trim(),
-          partnerBirthdate: partnerBirthdate!,
-          partnerGender: partnerGender,
-          userId: userId,
-        );
-
-        if (created) {
-          setState(() => _hasCoupleProfile = true);
-          // Now proceed with payment
-          _proceedWithPayment(userId);
-        } else {
-          setState(() => _isProcessingPayment = false);
-          _showSnack('Erreur lors de la création du profil. Veuillez réessayer.');
-        }
-      } catch (e) {
-        setState(() => _isProcessingPayment = false);
-        _showSnack('Erreur: ${e.toString()}');
-      }
-    }
-  }
-
-  void _proceedWithPayment(String userId) {
     setState(() => _isProcessingPayment = true);
     
     KkiapayService.instance.startPayment(
@@ -885,7 +666,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
           final report = await service.generateReport(
             periode: _selectedPeriod,
             date: _selectedDate,
-            userId: userId,
+            userId: user.id,
           );
           
           setState(() => _isProcessingPayment = false);

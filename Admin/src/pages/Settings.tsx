@@ -8,15 +8,6 @@ type TemporalBonusSettings = {
     day: boolean;
 };
 
-type PrimaryService = 'compatibilite' | 'prevision_jour' | 'prevision_mois' | 'prevision_annee';
-
-const SERVICE_OPTIONS: { value: PrimaryService; label: string; icon: string }[] = [
-    { value: 'compatibilite', label: 'Rapport de Compatibilité', icon: '💕' },
-    { value: 'prevision_jour', label: 'Prévision du Jour', icon: '📌' },
-    { value: 'prevision_mois', label: 'Prévision du Mois', icon: '📅' },
-    { value: 'prevision_annee', label: 'Prévision de l\'Année', icon: '📆' },
-];
-
 export default function Settings() {
     const [bonusSettings, setBonusSettings] = useState<TemporalBonusSettings>({
         enabled: true,
@@ -24,7 +15,6 @@ export default function Settings() {
         month: true,
         day: true,
     });
-    const [primaryService, setPrimaryService] = useState<PrimaryService>('compatibilite');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<string | null>(null);
@@ -36,34 +26,22 @@ export default function Settings() {
     async function loadSettings() {
         setLoading(true);
         try {
-            // Load bonus settings
-            const { data: bonusData, error: bonusError } = await supabase
+            const { data, error } = await supabase
                 .from('app_settings')
                 .select('value')
                 .eq('key', 'bonus_temporels')
                 .maybeSingle();
 
-            if (bonusError) throw bonusError;
-            if (bonusData?.value) {
-                const frValue = bonusData.value as { activé?: boolean; année?: boolean; mois?: boolean; jour?: boolean };
+            if (error) throw error;
+            if (data?.value) {
+                // Map French keys to English for internal state
+                const frValue = data.value as { activé?: boolean; année?: boolean; mois?: boolean; jour?: boolean };
                 setBonusSettings({
                     enabled: frValue.activé ?? true,
                     year: frValue.année ?? true,
                     month: frValue.mois ?? true,
                     day: frValue.jour ?? true,
                 });
-            }
-
-            // Load primary service setting
-            const { data: serviceData, error: serviceError } = await supabase
-                .from('app_settings')
-                .select('value')
-                .eq('key', 'service_principal')
-                .maybeSingle();
-
-            if (serviceError) console.warn('No service_principal setting found, using default');
-            if (serviceData?.value?.type) {
-                setPrimaryService(serviceData.value.type as PrimaryService);
             }
         } catch (e) {
             console.error('Load settings error:', e);
@@ -75,7 +53,7 @@ export default function Settings() {
         setSaving(true);
         setSaveStatus(null);
         try {
-            // Save bonus settings
+            // Map English keys to French for database storage
             const frValue = {
                 activé: bonusSettings.enabled,
                 année: bonusSettings.year,
@@ -83,7 +61,7 @@ export default function Settings() {
                 jour: bonusSettings.day,
             };
 
-            const { error: bonusError } = await supabase
+            const { error } = await supabase
                 .from('app_settings')
                 .upsert({
                     key: 'bonus_temporels',
@@ -91,19 +69,7 @@ export default function Settings() {
                     updated_at: new Date().toISOString(),
                 });
 
-            if (bonusError) throw bonusError;
-
-            // Save primary service setting
-            const { error: serviceError } = await supabase
-                .from('app_settings')
-                .upsert({
-                    key: 'service_principal',
-                    value: { type: primaryService },
-                    updated_at: new Date().toISOString(),
-                });
-
-            if (serviceError) throw serviceError;
-
+            if (error) throw error;
             setSaveStatus('✅ Paramètres enregistrés !');
             setTimeout(() => setSaveStatus(null), 3000);
         } catch (e: any) {
@@ -124,30 +90,6 @@ export default function Settings() {
     return (
         <div className="page settings">
             <h2 className="page-title">Paramètres</h2>
-
-            {/* Primary Service Section */}
-            <div className="settings-section">
-                <h3>🏠 Service Principal (Accueil)</h3>
-                <p className="muted">
-                    Choisissez le service affiché en premier sur la page d'accueil de l'application.
-                </p>
-
-                <div className="service-selector">
-                    {SERVICE_OPTIONS.map((option) => (
-                        <div
-                            key={option.value}
-                            className={`service-option ${primaryService === option.value ? 'selected' : ''}`}
-                            onClick={() => setPrimaryService(option.value)}
-                        >
-                            <span className="service-icon">{option.icon}</span>
-                            <span className="service-label">{option.label}</span>
-                            {primaryService === option.value && (
-                                <span className="check-mark">✓</span>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            </div>
 
             {/* Temporal Bonuses Section */}
             <div className="settings-section">
@@ -303,43 +245,6 @@ export default function Settings() {
                 .save-btn {
                     margin-top: 16px;
                     width: 100%;
-                }
-                .service-selector {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 10px;
-                    margin-top: 16px;
-                }
-                .service-option {
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    padding: 16px;
-                    background: rgba(255,255,255,0.05);
-                    border: 2px solid transparent;
-                    border-radius: 12px;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                }
-                .service-option:hover {
-                    background: rgba(255,255,255,0.1);
-                    border-color: rgba(102,126,234,0.3);
-                }
-                .service-option.selected {
-                    background: rgba(102,126,234,0.15);
-                    border-color: #667eea;
-                }
-                .service-icon {
-                    font-size: 24px;
-                }
-                .service-label {
-                    flex: 1;
-                    font-weight: 500;
-                }
-                .check-mark {
-                    color: #667eea;
-                    font-weight: bold;
-                    font-size: 18px;
                 }
             `}</style>
         </div>

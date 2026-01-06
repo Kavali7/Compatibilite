@@ -124,7 +124,6 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     PricingService.instance.fetchPlans().then((_) {
       if (mounted) {
         setState(() {
-          _selectedPlan = PricingService.instance.consultationPlan;
           try {
             _selectedPlan = PricingService.instance.consultationPlan;
           } catch (e) {
@@ -1660,8 +1659,6 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   /// Payment step widget
   Widget _buildPaymentStep() {
     final pricingService = PricingService.instance;
-    final consultationPlan = pricingService.consultationPlan;
-    final subscriptionPlan = pricingService.subscriptionPlan;
     
     // Afficher un chargement si les plans ne sont pas encore chargés
     if (pricingService.plans.isEmpty) {
@@ -1963,7 +1960,6 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         // Fetch if not loaded
         await PricingService.instance.fetchPlans();
       }
-      _selectedPlan = PricingService.instance.consultationPlan;
       try {
         _selectedPlan = PricingService.instance.consultationPlan;
       } catch (e) {
