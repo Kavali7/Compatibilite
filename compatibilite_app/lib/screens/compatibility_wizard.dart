@@ -97,7 +97,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   static const _supportEmail = 'growpeak.agence@gmail.com';
   static const _supportPhone = '0022654255584';
 
-  static const _totalSteps = 8; // Updated from 7 to include payment step
+  static const _totalSteps = 7; // Welcome, Names, BirthA, BirthB, Context, Contact, Results
   static const _challengeOptions = [
     'Communication',
     'Confiance',
@@ -234,71 +234,39 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     if (_isSaving || _isProcessingPayment) return;
     if (!_validateCurrentStep()) return;
     
-    // Step 5 (Contact) -> Step 6 (Payment): Compute summary first
-    if (_currentStep == 5) {
+    // Step 4 (Context) -> Step 5 (Contact): Prepare summary
+    if (_currentStep == 4) {
       _computeSummary();
-      await _saveSessionIfPossible();
     }
     
-    // Step 6 (Payment) -> Step 7 (Results): Process payment
-    if (_currentStep == 6) {
-      // DEBUG: Bypass payment for testing
-      if (kDebugBypassPayment) {
-        debugPrint('⚠️ DEBUG MODE: Bypassing payment validation!');
+    // Step 5 (Contact): Payment is handled by the button directly via _initiatePayment
+    // This function is NOT called for step 5 when clicking "Voir mes résultats"
+    // But handle edge case where user has subscription and can skip payment
+    if (_currentStep == 5 && !_paymentCompleted) {
+      // Check for active subscription - if yes, skip payment
+      final email = _emailController.text.trim();
+      final hasSubscription = await AuthService.instance.hasActiveSubscription(email);
+      if (hasSubscription) {
         _paymentCompleted = true;
+        await _saveSessionIfPossible();
         
-        // Also create/auth the test user so temporal reports work
-        final email = _emailController.text.trim();
-        final password = _passwordController.text;
-        if (email.isNotEmpty && password.isNotEmpty) {
-          debugPrint('⚠️ DEBUG MODE: Creating/authenticating test user: $email');
-          try {
-            // Try to sign up or sign in
-            var user = await AuthService.instance.signIn(email: email, password: password);
-            user ??= await AuthService.instance.signUp(
-              email: email,
-              password: password,
-              name: _nameAController.text.trim(),
-            );
-            debugPrint('⚠️ DEBUG MODE: User authenticated: ${user?.id}');
-            
-            // CRITICAL: Save profile now that user exists
-            if (user != null) {
-              await _saveCoupleProfile(); 
-            }
-          } catch (e) {
-            debugPrint('⚠️ DEBUG MODE: Auth error: $e');
-          }
-        }
-      }
-      
-      // Payment validation happens in _validateCurrentStep
-      // Only proceed if payment is completed or user has active subscription
-      if (!_paymentCompleted) {
-        // Check for active subscription
-        final email = _emailController.text.trim();
-        final hasSubscription = await AuthService.instance.hasActiveSubscription(email);
-        if (!hasSubscription) {
-          // Trigger payment flow instead of blocking
-          _initiatePayment();
-          return;
-        }
-        _paymentCompleted = true;
-        
-        // If coming from subscription check, ensure we have a local user session
+        // Authenticate user if not already
         if (!AuthService.instance.isLoggedIn) {
-           // We might need to silently login or handle this case
-           // For now assuming existing flow handles it elsewhere or relies on local state
+          final password = _passwordController.text;
+          await AuthService.instance.signIn(email: email, password: password);
         }
+        
+        if (AuthService.instance.isLoggedIn) {
+          await _saveCoupleProfile();
+        }
+        
+        _loadTemporalReports();
+        // Continue to results
+      } else {
+        // No subscription, payment required - but this shouldn't happen
+        // since button calls _initiatePayment directly
+        return;
       }
-
-      // Final check: ensure profile exists before loading reports
-      if (AuthService.instance.isLoggedIn) {
-         await _saveCoupleProfile();
-      }
-
-      // Load temporal reports after payment success
-      _loadTemporalReports();
     }
     
     if (_currentStep < _totalSteps - 1) {
@@ -824,7 +792,6 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
                   _buildBirthdatesStep(isFirst: false),
                   _buildContextStep(),
                   _buildContactStep(),
-                  _buildPaymentStep(),
                   _buildResultsStep(),
                 ],
               ),
@@ -926,7 +893,8 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
       return const SizedBox.shrink();
     }
 
-    final isPaymentStep = _currentStep == 6 && !_paymentCompleted;
+    // Step 5 (Contact) is the last step before results - clicking triggers payment
+    final isContactStep = _currentStep == 5 && !_paymentCompleted;
 
     return Row(
       children: [
@@ -945,16 +913,16 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         if (_currentStep > 0) const SizedBox(width: 12),
         Expanded(
           child: ElevatedButton(
-            onPressed: (_isSaving || _isProcessingPayment) ? null : (isPaymentStep ? _initiatePayment : _goNext),
+            onPressed: (_isSaving || _isProcessingPayment) ? null : (isContactStep ? _initiatePayment : _goNext),
             child: (_isSaving || _isProcessingPayment)
                 ? const SizedBox(
                     height: 18,
                     width: 18,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
-                : Text(isPaymentStep 
-                    ? 'Payer ${_selectedPlan?.priceFcfa ?? 0} FCFA' 
-                    : (_currentStep == _totalSteps - 2 ? 'Voir mes résultats' : 'Continuer')),
+                : Text(isContactStep 
+                    ? 'Voir mes résultats (${_selectedPlan?.priceFcfa ?? 0} FCFA)' 
+                    : 'Continuer'),
           ),
         ),
       ],
@@ -1952,25 +1920,61 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   }
 
   Future<void> _initiatePayment() async {
+    debugPrint('>>> _initiatePayment called');
+    
+    // Validate contact step first
+    if (!_validateCurrentStep()) {
+      debugPrint('>>> _initiatePayment: Validation failed');
+      return;
+    }
+    debugPrint('>>> _initiatePayment: Validation passed');
+    
+    // Compute summary if not already done
+    if (_summary == null) {
+      debugPrint('>>> _initiatePayment: Computing summary...');
+      _computeSummary();
+    }
+    
+    // Save session before payment
+    debugPrint('>>> _initiatePayment: Saving session...');
+    await _saveSessionIfPossible();
+    
     // Auto-select consultation plan if not already selected
     if (_selectedPlan == null) {
+      debugPrint('>>> _initiatePayment: No plan selected, fetching...');
       // Try to get from service
       final plans = PricingService.instance.plans;
+      debugPrint('>>> _initiatePayment: Current plans count: ${plans.length}');
+      
       if (plans.isEmpty) {
         // Fetch if not loaded
+        debugPrint('>>> _initiatePayment: Plans empty, fetching from server...');
         await PricingService.instance.fetchPlans();
+        debugPrint('>>> _initiatePayment: After fetch, plans count: ${PricingService.instance.plans.length}');
       }
+      
       try {
-        _selectedPlan = PricingService.instance.consultationPlan;
+        // Use safe getter with fallback
+        final allPlans = PricingService.instance.plans;
+        if (allPlans.isNotEmpty) {
+          // Try to find consultation plan, or use first available
+          _selectedPlan = allPlans.firstWhere(
+            (p) => p.planType.toLowerCase().contains('consultation'),
+            orElse: () => allPlans.first,
+          );
+          debugPrint('>>> _initiatePayment: Selected plan: ${_selectedPlan?.planType} - ${_selectedPlan?.priceFcfa} FCFA');
+        }
       } catch (e) {
-        debugPrint('Erreur sélection plan auto: $e');
+        debugPrint('>>> _initiatePayment: Error selecting plan: $e');
       }
       
       if (_selectedPlan == null) {
-        _showSnack('Erreur: impossible de charger les forfaits.');
+        debugPrint('>>> _initiatePayment: FAILED - No plan available');
+        _showSnack('Erreur: impossible de charger les forfaits. Vérifiez votre connexion.');
         return;
       }
     }
+    debugPrint('>>> _initiatePayment: Plan ready: ${_selectedPlan!.planType} - ${_selectedPlan!.priceFcfa} FCFA');
 
     setState(() => _isProcessingPayment = true);
 
