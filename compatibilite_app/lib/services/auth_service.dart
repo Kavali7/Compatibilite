@@ -33,22 +33,13 @@ class AuthService {
   AuthService._();
   static final AuthService instance = AuthService._();
 
-  static const _tableUsers = 'users';
   static const _tableSubscriptions = 'subscriptions';
-  final Uuid _uuid = const Uuid();
 
   SupabaseClient? get _client => SupabaseManager.isReady ? SupabaseManager.client : null;
 
   AppUser? _currentUser;
   AppUser? get currentUser => _currentUser;
   bool get isLoggedIn => _currentUser != null;
-
-  /// Hash password using SHA-256
-  String _hashPassword(String password) {
-    final bytes = utf8.encode(password);
-    final digest = sha256.convert(bytes);
-    return digest.toString();
-  }
 
   /// Sign up a new user with email and password
   Future<AppUser?> signUp({

@@ -125,6 +125,11 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
       if (mounted) {
         setState(() {
           _selectedPlan = PricingService.instance.consultationPlan;
+          try {
+            _selectedPlan = PricingService.instance.consultationPlan;
+          } catch (e) {
+            debugPrint('Plan par défaut non trouvé: $e');
+          }
         });
       }
     });
@@ -922,6 +927,8 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
       return const SizedBox.shrink();
     }
 
+    final isPaymentStep = _currentStep == 6 && !_paymentCompleted;
+
     return Row(
       children: [
         if (_currentStep > 0)
@@ -939,14 +946,16 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         if (_currentStep > 0) const SizedBox(width: 12),
         Expanded(
           child: ElevatedButton(
-            onPressed: _isSaving ? null : _goNext,
-            child: _isSaving
+            onPressed: (_isSaving || _isProcessingPayment) ? null : (isPaymentStep ? _initiatePayment : _goNext),
+            child: (_isSaving || _isProcessingPayment)
                 ? const SizedBox(
                     height: 18,
                     width: 18,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
-                : Text(_currentStep == _totalSteps - 2 ? 'Voir mes résultats' : 'Continuer'),
+                : Text(isPaymentStep 
+                    ? 'Payer ${_selectedPlan?.priceFcfa ?? 0} FCFA' 
+                    : (_currentStep == _totalSteps - 2 ? 'Voir mes résultats' : 'Continuer')),
           ),
         ),
       ],
@@ -1653,7 +1662,46 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     final pricingService = PricingService.instance;
     final consultationPlan = pricingService.consultationPlan;
     final subscriptionPlan = pricingService.subscriptionPlan;
+    
+    // Afficher un chargement si les plans ne sont pas encore chargés
+    if (pricingService.plans.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(color: AppColors.primary),
+            const SizedBox(height: 16),
+            const Text('Chargement des offres...', style: TextStyle(color: AppColors.textMuted)),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () {
+                PricingService.instance.fetchPlans().then((_) {
+                  if (mounted) setState(() {});
+                });
+              },
+              child: const Text('Réactualiser'),
+            ),
+          ],
+        ),
+      );
+    }
 
+    PricingPlan consultationPlan;
+    PricingPlan subscriptionPlan;
+
+    // Sécuriser l'accès aux plans spécifiques
+    try {
+      consultationPlan = pricingService.consultationPlan;
+      subscriptionPlan = pricingService.subscriptionPlan;
+    } catch (e) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(20.0),
+          child: Text('Les offres ne sont pas disponibles pour le moment.', style: TextStyle(color: AppColors.textMuted)),
+        ),
+      );
+    }
+    
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       child: Column(
@@ -1867,65 +1915,6 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     );
   }
 
-  Widget _buildPaymentButton() {
-    if (_isProcessingPayment) {
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.3),
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-              ),
-            ),
-            SizedBox(width: 12),
-            Text(
-              'Traitement en cours...',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-      );
-    }
-
-    final amount = _selectedPlan?.priceFcfa ?? 0; // No hardcoded fallback - must come from DB
-
-    return ElevatedButton(
-      onPressed: _initiatePayment,
-      style: ElevatedButton.styleFrom(
-        minimumSize: const Size(double.infinity, 56),
-        backgroundColor: AppColors.primary,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.lock, color: Colors.white),
-          const SizedBox(width: 8),
-          Text(
-            'Payer $amount FCFA',
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildPaymentSuccessCard() {
     return Container(
       width: double.infinity,
@@ -1975,6 +1964,11 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         await PricingService.instance.fetchPlans();
       }
       _selectedPlan = PricingService.instance.consultationPlan;
+      try {
+        _selectedPlan = PricingService.instance.consultationPlan;
+      } catch (e) {
+        debugPrint('Erreur sélection plan auto: $e');
+      }
       
       if (_selectedPlan == null) {
         _showSnack('Erreur: impossible de charger les forfaits.');
@@ -2059,10 +2053,9 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
               _isProcessingPayment = false;
               _paymentCompleted = true;
             });
+            _showSnack('Paiement réussi !');
           }
 
-          _showSnack('Paiement réussi !');
-          
           // Directly advance to results step instead of calling _goNext()
           // to avoid re-checking payment conditions
           if (mounted) {
@@ -2077,8 +2070,10 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
             );
           }
         } catch (e) {
-          if (mounted) setState(() => _isProcessingPayment = false);
-          _showSnack('Erreur: ${e.toString()}');
+          if (mounted) {
+            setState(() => _isProcessingPayment = false);
+            _showSnack('Erreur: ${e.toString()}');
+          }
         }
       },
     );

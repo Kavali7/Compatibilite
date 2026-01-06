@@ -21,11 +21,9 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
   DateTime? _endDate; // For ranges
   bool _isRange = false;
   bool _isProcessingPayment = false;
-  bool _isLoadingPrices = true;
   
   // Couple profile state
   bool _hasCoupleProfile = false;
-  bool _isCheckingProfile = true;
 
   // Pricing (in FCFA) - loaded from database, null if not configured
   int? _priceDayFcfa;
@@ -45,14 +43,10 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
       if (mounted) {
         setState(() {
           _hasCoupleProfile = hasProfile;
-          _isCheckingProfile = false;
         });
       }
     } catch (e) {
       debugPrint('Error checking couple profile: $e');
-      if (mounted) {
-        setState(() => _isCheckingProfile = false);
-      }
     }
   }
 
@@ -76,10 +70,6 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
       debugPrint('TemporalPurchaseScreen: Loaded prices - Day: $_priceDayFcfa, Month: $_priceMonthFcfa, Year: $_priceYearFcfa');
     } catch (e) {
       debugPrint('TemporalPurchaseScreen: Error loading prices: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _isLoadingPrices = false);
-      }
     }
   }
 
@@ -94,8 +84,6 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
         return _priceDayFcfa;
     }
   }
-
-  bool get _isPriceConfigured => _basePrice != null;
 
   int get _totalPrice {
     final base = _basePrice;
@@ -922,4 +910,3 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
     );
   }
 }
-
