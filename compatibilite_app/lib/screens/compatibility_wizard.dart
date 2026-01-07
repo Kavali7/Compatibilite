@@ -918,7 +918,14 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         if (_currentStep > 0) const SizedBox(width: 12),
         Expanded(
           child: ElevatedButton(
-            onPressed: (_isSaving || _isProcessingPayment) ? null : (isContactStep ? _initiatePayment : _goNext),
+            onPressed: (_isSaving || _isProcessingPayment) ? null : () {
+              debugPrint('>>> Button pressed! Step: $_currentStep, isContactStep: ${_currentStep == 5 && !_paymentCompleted}, _isSaving: $_isSaving, _isProcessingPayment: $_isProcessingPayment');
+              if (_currentStep == 5 && !_paymentCompleted) {
+                _initiatePayment();
+              } else {
+                _goNext();
+              }
+            },
             child: (_isSaving || _isProcessingPayment)
                 ? const SizedBox(
                     height: 18,
