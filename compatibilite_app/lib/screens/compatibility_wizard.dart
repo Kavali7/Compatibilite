@@ -1636,6 +1636,44 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     });
   }
 
+  /// Register or sign in user based on email existence
+  Future<bool> _registerOrSignInUser() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final name = _nameAController.text.trim(); // Use partner A name as user name
+    
+    if (email.isEmpty || password.isEmpty) {
+      _showSnack('Email et mot de passe requis.');
+      return false;
+    }
+
+    try {
+      // If email exists, try to sign in
+      if (_emailExists) {
+        debugPrint('>>> _registerOrSignInUser: Logging in existing user...');
+        await AuthService.instance.signIn(
+          email: email,
+          password: password,
+        );
+      } else {
+        // Otherwise, sign up
+        debugPrint('>>> _registerOrSignInUser: Creating new account...');
+        await AuthService.instance.signUp(
+          email: email,
+          password: password,
+          name: name,
+        );
+      }
+      return true;
+    } catch (e) {
+      debugPrint('>>> _registerOrSignInUser: Auth Error: $e');
+      _showSnack(_emailExists 
+        ? 'Échec de connexion. Vérifiez votre mot de passe.' 
+        : 'Échec de l\'inscription. ${e.toString()}');
+      return false;
+    }
+  }
+
   /// Payment step widget
   Widget _buildPaymentStep() {
     final pricingService = PricingService.instance;
@@ -1950,6 +1988,16 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     // Save session before payment
     debugPrint('>>> _initiatePayment: Saving session...');
     await _saveSessionIfPossible();
+
+    // Authenticate user (Create account or Login)
+    debugPrint('>>> _initiatePayment: Authenticating user...');
+    final authSuccess = await _registerOrSignInUser();
+    if (!authSuccess) {
+       debugPrint('>>> _initiatePayment: Authentication failed');
+       setState(() => _isProcessingPayment = false);
+       return;
+    }
+    debugPrint('>>> _initiatePayment: Authentication successful');
     
     // Auto-select consultation plan if not already selected
     if (_selectedPlan == null) {
