@@ -34,6 +34,15 @@ class PartnerReport {
     required this.personalYear,
     required this.personalMonth,
     required this.personalDay,
+    // Text definitions (Backend)
+    this.nameMeaning,
+    this.lifePathMeaning,
+    this.kabbalahMeaning,
+    this.intimateMeaning,
+    this.personalityMeaning,
+    this.heredityMeaning,
+    this.personalYearMeaning,
+    this.personalDayMeaning,
   });
 
   final PartnerInput input;
@@ -46,6 +55,16 @@ class PartnerReport {
   final int personalYear;
   final int personalMonth;
   final int personalDay;
+  
+  // Meanings
+  final String? nameMeaning;
+  final String? lifePathMeaning;
+  final String? kabbalahMeaning;
+  final String? intimateMeaning;
+  final String? personalityMeaning;
+  final String? heredityMeaning;
+  final String? personalYearMeaning;
+  final String? personalDayMeaning;
 }
 
 class CompatibilitySummary {
@@ -55,6 +74,9 @@ class CompatibilitySummary {
     required this.coupleNumber,
     required this.coupleDailyNumber,
     required this.generatedAt,
+    this.coupleMeaning,
+    this.coupleDeepMeaning,
+    this.coupleDailyMeaning,
   });
 
   final PartnerReport partnerA;
@@ -62,4 +84,9 @@ class CompatibilitySummary {
   final int coupleNumber;
   final int coupleDailyNumber;
   final DateTime generatedAt;
+  
+  // Meanings
+  final String? coupleMeaning;
+  final String? coupleDeepMeaning;
+  final String? coupleDailyMeaning;
 }

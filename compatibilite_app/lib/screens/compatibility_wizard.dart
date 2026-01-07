@@ -6,7 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../models/compatibility_models.dart';
 import '../models/legal_models.dart'; // Added
-import '../services/numerology_service.dart';
+// import '../services/numerology_service.dart'; // Removed
 import '../services/compatibility_repository.dart';
 import '../services/supabase_manager.dart';
 import '../services/auth_service.dart';
@@ -49,9 +49,10 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
-  final NumerologyService _service = NumerologyService();
+  final TemporalReportService _reportService = TemporalReportService.instance;
   CompatibilityRepository? _repository;
 
+  bool _isComputing = false; // Add this flag
   int _currentStep = 0;
   DateTime? _birthA;
   DateTime? _birthB;
@@ -187,8 +188,13 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           _partnerAInput = PartnerInput(name: _nameAController.text, birthDate: _birthA!, role: 'Partenaire 1');
           _partnerBInput = PartnerInput(name: _nameBController.text, birthDate: _birthB!, role: 'Partenaire 2');
           
-          // Recompute summary
-          _summary = _service.buildSummary(_partnerAInput!, _partnerBInput!);
+          // Recompute summary (Fetch from Backend)
+          final coupleId = profile['id'] as String;
+          _summary = await _reportService.fetchFullProfile(
+            coupleId: coupleId,
+            partnerAInput: _partnerAInput!,
+            partnerBInput: _partnerBInput!,
+          );
           
           // Mark payment as done if user has subscription
           _paymentCompleted = user.hasActiveSubscription;
@@ -235,8 +241,9 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     if (!_validateCurrentStep()) return;
     
     // Step 4 (Context) -> Step 5 (Contact): Prepare summary
+    // Calculation delayed to Step 5 (After Auth)
     if (_currentStep == 4) {
-      _computeSummary();
+      // _fetchAndSetSummary();
     }
     
     // Step 5 (Contact): Payment is handled by the button directly via _initiatePayment
@@ -462,23 +469,54 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     );
   }
 
-  void _computeSummary() {
-    final partnerA = PartnerInput(
-      name: _nameAController.text,
-      birthDate: _birthA!,
-      role: 'Partenaire 1',
-    );
-    final partnerB = PartnerInput(
-      name: _nameBController.text,
-      birthDate: _birthB!,
-      role: 'Partenaire 2',
-    );
-    final summary = _service.buildSummary(partnerA, partnerB);
-    setState(() {
-      _summary = summary;
-      _partnerAInput = partnerA;
-      _partnerBInput = partnerB;
-    });
+  Future<void> _fetchAndSetSummary() async {
+    final user = AuthService.instance.currentUser;
+    if (user == null) {
+      debugPrint('Skipping fetch: User not logged in');
+      return;
+    }
+
+    setState(() => _isComputing = true);
+
+    try {
+      final partnerA = PartnerInput(
+        name: _nameAController.text,
+        birthDate: _birthA!,
+        role: 'Partenaire 1',
+      );
+      final partnerB = PartnerInput(
+        name: _nameBController.text,
+        birthDate: _birthB!,
+        role: 'Partenaire 2',
+      );
+      
+      // 1. Ensure profile exists (Upsert)
+      await _saveCoupleProfile();
+      
+      // 2. Get ID
+      final coupleId = await _reportService.getCoupleProfileId(userId: user.id);
+      if (coupleId == null) throw Exception('Profil couple non trouvé');
+      
+      // 3. RPC Call
+      final summary = await _reportService.fetchFullProfile(
+        coupleId: coupleId,
+        partnerAInput: partnerA,
+        partnerBInput: partnerB,
+      );
+      
+      if (summary != null) {
+        setState(() {
+          _summary = summary;
+          _partnerAInput = partnerA;
+          _partnerBInput = partnerB;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching summary: $e');
+      _showSnack('Erreur lors du calcul: $e');
+    } finally {
+      if (mounted) setState(() => _isComputing = false);
+    }
   }
 
   Future<void> _saveCoupleProfile() async {
@@ -1979,17 +2017,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     }
     debugPrint('>>> _initiatePayment: Validation passed');
     
-    // Compute summary if not already done
-    if (_summary == null) {
-      debugPrint('>>> _initiatePayment: Computing summary...');
-      _computeSummary();
-    }
-    
-    // Save session before payment
-    debugPrint('>>> _initiatePayment: Saving session...');
-    await _saveSessionIfPossible();
-
-    // Authenticate user (Create account or Login)
+    // Authenticate user (Create account or Login) first
     debugPrint('>>> _initiatePayment: Authenticating user...');
     final authSuccess = await _registerOrSignInUser();
     if (!authSuccess) {
@@ -1998,6 +2026,24 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
        return;
     }
     debugPrint('>>> _initiatePayment: Authentication successful');
+
+    // Compute summary (Fetch from Backend)
+    // Now that we are authenticated, we can create the profile and call the RPC
+    if (_summary == null) {
+      debugPrint('>>> _initiatePayment: Fetching summary from backend...');
+      await _fetchAndSetSummary();
+      if (_summary == null) {
+        debugPrint('>>> _initiatePayment: Failed to fetch summary');
+        _showSnack('Erreur lors du calcul du rapport. Veuillez réessayer.');
+        setState(() => _isProcessingPayment = false);
+        return;
+      }
+    }
+    
+    // Save session before payment
+    debugPrint('>>> _initiatePayment: Saving session...');
+    await _saveSessionIfPossible();
+
     
     // Auto-select consultation plan if not already selected
     if (_selectedPlan == null) {
@@ -2318,8 +2364,12 @@ Widget _buildResultsStep() {
 
 
 Widget _coupleCard(CompatibilitySummary summary) {
-    final interpretation = _service.describeCoupleNumber(summary.coupleNumber);
-    final label = _service.archetypeLabel(summary.coupleNumber);
+    // Backend returns title/body combined or separate. We used combined in extractText.
+    final interpretation = summary.coupleMeaning ?? 'Interprétation indisponible.';
+    // Archetype is part of the text now (e.g. "3 - L'Artiste")
+    // If we want just the label ("L'Artiste"), we assume it's in the title.
+    // For now, let's just show "Dynamique du couple" title and the interpretation.
+    
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -2331,7 +2381,7 @@ Widget _coupleCard(CompatibilitySummary summary) {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Dynamique du couple : $label',
+            'Dynamique du couple',
             style: GoogleFonts.philosopher(fontSize: 20, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
@@ -2347,7 +2397,9 @@ Widget _coupleCard(CompatibilitySummary summary) {
   }
 
   Widget _coupleDeepCard(CompatibilitySummary summary) {
-    final deep = _service.describeCoupleDeep(summary.coupleNumber);
+    final deep = summary.coupleDeepMeaning ?? '';
+    if (deep.isEmpty) return const SizedBox.shrink();
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -2387,54 +2439,33 @@ Widget _coupleCard(CompatibilitySummary summary) {
             style: GoogleFonts.philosopher(fontSize: 18, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
-          _numberRow('Profil essentiel', report.lifePath, _service.describeBaseNumber(report.lifePath)),
+          _numberRow('Profil essentiel', report.lifePathMeaning),
           const SizedBox(height: 6),
-          _numberRow('Signature relationnelle', report.nameNumber, _service.describeNameNumber(report.nameNumber)),
+          _numberRow('Signature relationnelle', report.nameMeaning),
           const SizedBox(height: 6),
-          _numberRow('Tonalité intime', report.intimateNumber, _service.describeIntimateNumber(report.intimateNumber)),
+          _numberRow('Tonalité intime', report.intimateMeaning),
           const SizedBox(height: 6),
-          _numberRow('Style social', report.personalityNumber, _service.describePersonalityNumber(report.personalityNumber)),
+          _numberRow('Style social', report.personalityMeaning),
           const SizedBox(height: 6),
-          _numberRow('Racines', report.heredityNumber, _service.describeHeredityNumber(report.heredityNumber)),
+          // Heredity might be missing from backend for now
+          // _numberRow('Racines', report.heredityMeaning), 
+          // const SizedBox(height: 6),
+          _numberRow('Énergie complémentaire', report.kabbalahMeaning),
           const SizedBox(height: 6),
-          _numberRow('Énergie complémentaire', report.kabbalahNumber, _service.describeKabbalahNumber(report.kabbalahNumber)),
-          const SizedBox(height: 6),
-          _numberRow('Rythme annuel', report.personalYear, _service.describePersonalYear(report.personalYear)),
-          const SizedBox(height: 8),
-          _guideRow(report),
+          // Personal Year might be 0/null in current implementation
+          // _numberRow('Rythme annuel', report.personalYearMeaning),
+          // const SizedBox(height: 8),
+          // Guide row removed as logic was local
         ],
       ),
     );
   }
 
-  Widget _guideRow(PartnerReport report) {
-    final guide = _service.describeGuide(report.lifePath, report.nameNumber);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Points d’appui',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            guide,
-            style: const TextStyle(color: AppColors.textMuted),
-          ),
-        ],
-      ),
-    );
-  }
+  // _guideRow removed
 
-  Widget _numberRow(String label, int value, String meaning) {
-    final archetype = _service.archetypeLabel(value);
+  Widget _numberRow(String label, String? meaning) {
+    if (meaning == null || meaning.isEmpty) return const SizedBox.shrink();
+    
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2452,10 +2483,7 @@ Widget _coupleCard(CompatibilitySummary summary) {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
-              Text(
-                archetype,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
+              // Archetype is now usually inside 'meaning' (e.g. "1 - Le Chef. Blabla")
               Text(meaning, style: const TextStyle(color: AppColors.textMuted)),
             ],
           ),
@@ -2465,7 +2493,7 @@ Widget _coupleCard(CompatibilitySummary summary) {
   }
 
   Widget _dailyAdviceCard(CompatibilitySummary summary) {
-    final hint = _service.describeCoupleDailyAction(summary.coupleDailyNumber);
+    final hint = summary.coupleDailyMeaning ?? '';
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
