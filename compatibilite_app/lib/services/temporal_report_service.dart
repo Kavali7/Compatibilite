@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_manager.dart';
+import 'auth_service.dart';
 
 /// Settings for temporal bonuses included with base report
 class TemporalBonusSettings {
@@ -322,26 +323,30 @@ class TemporalReportService {
   }
 
   /// Check if the user has a couple profile (required for report generation)
-  Future<bool> hasCoupleProfile() async {
-    final client = _client;
-    if (client == null) return false;
+Future<bool> hasCoupleProfile({String? userId}) async {
+  final client = _client;
+  if (client == null) return false;
 
-    try {
-      final userId = client.auth.currentUser?.id;
-      if (userId == null) return false;
+  try {
+    // Use provided userId, or fallback to AuthService, or Supabase auth
+    final effectiveUserId = userId ?? 
+        AuthService.instance.currentUser?.id ??
+        client.auth.currentUser?.id;
+        
+    if (effectiveUserId == null) return false;
 
-      final response = await client
-          .from('couple_profiles')
-          .select('id')
-          .eq('user_id', userId)
-          .maybeSingle();
-      
-      return response != null;
-    } catch (e) {
-      debugPrint('TemporalReportService: Error checking profile: $e');
-      return false;
-    }
+    final response = await client
+        .from('couple_profiles')
+        .select('id')
+        .eq('user_id', effectiveUserId)
+        .maybeSingle();
+    
+    return response != null;
+  } catch (e) {
+    debugPrint('TemporalReportService: Error checking profile: $e');
+    return false;
   }
+}
 
   /// Create a couple profile for the current user
   /// This is required before generating reports
