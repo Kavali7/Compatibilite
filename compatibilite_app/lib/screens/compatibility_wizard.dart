@@ -353,9 +353,9 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
       final bonusReports = await service.getBonusReports(userId: authUser.id);
       debugPrint('>>> _loadTemporalReports: getBonusReports returned');
       debugPrint('>>> _loadTemporalReports: Received reports - Year: ${bonusReports['annee'] != null}, Month: ${bonusReports['mois'] != null}, Day: ${bonusReports['jour'] != null}');
-      debugPrint('>>> _loadTemporalReports: Year report details: ${bonusReports['annee']?.titre ?? "null"}');
-      debugPrint('>>> _loadTemporalReports: Month report details: ${bonusReports['mois']?.titre ?? "null"}');
-      debugPrint('>>> _loadTemporalReports: Day report details: ${bonusReports['jour']?.titre ?? "null"}');
+      debugPrint('>>> _loadTemporalReports: Year report details: ${bonusReports['annee']?.bloc0Titre ?? "null"}');
+      debugPrint('>>> _loadTemporalReports: Month report details: ${bonusReports['mois']?.bloc0Titre ?? "null"}');
+      debugPrint('>>> _loadTemporalReports: Day report details: ${bonusReports['jour']?.bloc0Titre ?? "null"}');
       
       if (mounted) {
         setState(() {
