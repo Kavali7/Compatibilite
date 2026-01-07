@@ -162,6 +162,20 @@ body {
   margin-bottom: 8px;
 }
 
+.sidebar-section {
+  margin-bottom: 24px;
+}
+
+.sidebar-section-title {
+  padding: 0 16px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+
 .sidebar-sublink {
   display: block;
   padding: 8px 12px;

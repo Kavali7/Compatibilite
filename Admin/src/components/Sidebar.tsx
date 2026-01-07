@@ -9,22 +9,44 @@ type SidebarProps = {
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
     const { currentProjet } = useProjet();
 
-    const navItems = [
-        { to: '/', icon: '📊', label: 'Dashboard' },
-        { to: '/compatibilite', icon: '💕', label: 'Compatibilité' },
-        { to: '/payments', icon: '💰', label: 'Paiements' },
-        { to: '/legal', icon: '📜', label: 'Pages Légales' },
-        { to: '/settings', icon: '⚙️', label: 'Paramètres' },
-    ];
-
-    const compatibiliteSubItems = [
-        { to: '/compatibilite/interpretations', label: 'Interprétations' },
-        { to: '/compatibilite/content-bricks', label: 'Briques de Contenu' },
-        { to: '/compatibilite/canonical-predictions', label: 'Prédictions Canon' },
-        { to: '/compatibilite/temporal-purchases', label: 'Prévisions Temporelles' },
-        { to: '/compatibilite/pricing', label: 'Plans & Tarifs' },
-        { to: '/compatibilite/promos', label: 'Codes Promo' },
-        { to: '/compatibilite/sessions', label: 'Sessions' },
+    const sections = [
+        {
+            title: null, // Main
+            items: [
+                { to: '/', icon: '📊', label: 'Dashboard' },
+            ]
+        },
+        {
+            title: 'Contenu',
+            items: [
+                { to: '/compatibilite/interpretations', icon: '📖', label: 'Interprétations' },
+                { to: '/compatibilite/content-bricks', icon: '🧱', label: 'Briques Temporelles' },
+                { to: '/compatibilite/canonical-predictions', icon: '🔮', label: 'Prédictions Canon' },
+                { to: '/compatibilite/report-sections', icon: '📑', label: 'Structure Rapport' },
+            ]
+        },
+        {
+            title: 'Business',
+            items: [
+                { to: '/payments', icon: '💰', label: 'Paiements (Global)' },
+                { to: '/compatibilite/pricing', icon: '🏷️', label: 'Plans & Tarifs' },
+                { to: '/compatibilite/promos', icon: '🎁', label: 'Codes Promo' },
+            ]
+        },
+        {
+            title: 'Suivi',
+            items: [
+                { to: '/compatibilite/sessions', icon: '👥', label: 'Sessions' },
+                { to: '/compatibilite/temporal-purchases', icon: '🛒', label: 'Achats Temporels' },
+            ]
+        },
+        {
+            title: 'Système',
+            items: [
+                { to: '/settings', icon: '⚙️', label: 'Paramètres' },
+                { to: '/legal', icon: '📜', label: 'Pages Légales' },
+            ]
+        }
     ];
 
     return (
@@ -40,35 +62,25 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             </div>
 
             <nav className="sidebar-nav">
-                {navItems.map((item) => (
-                    <div key={item.to}>
-                        <NavLink
-                            to={item.to}
-                            end={item.to === '/'}
-                            className={({ isActive }) =>
-                                `sidebar-link ${isActive ? 'active' : ''}`
-                            }
-                        >
-                            <span className="sidebar-icon">{item.icon}</span>
-                            {!collapsed && <span className="sidebar-label">{item.label}</span>}
-                        </NavLink>
-
-                        {/* Sub-menu for Compatibilité */}
-                        {item.to === '/compatibilite' && !collapsed && (
-                            <div className="sidebar-submenu">
-                                {compatibiliteSubItems.map((sub) => (
-                                    <NavLink
-                                        key={sub.to}
-                                        to={sub.to}
-                                        className={({ isActive }) =>
-                                            `sidebar-sublink ${isActive ? 'active' : ''}`
-                                        }
-                                    >
-                                        {sub.label}
-                                    </NavLink>
-                                ))}
-                            </div>
+                {sections.map((section, idx) => (
+                    <div key={idx} className="sidebar-section">
+                        {section.title && !collapsed && (
+                            <div className="sidebar-section-title">{section.title}</div>
                         )}
+                        {section.items.map((item) => (
+                            <NavLink
+                                key={item.to}
+                                to={item.to}
+                                end={item.to === '/'}
+                                className={({ isActive }) =>
+                                    `sidebar-link ${isActive ? 'active' : ''}`
+                                }
+                                title={collapsed ? item.label : undefined}
+                            >
+                                <span className="sidebar-icon">{item.icon}</span>
+                                {!collapsed && <span className="sidebar-label">{item.label}</span>}
+                            </NavLink>
+                        ))}
                     </div>
                 ))}
             </nav>

@@ -16,11 +16,14 @@ type NumerologyText = {
 
 const TEXT_TYPES = [
     { value: 'base', label: 'Chemin de vie (base)' },
+    { value: 'name', label: 'Nombre d\'Expression (Nom)' },
+    { value: 'intimate', label: 'Nombre Intime (Élan Spirituel)' },
+    { value: 'personality', label: 'Nombre de Réalisation (Moi Intime)' },
+    { value: 'heredity', label: 'Nombre Héréditaire' },
     { value: 'couple', label: 'Couple (détaillé)' },
     { value: 'couple_deep', label: 'Couple (synthèse)' },
     { value: 'daily_action', label: 'Action du jour' },
     { value: 'kabbalah', label: 'Kabbale' },
-    { value: 'name', label: 'Nombre du nom' },
     { value: 'personal_day', label: 'Jour personnel' },
     { value: 'personal_year', label: 'Année personnelle' },
 ];
