@@ -1,25 +1,33 @@
 -- ============================================================
--- RPC : Générer le Profil Complet (Calculs + Textes)
--- Remplace la logique Dart 'NumerologyService'.
+-- RPC : Générer le Profil Complet (Calculs + Textes) - V2
+-- Inclut Intime, Réalisation, Hérédité, Kabbale.
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION public.rpc_generer_profil_complet(p_couple_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
-SECURITY DEFINER -- Nécessaire pour lire couple_profiles/users si RLS restrictif
+SECURITY DEFINER
 AS $$
 DECLARE
   v_couple record;
   
-  -- Partner A Datas
-  v_lp_a integer; -- Life Path
-  v_name_a integer; -- Expression / Name Number
+  -- Partner A
+  v_nom_a text;
+  v_lp_a integer;
+  v_name_a integer;
+  v_intime_a integer;
+  v_real_a integer; -- Personality
+  v_kabbale_a integer;
   
-  -- Partner B Datas
+  -- Partner B
+  v_nom_b text;
   v_lp_b integer;
   v_name_b integer;
+  v_intime_b integer;
+  v_real_b integer;
+  v_kabbale_b integer;
   
-  -- Couple Datas
+  -- Couple
   v_couple_num integer;
   
   -- Textes
@@ -34,67 +42,92 @@ BEGIN
     RETURN jsonb_build_object('error', 'Couple introuvable');
   END IF;
 
-  -- 2. Calculs (Utilise nos fonctions SQL)
-  v_lp_a   := public.fn_nombre_personne(v_couple.partner_a_birth_date);
-  v_name_a := public.fn_calcul_nom(v_couple.partner_a_first_name || ' ' || v_couple.partner_a_last_name); -- Nom complet ? Ou juste Prénom ? Dart utilise "Name" input field.
-  -- Dart: nameNumber(input.name). Input name is usually first name in the form? 
-  -- Let's assume input names are what we use.
-  
-  v_lp_b   := public.fn_nombre_personne(v_couple.partner_b_birth_date);
-  v_name_b := public.fn_calcul_nom(v_couple.partner_b_first_name || ' ' || v_couple.partner_b_last_name);
+  v_nom_a := v_couple.partner_a_first_name || ' ' || v_couple.partner_a_last_name;
+  v_nom_b := v_couple.partner_b_first_name || ' ' || v_couple.partner_b_last_name;
 
-  -- Couple Number (Somme des Life Paths, réduit)
+  -- 2. Calculs A
+  v_lp_a     := public.fn_nombre_personne(v_couple.partner_a_birth_date);
+  v_name_a   := public.fn_calcul_nom(v_nom_a);
+  v_intime_a := public.fn_calcul_intime(v_nom_a);
+  v_real_a   := public.fn_calcul_realisation(v_nom_a);
+  v_kabbale_a:= public.fn_calcul_kabbale(v_nom_a);
+  
+  -- Calculs B
+  v_lp_b     := public.fn_nombre_personne(v_couple.partner_b_birth_date);
+  v_name_b   := public.fn_calcul_nom(v_nom_b);
+  v_intime_b := public.fn_calcul_intime(v_nom_b);
+  v_real_b   := public.fn_calcul_realisation(v_nom_b);
+  v_kabbale_b:= public.fn_calcul_kabbale(v_nom_b);
+
+  -- Couple
   v_couple_num := public.fn_reduire_maitre(v_lp_a + v_lp_b);
 
   -- 3. Récupération des Textes
-  -- On optimise en une seule requête aggrégée
+  -- Note: Intime/Realisation utilisent les textes 'base' dans l'app Dart.
+  -- Kabbale a ses propres textes 'kabbalah'.
   SELECT jsonb_object_agg(key_id, data) INTO v_texts
   FROM (
-    -- Partner A Base (Life Path)
-    SELECT 'pA_base' as key_id, jsonb_build_object('title', title, 'body', body) as data
-    FROM public.numerology_texts 
-    WHERE type = 'base' AND number = v_lp_a AND locale = 'fr'
+    -- Partner A
+    SELECT 'pA_base' as key_id, to_jsonb(t) as data FROM public.numerology_texts t WHERE type = 'base' AND number = v_lp_a AND locale = 'fr'
     UNION ALL
-    -- Partner A Name
-    SELECT 'pA_name', jsonb_build_object('title', title, 'body', body)
-    FROM public.numerology_texts 
-    WHERE type = 'name' AND number = v_name_a AND locale = 'fr'
+    SELECT 'pA_name', to_jsonb(t) FROM public.numerology_texts t WHERE type = 'name' AND number = v_name_a AND locale = 'fr'
     UNION ALL
-    -- Partner B Base
-    SELECT 'pB_base', jsonb_build_object('title', title, 'body', body)
-    FROM public.numerology_texts 
-    WHERE type = 'base' AND number = v_lp_b AND locale = 'fr'
+    SELECT 'pA_intime', to_jsonb(t) FROM public.numerology_texts t WHERE type = 'base' AND number = v_intime_a AND locale = 'fr' -- Reutilise Base
     UNION ALL
-    -- Partner B Name
-    SELECT 'pB_name', jsonb_build_object('title', title, 'body', body)
-    FROM public.numerology_texts 
-    WHERE type = 'name' AND number = v_name_b AND locale = 'fr'
+    SELECT 'pA_real', to_jsonb(t) FROM public.numerology_texts t WHERE type = 'base' AND number = v_real_a AND locale = 'fr' -- Reutilise Base
     UNION ALL
+    SELECT 'pA_kab', to_jsonb(t) FROM public.numerology_texts t WHERE type = 'kabbalah' AND number = v_kabbale_a AND locale = 'fr'
+    
+    UNION ALL
+    
+    -- Partner B
+    SELECT 'pB_base', to_jsonb(t) FROM public.numerology_texts t WHERE type = 'base' AND number = v_lp_b AND locale = 'fr'
+    UNION ALL
+    SELECT 'pB_name', to_jsonb(t) FROM public.numerology_texts t WHERE type = 'name' AND number = v_name_b AND locale = 'fr'
+    UNION ALL
+    SELECT 'pB_intime', to_jsonb(t) FROM public.numerology_texts t WHERE type = 'base' AND number = v_intime_b AND locale = 'fr'
+    UNION ALL
+    SELECT 'pB_real', to_jsonb(t) FROM public.numerology_texts t WHERE type = 'base' AND number = v_real_b AND locale = 'fr'
+    UNION ALL
+    SELECT 'pB_kab', to_jsonb(t) FROM public.numerology_texts t WHERE type = 'kabbalah' AND number = v_kabbale_b AND locale = 'fr'
+
+    UNION ALL
+    
     -- Couple
-    SELECT 'couple', jsonb_build_object('title', title, 'body', body)
-    FROM public.numerology_texts 
-    WHERE type = 'couple' AND number = v_couple_num AND locale = 'fr'
+    SELECT 'couple', to_jsonb(t) FROM public.numerology_texts t WHERE type = 'couple' AND number = v_couple_num AND locale = 'fr'
     UNION ALL
-    -- Couple Deep
-    SELECT 'couple_deep', jsonb_build_object('title', title, 'body', body)
-    FROM public.numerology_texts 
-    WHERE type = 'couple_deep' AND number = v_couple_num AND locale = 'fr'
+    SELECT 'couple_deep', to_jsonb(t) FROM public.numerology_texts t WHERE type = 'couple_deep' AND number = v_couple_num AND locale = 'fr'
   ) t;
 
-  -- 4. Construction du JSON final
-  -- Structure alignée avec ce que Dart attendrait (ou on adapte Dart)
+  -- 4. Construction JSON
   RETURN jsonb_build_object(
     'partner_a', jsonb_build_object(
       'life_path', v_lp_a,
       'name_number', v_name_a,
+      'intimate_number', v_intime_a,
+      'personality_number', v_real_a,
+      'kabbalah_number', v_kabbale_a,
+      'heredity_number', 0, -- TODO: Heredity calc if needed (last name only)
+      
       'base_text', v_texts->'pA_base',
-      'name_text', v_texts->'pA_name'
+      'name_text', v_texts->'pA_name',
+      'intimate_text', v_texts->'pA_intime',
+      'personality_text', v_texts->'pA_real',
+      'kabbalah_text', v_texts->'pA_kab'
     ),
     'partner_b', jsonb_build_object(
       'life_path', v_lp_b,
       'name_number', v_name_b,
+      'intimate_number', v_intime_b,
+      'personality_number', v_real_b,
+      'kabbalah_number', v_kabbale_b,
+      'heredity_number', 0,
+      
       'base_text', v_texts->'pB_base',
-      'name_text', v_texts->'pB_name'
+      'name_text', v_texts->'pB_name',
+      'intimate_text', v_texts->'pB_intime',
+      'personality_text', v_texts->'pB_real',
+      'kabbalah_text', v_texts->'pB_kab'
     ),
     'couple', jsonb_build_object(
       'number', v_couple_num,
