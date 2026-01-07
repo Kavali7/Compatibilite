@@ -364,10 +364,13 @@ Future<bool> hasCoupleProfile({String? userId}) async {
     if (client == null) return false;
 
     try {
-      // Use provided userId or fall back to Supabase auth
-      final effectiveUserId = userId ?? client.auth.currentUser?.id;
+      // Use provided userId, or fallback to AuthService, or Supabase auth
+      final effectiveUserId = userId ?? 
+          AuthService.instance.currentUser?.id ??
+          client.auth.currentUser?.id;
+          
       if (effectiveUserId == null) {
-        debugPrint('TemporalReportService: No authenticated user (userId not provided and supabase.auth.currentUser is null)');
+        debugPrint('TemporalReportService: No authenticated user (userId not provided, AuthService.currentUser is null, and supabase.auth.currentUser is null)');
         return false;
       }
       
