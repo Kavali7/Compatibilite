@@ -6,6 +6,8 @@ adb connect 10.6.52.17
 adb tcpip 5555
 adb connect 10.41.145.37
 flutter run -d 192.168.100.80:5555 2>&1
+flutter run -d 10.61.165.102:5555 --dart-define-from-file=.env
+adb connect 10.61.165.102
 flutter run --dart-define-from-file=.env
 
 
@@ -15,40 +17,35 @@ flutter run --dart-define-from-file=.env
 Tu es un développeur expert rejoignant l'équipe. Voici la documentation technique complète du projet. Analyse-la pour comprendre structure, flux de données et règles métier avant de répondre à mes futures demandes.
 
 ## 1. Vue d'Ensemble
-C'est une plateforme de numérologie et compatibilité amoureuse composée de 3 parties :
+Plateforme de numérologie et compatibilité amoureuse composée de 3 parties :
 1.  **Mobile App (Flutter)** : Interface utilisateur (Wizard, Résultats, Paiement).
 2.  **Backend (Supabase/PostgreSQL)** : Héberge données, Auth, et toute la logique métier (calculs en SQL).
 3.  **Admin Panel (React/Vite)** : CMS pour gérer les textes, prix et promotions.
 
-## 2. Stack Technique
--   **Mobile** : Flutter, Provider (state), Kkiapay (paiement), Supabase Flutter SDK.
--   **Admin** : React, TypeScript, Vite, Tailwind (probablement), Supabase JS Client.
+## 2. Stack Technique & Structure des Dossiers
+-   **Mobile** (`/compatibilite_app`) : Flutter, Provider, Kkiapay.
+-   **Admin** (`/admin`) : React, TypeScript, Vite, Tailwind.
+-   **Backend Scripts** (`/compatibilite_app/*.sql`) : Source de vérité des fonctions SQL.
 -   **DB** : PostgreSQL (via Supabase).
 
-## 3. Architecture & Logique Métier (Point Critique)
-Le projet utilise une architecture "Thick Database". L'app mobile est (presque) une coquille vide d'intelligence ; toute l'intelligence est dans la DB.
-
-**Le Flux Principal ("Génération de Rapport") :**
-1.  L'utilisateur remplit un Wizard (7 étapes) sur mobile.
-2.  L'app appelle une fonction RPC `rpc_generer_rapport` sur Supabase.
-3.  **Côté SQL (Backend)** :
-    -   Calcul des nombres (Chemin de vie, Maîtres 11/22/33, Année perso...) via des fonctions SQL (`fn_reduire_maitre`).
-    -   Détermination de l'état du couple (Harmonieux/Neutre/Tendu).
-    -   Sélection dynamique de "Briques de contenu" (`content_bricks`) pour construire le texte final, avec un système d'anti-répétition (`brick_usage`).
-4.  L'app reçoit un JSON assemblé et l'affiche.
+## 3. Architecture "Thick Database" (Critique)
+L'intelligence est dans la DB. L'app mobile n'est qu'une interface d'affichage.
+**Flux de Génération :**
+1.  **Wizard (App)** : Saisie infos (7 étapes).
+2.  **Appel RPC** : `rpc_generer_rapport` (Supabase).
+3.  **Logique SQL** : Calculs numérologiques (`fn_calcul_nom`, `fn_calcul_details_nom`) + Sélection textes (`content_bricks`).
+4.  **Retour** : JSON assemblé prêt à afficher.
 
 ## 4. Modèle de Données Clé
--   `couple_profiles` : Infos des partenaires (A et B). Unique par User.
--   `canonical_predictions` : Textes "piliers" (PDF original), statiques.
--   `content_bricks` : Textes dynamiques (Conseils, Alertes) configurables via l'Admin.
--   `generated_reports` : Cache des rapports pour éviter de recalculer.
--   `pricing_plans` & `codes_promo` : Gestion commerciale.
+-   `couple_profiles` : Infos partenaires (A & B). **Table Clé**. Identification via `user_id` (Unique).
+-   `generated_reports` : Cache des rapports.
+-   `content_bricks` : Textes dynamiques administrables.
+-   `numerology_texts` : Textes statiques (Chemin de vie, etc.).
 
-## 5. Fonctionnalités Clés
--   **Wizard** : Onboarding et saisie des contextes.
--   **Rapports Temporels** : Achat de prévisions Jour/Mois/Année.
--   **Paiement** : Intégration Kkiapay.
--   **Admin** : CRUD complet sur les briques de texte, permettant de changer le contenu de l'app sans mise à jour des stores.
+## 5. Règles de Gestion Importantes
+-   **Sécurité (RLS)** : Les utilisateurs ne voient que LEURS données (`auth.uid() = user_id`).
+-   **Unicité** : Un seul profil couple par compte utilisateur (`UNIQUE(user_id)`).
+-   **Modifications Backend** : Toute modification de logique métier se fait dans les fichiers `.sql` ET doit être déployée sur Supabase.
 
 **Instruction :**
-Digère ces informations. Je veux que tu sois capable de modifier aussi bien le code Flutter (UI) que les scripts SQL (Logique) en comprenant l'impact de l'un sur l'autre.
+Digère ces informations. Tu es responsable de maintenir la cohérence entre le Code (Flutter/React) et la Logique (SQL).

@@ -187,18 +187,23 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           // Populate partner inputs for reports
           _partnerAInput = PartnerInput(name: _nameAController.text, birthDate: _birthA!, role: 'Partenaire 1');
           _partnerBInput = PartnerInput(name: _nameBController.text, birthDate: _birthB!, role: 'Partenaire 2');
-          
-          // Recompute summary (Fetch from Backend)
-          final coupleId = profile['id'] as String;
-          _summary = await _reportService.fetchFullProfile(
-            coupleId: coupleId,
-            partnerAInput: _partnerAInput!,
-            partnerBInput: _partnerBInput!,
-          );
-          
-          // Mark payment as done if user has subscription
+
           _paymentCompleted = user.hasActiveSubscription;
         });
+
+        // Recompute summary (Fetch from Backend) - Done OUTSIDE setState
+        final coupleId = profile['id'] as String;
+        final fetchedSummary = await _reportService.fetchFullProfile(
+          coupleId: coupleId,
+          partnerAInput: _partnerAInput!,
+          partnerBInput: _partnerBInput!,
+        );
+
+        if (mounted) {
+          setState(() {
+             _summary = fetchedSummary;
+          });
+        }
 
         // If we have data, jump to results
         // Wait a bit for the UI to build
@@ -491,7 +496,10 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
       );
       
       // 1. Ensure profile exists (Upsert)
-      await _saveCoupleProfile();
+      final profileSaved = await _saveCoupleProfile();
+      if (!profileSaved) {
+        throw Exception('Impossible de sauvegarder le profil. Vérifiez votre connexion.');
+      }
       
       // 2. Get ID
       final coupleId = await _reportService.getCoupleProfileId(userId: user.id);
@@ -519,16 +527,16 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     }
   }
 
-  Future<void> _saveCoupleProfile() async {
+  Future<bool> _saveCoupleProfile() async {
     final user = AuthService.instance.currentUser;
-    if (user == null) return;
+    if (user == null) return false;
     
     // Check required fields
-    if (_birthA == null || _birthB == null) return;
+    if (_birthA == null || _birthB == null) return false;
 
     try {
       debugPrint('Saving couple profile for user ${user.id}...');
-      await TemporalReportService.instance.createCoupleProfile(
+      final success = await TemporalReportService.instance.createCoupleProfile(
         userFirstname: _nameAController.text.trim(),
         userBirthdate: _birthA!,
         userGender: _genderA ?? 'Autre',
@@ -537,9 +545,15 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         partnerGender: _genderB ?? 'Autre',
         userId: user.id,
       );
-      debugPrint('Couple profile saved successfully');
+      if (success) {
+        debugPrint('Couple profile saved successfully');
+      } else {
+         debugPrint('Failed to save couple profile (service returned false)');
+      }
+      return success;
     } catch (e) {
       debugPrint('Error saving couple profile: $e');
+      return false;
     }
   }
 

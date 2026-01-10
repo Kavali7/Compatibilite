@@ -404,6 +404,9 @@ Future<bool> hasCoupleProfile({String? userId}) async {
 
       debugPrint('TemporalReportService: Couple profile created successfully');
       return true;
+    } catch (e) {
+      debugPrint('TemporalReportService: Error creating couple profile: $e');
+      return false;
     }
   }
 
