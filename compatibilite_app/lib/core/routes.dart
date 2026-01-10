@@ -2,7 +2,7 @@
 library;
 
 import 'package:flutter/material.dart';
-import '../screens/wizard/compatibility_wizard.dart';
+import '../screens/compatibility_wizard.dart';
 import '../screens/purchase/purchase_screen.dart';
 import '../screens/results/results_screen.dart';
 import '../screens/account/account_screen.dart';

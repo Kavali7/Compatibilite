@@ -7,8 +7,8 @@ import '../services/temporal_report_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/hamburger_menu_overlay.dart';
-import 'simple_signup_screen.dart';
-import 'login_page.dart';
+import 'auth/simple_signup_screen.dart';
+import 'auth/login_page.dart';
 
 /// Screen for purchasing temporal predictions (year, month, day)
 class TemporalPurchaseScreen extends StatefulWidget {

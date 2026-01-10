@@ -23,8 +23,9 @@ import 'dynamic_legal_page.dart'; // Added
 // legal_page.dart removed - using dynamic_legal_page.dart and legal_models.dart instead
 
 import 'temporal_purchase_screen.dart';
-import 'login_page.dart';
-import 'simple_signup_screen.dart';
+import 'auth/login_page.dart';
+import 'auth/simple_signup_screen.dart';
+import 'account/account_screen.dart';
 
 // ===========================================
 // DEBUG: Mettre à true pour bypasser le paiement
