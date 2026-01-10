@@ -116,7 +116,7 @@ class PricingService {
     _lastError = null;
     
     if (_client == null) {
-      _lastError = 'Connexion au serveur impossible. Veuillez vérifier votre connexion internet.';
+      _lastError = 'Connexion au serveur impossible, veuillez réessayer dans quelques minutes.';
       debugPrint('PricingService: Supabase not initialized');
       throw Exception(_lastError);
     }
