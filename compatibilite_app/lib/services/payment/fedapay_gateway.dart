@@ -43,7 +43,6 @@ class FedapayGateway implements PaymentGateway {
   
   String get _baseUrl => isSandbox ? _sandboxBaseUrl : _liveBaseUrl;
   String? get _secretKey => dotenv.env['FEDAPAY_SECRET_KEY'];
-  String? get _publicKey => dotenv.env['FEDAPAY_PUBLIC_KEY'];
   
   // Transaction storage for callback verification
   final Map<String, PaymentCallback> _pendingCallbacks = {};

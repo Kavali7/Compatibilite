@@ -25,7 +25,6 @@ import 'dynamic_legal_page.dart'; // Added
 import 'temporal_purchase_screen.dart';
 import 'auth/login_page.dart';
 import 'auth/simple_signup_screen.dart';
-import 'account/account_screen.dart';
 
 // ===========================================
 // DEBUG: Mettre à true pour bypasser le paiement
@@ -53,7 +52,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   final TemporalReportService _reportService = TemporalReportService.instance;
   CompatibilityRepository? _repository;
 
-  bool _isComputing = false; // Add this flag
+  bool _isComputing = false;
   int _currentStep = 0;
   DateTime? _birthA;
   DateTime? _birthB;

@@ -1,8 +1,5 @@
-import 'dart:convert';
-import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:uuid/uuid.dart';
 import 'supabase_manager.dart';
 
 /// User model for local use
