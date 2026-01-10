@@ -1,4 +1,4 @@
-/// Account Screen - User dashboard with profile and purchase history
+/// Account Screen - Enhanced User Dashboard
 library;
 
 import 'package:flutter/material.dart';
@@ -6,13 +6,20 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/constants.dart';
+import '../../models/product_model.dart';
 import '../../models/purchase_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/payment/payment_manager.dart';
+import '../../services/pricing_service.dart';
+import '../../services/temporal_report_service.dart';
 import '../purchase/purchase_screen.dart';
 import '../results/results_screen.dart';
 
-/// User account dashboard
+/// Enhanced user account dashboard with:
+/// - Profile info
+/// - Available reports
+/// - Purchase history
+/// - Quick actions
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
 
@@ -23,6 +30,8 @@ class AccountScreen extends StatefulWidget {
 class _AccountScreenState extends State<AccountScreen> {
   bool _isLoading = true;
   List<Purchase> _purchases = [];
+  Map<String, TemporalReport?> _availableReports = {};
+  bool _hasBasicReport = false;
   
   @override
   void initState() {
@@ -35,7 +44,23 @@ class _AccountScreenState extends State<AccountScreen> {
     
     final user = AuthService.instance.currentUser;
     if (user != null) {
+      // Load purchases
       _purchases = await PaymentManager.instance.getUserPurchases(user.id);
+      
+      // Check for available reports
+      _hasBasicReport = await PaymentManager.instance.hasPurchased(
+        user.id, 
+        ProductType.basicReport,
+      );
+      
+      // Load temporal reports if available
+      try {
+        _availableReports = await TemporalReportService.instance.getBonusReports(
+          userId: user.id,
+        );
+      } catch (e) {
+        debugPrint('Error loading reports: $e');
+      }
     }
     
     setState(() => _isLoading = false);
@@ -46,6 +71,25 @@ class _AccountScreenState extends State<AccountScreen> {
     if (mounted) {
       Navigator.pop(context);
     }
+  }
+  
+  void _navigateToPurchase({ProductType? productType}) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PurchaseScreen(preselectedProductType: productType),
+      ),
+    );
+    if (result != null && result['success'] == true) {
+      _loadData();
+    }
+  }
+  
+  void _navigateToResults() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ResultsScreen()),
+    );
   }
 
   @override
@@ -108,20 +152,20 @@ class _AccountScreenState extends State<AccountScreen> {
                     
                     const SizedBox(height: 24),
                     
+                    // My Reports Section
+                    _buildSectionTitle('📊 Mes Rapports'),
+                    const SizedBox(height: 12),
+                    _buildReportsSection(),
+                    
+                    const SizedBox(height: 24),
+                    
                     // Quick Actions
                     _buildQuickActions(),
                     
                     const SizedBox(height: 24),
                     
                     // Purchase History
-                    Text(
-                      '📋 Historique des achats',
-                      style: GoogleFonts.philosopher(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textLight,
-                      ),
-                    ),
+                    _buildSectionTitle('📋 Historique des achats'),
                     const SizedBox(height: 12),
                     
                     if (_purchases.isEmpty)
@@ -137,7 +181,23 @@ class _AccountScreenState extends State<AccountScreen> {
     );
   }
   
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: GoogleFonts.philosopher(
+        fontSize: 20,
+        fontWeight: FontWeight.w700,
+        color: AppColors.textLight,
+      ),
+    );
+  }
+  
   Widget _buildProfileCard(AppUser user) {
+    final isSubscriber = _purchases.any((p) => 
+      p.productType == ProductType.subscription30 && 
+      p.status == PurchaseStatus.success
+    );
+    
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -194,25 +254,118 @@ class _AccountScreenState extends State<AccountScreen> {
                 const SizedBox(height: 4),
                 Text(
                   user.email,
-                  style: const TextStyle(color: AppColors.textMuted),
+                  style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
                 ),
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.2),
+                    color: isSubscriber 
+                        ? AppColors.primary.withValues(alpha: 0.3)
+                        : AppColors.block,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    '${_purchases.length} achat${_purchases.length > 1 ? 's' : ''}',
-                    style: const TextStyle(
+                    isSubscriber ? '⭐ Abonné' : 'Membre',
+                    style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.primary,
+                      color: isSubscriber ? AppColors.primary : AppColors.textMuted,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildReportsSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.block.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        children: [
+          _buildReportRow(
+            icon: '💑',
+            title: 'Compatibilité',
+            isAvailable: _hasBasicReport,
+            onTap: _hasBasicReport ? _navigateToResults : () => _navigateToPurchase(productType: ProductType.basicReport),
+          ),
+          const Divider(color: AppColors.textMuted, height: 24),
+          _buildReportRow(
+            icon: '📅',
+            title: 'Prévision Annuelle',
+            isAvailable: _availableReports['annee'] != null,
+            onTap: _availableReports['annee'] != null 
+                ? _navigateToResults 
+                : () => _navigateToPurchase(productType: ProductType.yearPrediction),
+          ),
+          const Divider(color: AppColors.textMuted, height: 24),
+          _buildReportRow(
+            icon: '🗓️',
+            title: 'Prévision Mensuelle',
+            isAvailable: _availableReports['mois'] != null,
+            onTap: _availableReports['mois'] != null 
+                ? _navigateToResults 
+                : () => _navigateToPurchase(productType: ProductType.monthPrediction),
+          ),
+          const Divider(color: AppColors.textMuted, height: 24),
+          _buildReportRow(
+            icon: '☀️',
+            title: 'Prévision du Jour',
+            isAvailable: _availableReports['jour'] != null,
+            onTap: _availableReports['jour'] != null 
+                ? _navigateToResults 
+                : () => _navigateToPurchase(productType: ProductType.dayPrediction),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildReportRow({
+    required String icon,
+    required String title,
+    required bool isAvailable,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Text(icon, style: const TextStyle(fontSize: 24)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                color: isAvailable ? AppColors.textLight : AppColors.textMuted,
+                fontWeight: isAvailable ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: isAvailable 
+                  ? AppColors.primary.withValues(alpha: 0.2)
+                  : AppColors.block,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              isAvailable ? 'Voir' : 'Débloquer',
+              style: TextStyle(
+                fontSize: 12,
+                color: isAvailable ? AppColors.primary : AppColors.textMuted,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -227,10 +380,7 @@ class _AccountScreenState extends State<AccountScreen> {
           child: _buildActionButton(
             icon: Icons.visibility,
             label: 'Voir résultats',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ResultsScreen()),
-            ),
+            onTap: _navigateToResults,
           ),
         ),
         const SizedBox(width: 12),
@@ -238,10 +388,7 @@ class _AccountScreenState extends State<AccountScreen> {
           child: _buildActionButton(
             icon: Icons.shopping_bag,
             label: 'Acheter',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const PurchaseScreen()),
-            ).then((_) => _loadData()),
+            onTap: () => _navigateToPurchase(),
           ),
         ),
       ],
@@ -310,10 +457,7 @@ class _AccountScreenState extends State<AccountScreen> {
           ),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const PurchaseScreen()),
-            ).then((_) => _loadData()),
+            onPressed: () => _navigateToPurchase(),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
               shape: RoundedRectangleBorder(
@@ -383,7 +527,7 @@ class _AccountScreenState extends State<AccountScreen> {
             ),
           ),
           
-          // Amount & Status
+          // Amount & Status - uses actual purchase amount
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [

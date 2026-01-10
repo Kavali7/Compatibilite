@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../theme/app_theme.dart';
-import '../services/auth_service.dart';
-import '../widgets/animated_background.dart';
+import '../../theme/app_theme.dart';
+import '../../services/auth_service.dart';
+import '../../widgets/animated_background.dart';
 
 /// Simple signup screen - email, password, name only
 /// No couple info required at account creation
