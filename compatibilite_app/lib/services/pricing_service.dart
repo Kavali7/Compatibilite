@@ -9,6 +9,7 @@ class PricingPlan {
     required this.planType,
     required this.name,
     required this.priceFcfa,
+    this.description,
     this.durationDays,
     this.isActive = true,
   });
@@ -16,6 +17,7 @@ class PricingPlan {
   final String id;
   final String planType; // 'consultation' or 'subscription'
   final String name;
+  final String? description;
   final int priceFcfa;
   final int? durationDays;
   final bool isActive;
@@ -25,6 +27,7 @@ class PricingPlan {
       id: json['id'] as String,
       planType: json['plan_type'] as String,
       name: json['name'] as String,
+      description: json['description'] as String?,
       priceFcfa: json['price_fcfa'] as int,
       durationDays: json['duration_days'] as int?,
       isActive: json['is_active'] as bool? ?? true,
@@ -35,6 +38,7 @@ class PricingPlan {
         'id': id,
         'plan_type': planType,
         'name': name,
+        'description': description,
         'price_fcfa': priceFcfa,
         'duration_days': durationDays,
         'is_active': isActive,

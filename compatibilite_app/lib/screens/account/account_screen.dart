@@ -10,7 +10,6 @@ import '../../models/product_model.dart';
 import '../../models/purchase_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/payment/payment_manager.dart';
-import '../../services/pricing_service.dart';
 import '../../services/temporal_report_service.dart';
 import '../purchase/purchase_screen.dart';
 import '../results/results_screen.dart';
