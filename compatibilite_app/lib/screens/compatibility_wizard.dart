@@ -985,7 +985,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
                 : Text(isContactStep 
-                    ? 'Voir mes résultats (${_selectedPlan?.priceFcfa ?? 0} FCFA)' 
+                    ? 'Voir mon rapport' 
                     : 'Continuer'),
           ),
         ),
