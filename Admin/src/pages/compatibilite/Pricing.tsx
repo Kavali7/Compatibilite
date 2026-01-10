@@ -4,11 +4,14 @@ import { supabase } from '../../supabaseClient';
 // Types matching existing pricing_plans table
 type PricingPlan = {
     id: string;
-    plan_type: 'consultation' | 'subscription';
+    plan_type: 'consultation' | 'subscription' | 'annee' | 'mois' | 'jour' | 'bundle';
     name: string;
+    description: string | null;
     price_fcfa: number;
+    currency: string;
     duration_days: number | null;
     is_active: boolean;
+    display_order: number;
     created_at: string;
 };
 
@@ -18,8 +21,9 @@ export default function Pricing() {
     const [editingPlan, setEditingPlan] = useState<PricingPlan | null>(null);
     const [showAddForm, setShowAddForm] = useState(false);
     const [newPlan, setNewPlan] = useState({
-        plan_type: 'consultation' as 'consultation' | 'subscription',
+        plan_type: 'consultation' as 'consultation' | 'subscription' | 'annee' | 'mois' | 'jour',
         name: '',
+        description: '',
         price_fcfa: 500,
         duration_days: null as number | null,
     });
@@ -67,6 +71,7 @@ export default function Pricing() {
                 .from('pricing_plans')
                 .update({
                     name: plan.name,
+                    description: plan.description,
                     price_fcfa: plan.price_fcfa,
                     duration_days: plan.duration_days,
                 })
@@ -96,6 +101,7 @@ export default function Pricing() {
                 .insert({
                     plan_type: newPlan.plan_type,
                     name: newPlan.name,
+                    description: newPlan.description || null,
                     price_fcfa: newPlan.price_fcfa,
                     duration_days: newPlan.plan_type === 'subscription' ? newPlan.duration_days : null,
                     is_active: true,
@@ -103,7 +109,7 @@ export default function Pricing() {
 
             if (error) throw error;
             setShowAddForm(false);
-            setNewPlan({ plan_type: 'consultation', name: '', price_fcfa: 500, duration_days: null });
+            setNewPlan({ plan_type: 'consultation', name: '', description: '', price_fcfa: 500, duration_days: null });
             setSaveStatus('✅ Plan créé !');
             loadPlans();
             setTimeout(() => setSaveStatus(null), 3000);
@@ -159,11 +165,14 @@ export default function Pricing() {
                             <label>Type</label>
                             <select
                                 value={newPlan.plan_type}
-                                onChange={(e) => setNewPlan({ ...newPlan, plan_type: e.target.value as 'consultation' | 'subscription' })}
+                                onChange={(e) => setNewPlan({ ...newPlan, plan_type: e.target.value as any })}
                                 aria-label="Type de plan"
                             >
                                 <option value="consultation">Consultation (unique)</option>
                                 <option value="subscription">Abonnement</option>
+                                <option value="annee">Prévision Annuelle</option>
+                                <option value="mois">Prévision Mensuelle</option>
+                                <option value="jour">Prévision du Jour</option>
                             </select>
                         </div>
                         <div className="form-group">
@@ -173,6 +182,15 @@ export default function Pricing() {
                                 value={newPlan.name}
                                 onChange={(e) => setNewPlan({ ...newPlan, name: e.target.value })}
                                 placeholder="Ex: Rapport Premium"
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label>Description</label>
+                            <input
+                                type="text"
+                                value={newPlan.description}
+                                onChange={(e) => setNewPlan({ ...newPlan, description: e.target.value })}
+                                placeholder="Description du forfait"
                             />
                         </div>
                         <div className="form-group">
