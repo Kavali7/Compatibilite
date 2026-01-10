@@ -68,39 +68,57 @@ class PricingService {
       id: 'default-consultation',
       planType: 'consultation',
       name: 'Rapport de base compatibilité',
-      priceFcfa: 2, // Test price - real price comes from Supabase
+      priceFcfa: 700, // Test price - real price comes from Supabase
     ),
     PricingPlan(
       id: 'default-subscription',
       planType: 'subscription',
       name: 'Abonnement mensuel',
-      priceFcfa: 2, // Test price - real price comes from Supabase
+      priceFcfa: 15000, // Test price - real price comes from Supabase
       durationDays: 30,
     ),
   ];
 
   /// Get the consultation plan
+  /// Throws if plans not loaded
   PricingPlan get consultationPlan {
+    if (_cachedPlans.isEmpty) {
+      throw Exception('Les plans de tarification n\'ont pas été chargés. Veuillez vérifier votre connexion.');
+    }
     return _cachedPlans.firstWhere(
       (p) => p.isConsultation && p.isActive,
-      orElse: () => defaultPlans.first,
+      orElse: () => throw Exception('Aucun plan consultation actif trouvé'),
     );
   }
 
   /// Get the subscription plan
+  /// Throws if plans not loaded
   PricingPlan get subscriptionPlan {
+    if (_cachedPlans.isEmpty) {
+      throw Exception('Les plans de tarification n\'ont pas été chargés. Veuillez vérifier votre connexion.');
+    }
     return _cachedPlans.firstWhere(
       (p) => p.isSubscription && p.isActive,
-      orElse: () => defaultPlans.last,
+      orElse: () => throw Exception('Aucun plan abonnement actif trouvé'),
     );
   }
+  
+  /// Check if plans are loaded
+  bool get hasPlans => _cachedPlans.isNotEmpty;
+  
+  /// Last error message (if any)
+  String? _lastError;
+  String? get lastError => _lastError;
 
   /// Fetch all pricing plans from Supabase
+  /// Throws exception if Supabase is not available or fails
   Future<List<PricingPlan>> fetchPlans() async {
+    _lastError = null;
+    
     if (_client == null) {
-      debugPrint('PricingService: Supabase not initialized, using defaults');
-      _cachedPlans = defaultPlans;
-      return _cachedPlans;
+      _lastError = 'Connexion au serveur impossible. Veuillez vérifier votre connexion internet.';
+      debugPrint('PricingService: Supabase not initialized');
+      throw Exception(_lastError);
     }
 
     try {
@@ -115,14 +133,17 @@ class PricingService {
           .toList();
 
       if (_cachedPlans.isEmpty) {
-        _cachedPlans = defaultPlans;
+        _lastError = 'Aucun plan de tarification n\'est configuré. Contactez le support.';
+        debugPrint('PricingService: No active plans found');
+        throw Exception(_lastError);
       }
 
+      debugPrint('PricingService: Loaded ${_cachedPlans.length} plans');
       return _cachedPlans;
     } catch (e) {
+      _lastError = 'Erreur de chargement des tarifs: ${e.toString()}';
       debugPrint('PricingService fetchPlans error: $e');
-      _cachedPlans = defaultPlans;
-      return _cachedPlans;
+      rethrow;
     }
   }
 
