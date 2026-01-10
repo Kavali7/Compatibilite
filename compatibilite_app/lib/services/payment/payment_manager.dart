@@ -10,6 +10,7 @@ import '../../models/purchase_model.dart';
 import '../supabase_manager.dart';
 import 'payment_gateway.dart';
 import 'kkiapay_gateway.dart';
+import 'fedapay_gateway.dart';
 
 /// Payment Manager - Central orchestrator for all payment providers
 class PaymentManager {
@@ -25,10 +26,10 @@ class PaymentManager {
       gateways.add(KkiapayGateway.instance);
     }
     
-    // FedaPay will be added here when implemented
-    // if (FedapayGateway.instance.isConfigured) {
-    //   gateways.add(FedapayGateway.instance);
-    // }
+    // Add FedaPay if configured
+    if (FedapayGateway.instance.isConfigured) {
+      gateways.add(FedapayGateway.instance);
+    }
     
     return gateways;
   }

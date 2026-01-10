@@ -262,7 +262,6 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                   provider: PaymentProvider.fedapay,
                   isSelected: _selectedProvider == PaymentProvider.fedapay,
                   onTap: () => _onProviderSelected(PaymentProvider.fedapay),
-                  isDisabled: true, // Will be enabled when FedaPay is integrated
                 ),
               ),
             ],
