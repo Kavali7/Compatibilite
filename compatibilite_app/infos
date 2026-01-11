@@ -12,40 +12,56 @@ flutter run --dart-define-from-file=.env
 
 
 
-# Contexte du Projet : Compatibilité & Guidance
+# 📘 Documentation Technique & Contexte : Projet "Compatibilité & Guidance"
 
-Tu es un développeur expert rejoignant l'équipe. Voici la documentation technique complète du projet. Analyse-la pour comprendre structure, flux de données et règles métier avant de répondre à mes futures demandes.
+Tu es un architecte logiciel senior rejoignant l'équipe. Voici la "Source de Vérité" du projet. Digère ces informations pour garantir une cohérence parfaite entre l'application mobile, le panneau d'administration et le backend.
 
-## 1. Vue d'Ensemble
-Plateforme de numérologie et compatibilité amoureuse composée de 3 parties :
-1.  **Mobile App (Flutter)** : Interface utilisateur (Wizard, Résultats, Paiement).
-2.  **Backend (Supabase/PostgreSQL)** : Héberge données, Auth, et toute la logique métier (calculs en SQL).
-3.  **Admin Panel (React/Vite)** : CMS pour gérer les textes, prix et promotions.
+## 1. Architecture & Philosophie
+Le projet repose sur une architecture **"Thick Database" (Base de données intelligente)**.
+*   **Principe** : L'intelligence métier ne réside PAS dans le code mobile, mais dans la Base de Données (SQL/RPC).
+*   **Objectif** : L'application mobile est un "client léger" qui ne fait qu'afficher ce que le backend lui dicte. Cela permet de modifier les calculs, les textes ou les prix sans mettre à jour l'application sur les stores.
 
-## 2. Stack Technique & Structure des Dossiers
--   **Mobile** (`/compatibilite_app`) : Flutter, Provider, Kkiapay.
--   **Admin** (`/admin`) : React, TypeScript, Vite, Tailwind.
--   **Backend Scripts** (`/compatibilite_app/*.sql`) : Source de vérité des fonctions SQL.
--   **DB** : PostgreSQL (via Supabase).
+## 2. Les 3 Piliers de l'Écosystème
 
-## 3. Architecture "Thick Database" (Critique)
-L'intelligence est dans la DB. L'app mobile n'est qu'une interface d'affichage.
-**Flux de Génération :**
-1.  **Wizard (App)** : Saisie infos (7 étapes).
-2.  **Appel RPC** : `rpc_generer_rapport` (Supabase).
-3.  **Logique SQL** : Calculs numérologiques (`fn_calcul_nom`, `fn_calcul_details_nom`) + Sélection textes (`content_bricks`).
-4.  **Retour** : JSON assemblé prêt à afficher.
+### A. 📱 Application Mobile (Client)
+*   **Rôle** : Interface utilisateur pour les couples. Saisie des données, paiement, affichage des rapports.
+*   **Tech** : Flutter, Provider.
+*   **Chemin** : `/compatibilite_app`
+*   **Dépendance** : Totale envers Supabase pour la logique.
 
-## 4. Modèle de Données Clé
--   `couple_profiles` : Infos partenaires (A & B). **Table Clé**. Identification via `user_id` (Unique).
--   `generated_reports` : Cache des rapports.
--   `content_bricks` : Textes dynamiques administrables.
--   `numerology_texts` : Textes statiques (Chemin de vie, etc.).
+### B. 🗄️ Backend Supabase (Cerveau)
+*   **Rôle** : Héberge les données, l'authentification et TOUTE la logique métier.
+*   **Tech** : PostgreSQL, PL/pgSQL (Fonctions RPC), RLS (Security).
+*   **Source de vérité** : Les fichiers `.sql` dans `/compatibilite_app/` sont les masters des fonctions déployées.
 
-## 5. Règles de Gestion Importantes
--   **Sécurité (RLS)** : Les utilisateurs ne voient que LEURS données (`auth.uid() = user_id`).
--   **Unicité** : Un seul profil couple par compte utilisateur (`UNIQUE(user_id)`).
--   **Modifications Backend** : Toute modification de logique métier se fait dans les fichiers `.sql` ET doit être déployée sur Supabase.
+### C. 🎛️ Panneau Admin (Tour de Contrôle)
+*   **Rôle** : Interface de gestion CRITIQUE. C'est le seul moyen pour l'administrateur de piloter le "Cerveau" sans toucher au code SQL.
+*   **Tech** : React, TypeScript, Vite, TailwindCSS.
+*   **Chemin** : `/Admin` (Un projet React distinct, hors de l'arborescence Flutter).
+*   **Capacités** :
+    *   **Contenu** : Édition des briques d'interprétation (`content_bricks`, `numerology_texts`) et des textes canoniques.
+    *   **Business** : Gestion des plans tarifaires (`pricing_plans`), codes promo, et surveillance des ventes.
+    *   **CRM/Suivi** : Vue sur les utilisateurs, les rapports générés et les relances prospects (Growth Hacking).
 
-**Instruction :**
-Digère ces informations. Tu es responsable de maintenir la cohérence entre le Code (Flutter/React) et la Logique (SQL).
+## 3. Flux de Données & Génération de Rapport
+Le cœur du système fonctionne ainsi :
+1.  **Saisie (Mobile)** : L'utilisateur entre 7 données clés (Noms, Dates naissance).
+2.  **Exécution (Backend)** : L'app appelle la fonction RPC `rpc_generer_rapport`.
+3.  **Calcul (SQL)** : Postgres exécute les algorithmes numérologiques (Chemin de vie, C1-C4, etc.).
+4.  **Assemblage (SQL)** : Le moteur sélectionne dynamiquement les fragments de texte (`content_bricks`) adaptés au résultat.
+5.  **Restitution (JSON)** : Le backend renvoie un objet JSON complet prêt à afficher.
+
+## 4. Modèle de Données Clé (Supabase)
+*   `couple_profiles` : Table centrale. Stocke les infos brutes des partenaires. Unicité par `user_id`.
+*   `generated_reports` : Cache des résultats calculés.
+*   `pricing_plans` : Configuration dynamique des prix (modifiables via Admin).
+*   `marketing_prospects` : Table de tracking pour les leads/abandons de panier.
+*   `numerology_texts` : Les textes statiques fondamentaux.
+
+## 5. Règles d'Or pour le Développeur
+1.  **Zéro Logique Mobile** : Ne jamais coder de calcul numérologique en Dart. Tout doit être en SQL.
+2.  **Sécurité RLS (Row Level Security)** : Un utilisateur ne doit voir QUE ses propres données. L'Admin, lui, a des droits étendus via son interface dédiée.
+3.  **L'Admin est Maître** : Si on ajoute une feature (ex: nouveaux textes), l'Admin doit pouvoir la gérer. Penser "Configurabilité" avant "Code en dur".
+4.  **Synchronisation** : Toute modification de structure DB doit être répercutée dans les types TypeScript (Admin) et les Modèles Dart (Mobile).
+
+Cette documentation est ta boussole. Réfère-t'y avant chaque intervention.

@@ -42,18 +42,18 @@ BEGIN
     RETURN jsonb_build_object('error', 'Couple introuvable');
   END IF;
 
-  v_nom_a := v_couple.partner_a_first_name || ' ' || v_couple.partner_a_last_name;
-  v_nom_b := v_couple.partner_b_first_name || ' ' || v_couple.partner_b_last_name;
+  v_nom_a := v_couple.user_firstname;
+  v_nom_b := v_couple.partner_firstname;
 
   -- 2. Calculs A
-  v_lp_a     := public.fn_nombre_personne(v_couple.partner_a_birth_date);
+  v_lp_a     := public.fn_nombre_personne(v_couple.user_birthdate);
   v_name_a   := public.fn_calcul_nom(v_nom_a);
   v_intime_a := public.fn_calcul_intime(v_nom_a);
   v_real_a   := public.fn_calcul_realisation(v_nom_a);
   v_kabbale_a:= public.fn_calcul_kabbale(v_nom_a);
   
   -- Calculs B
-  v_lp_b     := public.fn_nombre_personne(v_couple.partner_b_birth_date);
+  v_lp_b     := public.fn_nombre_personne(v_couple.partner_birthdate);
   v_name_b   := public.fn_calcul_nom(v_nom_b);
   v_intime_b := public.fn_calcul_intime(v_nom_b);
   v_real_b   := public.fn_calcul_realisation(v_nom_b);

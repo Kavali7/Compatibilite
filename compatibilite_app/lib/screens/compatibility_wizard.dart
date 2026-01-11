@@ -2040,23 +2040,15 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
        return;
     }
     debugPrint('>>> _initiatePayment: Authentication successful');
-
-    // Compute summary (Fetch from Backend)
-    // Now that we are authenticated, we can create the profile and call the RPC
-    if (_summary == null) {
-      debugPrint('>>> _initiatePayment: Fetching summary from backend...');
-      await _fetchAndSetSummary();
-      if (_summary == null) {
-        debugPrint('>>> _initiatePayment: Failed to fetch summary');
-        _showSnack('Erreur lors du calcul du rapport. Veuillez réessayer.');
-        setState(() => _isProcessingPayment = false);
-        return;
-      }
-    }
+    
+    // Save couple profile (required for RPC later)
+    await _saveCoupleProfile();
     
     // Save session before payment
     debugPrint('>>> _initiatePayment: Saving session...');
     await _saveSessionIfPossible();
+    
+    // Note: Summary will be calculated AFTER successful payment
 
     
     // Auto-select consultation plan if not already selected
@@ -2176,8 +2168,11 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
             _showSnack('Paiement réussi !');
           }
 
-          // Directly advance to results step instead of calling _goNext()
-          // to avoid re-checking payment conditions
+          // NOW calculate the summary after payment is confirmed
+          debugPrint('>>> Payment success: Fetching summary...');
+          await _fetchAndSetSummary();
+          
+          // Load temporal reports as bonuses
           if (mounted) {
             _loadTemporalReports();
             setState(() {

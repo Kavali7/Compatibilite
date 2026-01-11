@@ -1,70 +1,54 @@
 -- ============================================================
--- AUDIT COMPLET DU BACKEND (FULL DUMP)
--- DATE: 2026-01-07
--- DESCRIPTION: Ce script aggrege tables, colonnes, politiques et fonctions
---              en une seule liste de résultats JSON.
--- INSTRUCTION: Exécutez tout, et copiez le résultat (ou faites une capture large).
+-- AUDIT COMPLET DU SCHÉMA SUPABASE
+-- Ce script liste TOUT ce qui existe dans la base de données
+-- Permet de vérifier l'existant avant de restaurer quoi que ce soit
 -- ============================================================
 
-WITH 
--- 1. Tables et leur taille
-tables_info AS (
-    SELECT 
-        'TABLE' as category,
-        table_name as name,
-        jsonb_build_object(
-            'size', pg_size_pretty(pg_total_relation_size(quote_ident(table_name))),
-            'columns_count', (SELECT count(*) FROM information_schema.columns WHERE table_name = t.table_name)
-        ) as details
-    FROM information_schema.tables t
-    WHERE table_schema = 'public'
-),
+-- 1. LISTE DE TOUTES LES TABLES
+SELECT '=== 1. TOUTES LES TABLES ===' as section;
+SELECT 
+    table_name,
+    (SELECT count(*) FROM information_schema.columns WHERE table_name = t.table_name) as nb_colonnes,
+    pg_size_pretty(pg_total_relation_size(quote_ident(table_name))) as taille_totale
+FROM information_schema.tables t
+WHERE table_schema = 'public'
+ORDER BY table_name;
 
--- 2. Politiques de sécurité (RLS)
-policies_info AS (
-    SELECT 
-        'POLICY' as category,
-        tablename || '.' || policyname as name,
-        jsonb_build_object(
-            'roles', roles,
-            'cmd', cmd,
-            'permissive', permissive,
-            'using', qual,
-            'with_check', with_check
-        ) as details
-    FROM pg_policies
-    WHERE schemaname = 'public'
-),
+-- 2. DÉTAILS DES COLONNES POUR CHAQUE TABLE
+SELECT '=== 2. STRUCTURE DES TABLES ===' as section;
+SELECT 
+    table_name, 
+    column_name, 
+    data_type, 
+    is_nullable
+FROM information_schema.columns 
+WHERE table_schema = 'public'
+ORDER BY table_name, ordinal_position;
 
--- 3. Fonctions et RPC
-functions_info AS (
-    SELECT 
-        'FUNCTION' as category,
-        routine_name as name,
-        jsonb_build_object(
-            'return_type', data_type,
-            'security_type', external_language
-        ) as details
-    FROM information_schema.routines
-    WHERE routine_schema = 'public'
-      AND routine_type = 'FUNCTION'
-),
+-- 3. LISTE DES VUES (VIEWS)
+SELECT '=== 3. VUES ===' as section;
+SELECT table_name 
+FROM information_schema.views 
+WHERE table_schema = 'public';
 
--- 4. Extensions
-extensions_info AS (
-    SELECT 
-        'EXTENSION' as category,
-        extname as name,
-        jsonb_build_object('version', extversion) as details
-    FROM pg_extension
-)
+-- 4. LISTE DES FONCTIONS (ROUTINES)
+SELECT '=== 4. FONCTIONS ET RPC ===' as section;
+SELECT 
+    routine_name, 
+    data_type as return_type,
+    external_language
+FROM information_schema.routines 
+WHERE routine_schema = 'public' 
+AND routine_type = 'FUNCTION'
+ORDER BY routine_name;
 
--- Aggregation finale
-SELECT * FROM tables_info
-UNION ALL
-SELECT * FROM policies_info
-UNION ALL
-SELECT * FROM functions_info
-UNION ALL
-SELECT * FROM extensions_info
-ORDER BY category, name;
+-- 5. LISTE DES ENUMS (TYPES PERSONNALISÉS)
+SELECT '=== 5. TYPES ENUM ===' as section;
+SELECT 
+    t.typname as enum_name,
+    e.enumlabel as enum_value
+FROM pg_type t 
+JOIN pg_enum e ON t.oid = e.enumtypid  
+JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+WHERE n.nspname = 'public'
+ORDER BY t.typname, e.enumsortorder;
