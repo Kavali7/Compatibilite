@@ -38,6 +38,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             items: [
                 { to: '/compatibilite/sessions', icon: '👥', label: 'Sessions' },
                 { to: '/compatibilite/temporal-purchases', icon: '🛒', label: 'Achats Temporels' },
+                { to: '/compatibilite/prospects', icon: '🎯', label: 'Prospects (Relances)' },
             ]
         },
         {

@@ -44,6 +44,18 @@ export default function CompatibiliteIndex() {
             title: 'Prévisions Temporelles',
             description: 'Gérer les achats de prévisions (jour, mois, année)',
         },
+        {
+            to: '/compatibilite/report-sections',
+            icon: '📋',
+            title: 'Sections Rapport',
+            description: 'Activer/désactiver les sections du rapport temporel',
+        },
+        {
+            to: '/compatibilite/text-type-settings',
+            icon: '⚙️',
+            title: 'Types de Textes',
+            description: 'Gérer l\'activation et l\'affichage des types de numérologie',
+        },
     ];
 
     return (

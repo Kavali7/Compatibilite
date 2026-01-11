@@ -13,6 +13,8 @@ import ContentBricks from './pages/compatibilite/ContentBricks';
 import CanonicalPredictions from './pages/compatibilite/CanonicalPredictions';
 import TemporalPurchases from './pages/compatibilite/TemporalPurchases';
 import ReportSections from './pages/compatibilite/ReportSections';
+import TextTypeSettings from './pages/compatibilite/TextTypeSettings';
+import Prospects from './pages/compatibilite/Prospects';
 
 const router = createBrowserRouter([
   {
@@ -35,6 +37,8 @@ const router = createBrowserRouter([
           { path: 'canonical-predictions', element: <CanonicalPredictions /> },
           { path: 'temporal-purchases', element: <TemporalPurchases /> },
           { path: 'report-sections', element: <ReportSections /> },
+          { path: 'text-type-settings', element: <TextTypeSettings /> },
+          { path: 'prospects', element: <Prospects /> },
         ],
       },
       { path: '*', element: <Navigate to="/" replace /> },
