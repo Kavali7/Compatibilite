@@ -290,7 +290,7 @@ class KkiapayService {
     }
   }
 
-  /// Record a payment in Supabase
+  /// Record a payment in Supabase via RPC (bypasses RLS)
   Future<PaymentRecord?> recordPayment({
     required String userId,
     String? sessionId,
@@ -306,19 +306,34 @@ class KkiapayService {
     }
 
     try {
-      final paymentId = _uuid.v4();
-      final result = await _client!.from(_tablePayments).insert({
-        'id': paymentId,
-        'user_id': userId,
-        'session_id': sessionId,
-        'transaction_id': transactionId,
-        'amount_fcfa': amountFcfa,
-        'payment_method': paymentMethod,
-        'status': status,
-        'plan_type': planType,
-      }).select().single();
+      // Use RPC function that runs with SECURITY DEFINER (bypasses RLS)
+      final result = await _client!.rpc('fn_insert_payment', params: {
+        'p_user_id': userId,
+        'p_session_id': sessionId,
+        'p_transaction_id': transactionId,
+        'p_amount_fcfa': amountFcfa,
+        'p_payment_method': paymentMethod ?? 'kkiapay',
+        'p_status': status,
+        'p_plan_type': planType,
+      });
 
-      return PaymentRecord.fromJson(result);
+      debugPrint('KkiapayService: Payment recorded via RPC: $result');
+      
+      // Parse the JSON result from the RPC function
+      if (result != null) {
+        return PaymentRecord(
+          id: result['id'] as String,
+          userId: result['user_id'] as String,
+          sessionId: result['session_id'] as String?,
+          transactionId: result['transaction_id'] as String,
+          amountFcfa: result['amount_fcfa'] as int,
+          paymentMethod: result['payment_method'] as String?,
+          status: result['status'] as String,
+          planType: result['plan_type'] as String,
+          createdAt: DateTime.parse(result['created_at'] as String),
+        );
+      }
+      return null;
     } catch (e) {
       debugPrint('KkiapayService recordPayment error: $e');
       rethrow;

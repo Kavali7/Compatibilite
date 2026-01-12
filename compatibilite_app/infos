@@ -8,115 +8,189 @@ adb connect 10.41.145.37
 flutter run -d 192.168.100.80:5555 2>&1
 flutter run -d 10.61.165.102:5555 --dart-define-from-file=.env
 adb connect 10.61.165.102
-Hilali (2022) : distinction des deux conceptualisations du bien-être (p.23). 
 
-Wedad_Basma_Hilali_aout2022
-
-
-Grosjean (2005) : distinction QVT comme causes collectives versus bien-être comme effets sur la personne (p.33). 
-
-bien_etre_objectif_prevention
-
-
-EN3S & OIT (2023) : bien-être au travail comme satisfaction et épanouissement dépassant l’absence d’atteinte à la santé (p.7) ; définition OMS du bien-être au travail (p.9). 
-
-Guide_GBN_2023-EN3S-ENTREPRISES…
-
- 
-
-Guide_GBN_2023-EN3S-ENTREPRISES…
-
-
-Document maître : organisation du Chapitre 1, section 1.1 et ses sous-sections (1.1.1 ; 1.1.2). 
-
-Alpha Ousmane Diallo document (…
-
-Couverture du corpus
-
-PDF mobilisés : Wedad_Basma_Hilali_aout2022.pdf ; bien_etre_objectif_prevention.pdf ; Guide_GBN_2023-EN3S-ENTREPRISES-MONDIALES-ET-BIEN-ETRE-AU-TRAVAIL-OIT.pdf ; Alpha Ousmane Diallo document (mémoir).docx. 
-
-Wedad_Basma_Hilali_aout2022
-
- 
-
-bien_etre_objectif_prevention
-
- 
-
-Guide_GBN_2023-EN3S-ENTREPRISES…
-
- 
-
-Alpha Ousmane Diallo document (…
-
-
-PDF consultés mais non retenus (raison brève) :
-anact-revue-03-qualite-vie-travail.pdf, utile pour approfondir QVT et débats, mais non indispensable pour l’introduction de 1.1 centrée sur la clarification du bien-être. 
-
-anact-revue-03-qualite-vie-trav…
-
-
-ABALO-Jean-Le-bien-etre-au-travail-a-travers-le-prisme-de-la-complexite.pdf, intéressant sur les concepts voisins, mais redondant à ce stade avec la clarification déjà appuyée par des sources institutionnelles et un article INRS. 
-
-ABALO-Jean-Le-bien-etre-au-trav…
-
-
-2025_08_sante_travail.pdf, centré sur la prévention en santé au travail, à mobiliser plutôt pour articuler bien-être et prévention dans des sections ultérieures. 
-
-2025_08_sante_travail
+flutter pub get
+flutter run --dart-define-from-file=.env
 
 
 
-# 📘 Documentation Technique & Contexte : Projet "Compatibilité & Guidance"
 
-Tu es un architecte logiciel senior rejoignant l'équipe. Voici la "Source de Vérité" du projet. Digère ces informations pour garantir une cohérence parfaite entre l'application mobile, le panneau d'administration et le backend.
 
-## 1. Architecture & Philosophie
-Le projet repose sur une architecture **"Thick Database" (Base de données intelligente)**.
-*   **Principe** : L'intelligence métier ne réside PAS dans le code mobile, mais dans la Base de Données (SQL/RPC).
-*   **Objectif** : L'application mobile est un "client léger" qui ne fait qu'afficher ce que le backend lui dicte. Cela permet de modifier les calculs, les textes ou les prix sans mettre à jour l'application sur les stores.
 
-## 2. Les 3 Piliers de l'Écosystème
+A lire et à modifier en cas de mis à jour meilleurs compphrésension (seule partie modifiables dans ce fichier elle doit s'actuliser pour permettre à n'importe qui à n'importe quel moment de savoir comment lire et comprendre c fichier) 
 
-### A. 📱 Application Mobile (Client)
-*   **Rôle** : Interface utilisateur pour les couples. Saisie des données, paiement, affichage des rapports.
-*   **Tech** : Flutter, Provider.
-*   **Chemin** : `/compatibilite_app`
-*   **Dépendance** : Totale envers Supabase pour la logique.
+# 📘 Documentation Technique - Projet "Compatibilité & Guidance"
 
-### B. 🗄️ Backend Supabase (Cerveau)
-*   **Rôle** : Héberge les données, l'authentification et TOUTE la logique métier.
-*   **Tech** : PostgreSQL, PL/pgSQL (Fonctions RPC), RLS (Security).
-*   **Source de vérité** : Les fichiers `.sql` dans `/compatibilite_app/` sont les masters des fonctions déployées.
+> **Fichier de référence pour tout développeur/IA rejoignant le projet.**  
+> Dernière mise à jour: 12/01/2026
 
-### C. 🎛️ Panneau Admin (Tour de Contrôle)
-*   **Rôle** : Interface de gestion CRITIQUE. C'est le seul moyen pour l'administrateur de piloter le "Cerveau" sans toucher au code SQL.
-*   **Tech** : React, TypeScript, Vite, TailwindCSS.
-*   **Chemin** : `/Admin` (Un projet React distinct, hors de l'arborescence Flutter).
-*   **Capacités** :
-    *   **Contenu** : Édition des briques d'interprétation (`content_bricks`, `numerology_texts`) et des textes canoniques.
-    *   **Business** : Gestion des plans tarifaires (`pricing_plans`), codes promo, et surveillance des ventes.
-    *   **CRM/Suivi** : Vue sur les utilisateurs, les rapports générés et les relances prospects (Growth Hacking).
+---
 
-## 3. Flux de Données & Génération de Rapport
-Le cœur du système fonctionne ainsi :
-1.  **Saisie (Mobile)** : L'utilisateur entre 7 données clés (Noms, Dates naissance).
-2.  **Exécution (Backend)** : L'app appelle la fonction RPC `rpc_generer_rapport`.
-3.  **Calcul (SQL)** : Postgres exécute les algorithmes numérologiques (Chemin de vie, C1-C4, etc.).
-4.  **Assemblage (SQL)** : Le moteur sélectionne dynamiquement les fragments de texte (`content_bricks`) adaptés au résultat.
-5.  **Restitution (JSON)** : Le backend renvoie un objet JSON complet prêt à afficher.
+## 1. Architecture Globale
 
-## 4. Modèle de Données Clé (Supabase)
-*   `couple_profiles` : Table centrale. Stocke les infos brutes des partenaires. Unicité par `user_id`.
-*   `generated_reports` : Cache des résultats calculés.
-*   `pricing_plans` : Configuration dynamique des prix (modifiables via Admin).
-*   `marketing_prospects` : Table de tracking pour les leads/abandons de panier.
-*   `numerology_texts` : Les textes statiques fondamentaux.
+### Philosophie "Thick Database"
+- **Principe** : L'intelligence métier réside dans PostgreSQL (Supabase), PAS dans le code mobile
+- **Avantage** : Modifier calculs/textes/prix sans mise à jour sur les stores
+- **L'app mobile** = client léger qui affiche ce que le backend lui dicte
 
-## 5. Règles d'Or pour le Développeur
-1.  **Zéro Logique Mobile** : Ne jamais coder de calcul numérologique en Dart. Tout doit être en SQL.
-2.  **Sécurité RLS (Row Level Security)** : Un utilisateur ne doit voir QUE ses propres données. L'Admin, lui, a des droits étendus via son interface dédiée.
-3.  **L'Admin est Maître** : Si on ajoute une feature (ex: nouveaux textes), l'Admin doit pouvoir la gérer. Penser "Configurabilité" avant "Code en dur".
-4.  **Synchronisation** : Toute modification de structure DB doit être répercutée dans les types TypeScript (Admin) et les Modèles Dart (Mobile).
+### Les 3 Piliers
 
-Cette documentation est ta boussole. Réfère-t'y avant chaque intervention.
+| Composant | Rôle | Technologie | Chemin |
+|-----------|------|-------------|--------|
+| 📱 **Mobile** | Interface utilisateur | Flutter + Provider | `/compatibilite_app` |
+| 🗄️ **Backend** | Cerveau (logique métier) | Supabase PostgreSQL | Dashboard Supabase |
+| 🎛️ **Admin** | Tour de contrôle | React + TypeScript + Vite | `/Admin` |
+
+---
+
+## 2. Base de Données Supabase
+
+### Tables Principales (24 tables)
+
+| Table | Description |
+|-------|-------------|
+| `couple_profiles` | Infos brutes des partenaires |
+| `payments` | Transactions (Kkiapay/FedaPay) |
+| `pricing_plans` | Configuration dynamique des prix |
+| `content_bricks` | Fragments de texte pour rapports |
+| `generated_reports` | Cache des résultats calculés |
+| `marketing_prospects` | Tracking leads/abandons |
+
+### Fonctions RPC Clés
+
+| Fonction | Description |
+|----------|-------------|
+| `rpc_generer_rapport` | Assemble un rapport complet JSON |
+| `fn_insert_payment` | Insert paiement (SECURITY DEFINER - bypass RLS) |
+| `fn_record_purchase` | Enregistre un achat |
+| `fn_calcul_*` | Calculs numérologiques |
+
+### Politiques RLS (Row Level Security)
+
+- **Principe** : Un utilisateur ne voit QUE ses propres données
+- **Problème fréquent** : INSERT échoue si `user_id != auth.uid()`
+- **Solution** : Utiliser des fonctions `SECURITY DEFINER` pour contourner RLS
+
+---
+
+## 3. Système de Paiement
+
+### Providers Disponibles
+
+| Provider | Fichier Gateway | Clés .env |
+|----------|-----------------|-----------|
+| Kkiapay | `kkiapay_gateway.dart` | `KKIAPAY_PUBLIC_KEY`, `KKIAPAY_SANDBOX` |
+| FedaPay | `fedapay_gateway.dart` | `FEDAPAY_PUBLIC_KEY`, `FEDAPAY_SECRET_KEY`, `FEDAPAY_SANDBOX` |
+
+### Flux de Paiement
+
+```
+1. User sélectionne plan → _initiatePayment()
+2. Check availability: KkiapayService.isConfigured / FedapayGateway.isConfigured
+3. Gateway.initiatePayment() → redirection/widget
+4. Callback success → _handlePaymentSuccess(transactionId, provider)
+5. Record via RPC: fn_insert_payment (bypass RLS)
+6. Génère rapport → _fetchAndSetSummary()
+```
+
+### Debugging FedaPay
+
+Si FedaPay n'apparaît pas:
+1. Vérifier `.env` contient bien les clés
+2. Vérifier que `.env` est listé dans `pubspec.yaml` → `assets:`
+3. Vérifier logs: `FedapayGateway.instance.isConfigured`
+4. Le fichier doit être à la RACINE du projet Flutter
+
+---
+
+## 4. Configuration Environnement
+
+### Fichier `.env` (à la racine de `compatibilite_app/`)
+
+```env
+# Supabase
+SUPABASE_URL=https://xxxxx.supabase.co
+SUPABASE_ANON_KEY=eyJhbG...
+
+# Paiements
+KKIAPAY_PUBLIC_KEY=xxx
+KKIAPAY_SANDBOX=false
+FEDAPAY_PUBLIC_KEY=pk_live_xxx
+FEDAPAY_SECRET_KEY=sk_live_xxx
+FEDAPAY_SANDBOX=false
+
+# Admin
+ADMIN_PASSWORD=xxx
+```
+
+### Lancement
+
+```bash
+# Développement avec .env
+flutter run --dart-define-from-file=.env
+
+# Build release
+flutter build apk --release --dart-define-from-file=.env
+```
+
+---
+
+## 5. Résolution de Problèmes Courants
+
+### Erreur RLS "new row violates row-level security policy"
+
+**Cause** : INSERT direct avec `user_id` qui ne matche pas `auth.uid()`
+
+**Solution** : Utiliser une fonction RPC `SECURITY DEFINER`
+```sql
+CREATE OR REPLACE FUNCTION fn_insert_payment(...) 
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER AS $$
+```
+
+### FedaPay n'apparaît pas comme option
+
+1. Vérifier les clés dans `.env`
+2. Vérifier `pubspec.yaml` → `assets: - .env`
+3. Faire `flutter clean && flutter pub get`
+4. Ajouter debug: `debugPrint('FedaPay configured: ${FedapayGateway.instance.isConfigured}')`
+
+### Prix affiché "0 FCFA"
+
+**Cause** : RLS empêche lecture de `pricing_plans`
+
+**Solution** : Ajouter politique RLS pour `anon`:
+```sql
+CREATE POLICY "Allow anon select pricing" ON pricing_plans FOR SELECT TO anon USING (true);
+```
+
+---
+
+## 6. Règles d'Or
+
+1. **Zéro Logique Mobile** : Tout calcul numérologique = SQL
+2. **RLS First** : Chaque table a ses politiques de sécurité
+3. **Admin Maître** : Toute feature doit être configurable via Admin
+4. **Synchronisation** : Modif DB → update types TypeScript + modèles Dart
+5. **Test avec vrais clés** : Sandbox pour dev, Live pour prod
+
+---
+
+## 7. URLs Importantes
+
+- **Supabase Dashboard**: https://supabase.com/dashboard/project/lqhdvlkfzjbwujfkceis
+- **FedaPay Dashboard**: https://live.fedapay.com/
+- **SQL Editor**: https://supabase.com/dashboard/project/lqhdvlkfzjbwujfkceis/sql/new
+
+---
+
+## 8. Commandes ADB (Debug Mobile)
+
+```bash
+adb tcpip 5555
+adb connect <IP_PHONE>:5555
+flutter run -d <IP_PHONE>:5555 --dart-define-from-file=.env
+```
+
+---
+
+*Cette documentation est ta boussole. Réfère-t'y avant chaque intervention.*

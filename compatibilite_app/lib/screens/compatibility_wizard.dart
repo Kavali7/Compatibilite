@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:step_progress_indicator/step_progress_indicator.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../models/compatibility_models.dart';
 import '../models/legal_models.dart'; // Added
@@ -2093,6 +2094,14 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     final kkiapayAvailable = KkiapayService.instance.isConfigured;
     // Check Fedapay via PaymentManager/Gateway
     final fedapayAvailable = FedapayGateway.instance.isConfigured;
+    
+    // DEBUG: Log payment provider availability
+    debugPrint('=== PAYMENT PROVIDERS DEBUG ===');
+    debugPrint('Kkiapay configured: $kkiapayAvailable');
+    debugPrint('FedaPay configured: $fedapayAvailable');
+    debugPrint('FEDAPAY_PUBLIC_KEY from dotenv: ${dotenv.env['FEDAPAY_PUBLIC_KEY']}');
+    debugPrint('FEDAPAY_SECRET_KEY from dotenv: ${dotenv.env['FEDAPAY_SECRET_KEY']?.substring(0, 10)}...');
+    debugPrint('==============================');
     
     if (!kkiapayAvailable && !fedapayAvailable) {
       _showSnack('Aucun moyen de paiement configuré.');
