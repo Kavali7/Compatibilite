@@ -12,6 +12,8 @@ import '../services/supabase_manager.dart';
 import '../services/auth_service.dart';
 import '../services/pricing_service.dart';
 import '../services/kkiapay_service.dart';
+import '../services/payment/fedapay_gateway.dart';
+import '../services/payment/payment_gateway.dart';
 import '../services/temporal_report_service.dart';
 import '../services/legal_repository.dart'; // Added
 import '../theme/app_theme.dart';
@@ -2041,15 +2043,8 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     }
     debugPrint('>>> _initiatePayment: Authentication successful');
     
-    // Save couple profile (required for RPC later)
-    await _saveCoupleProfile();
-    
-    // Save session before payment
-    debugPrint('>>> _initiatePayment: Saving session...');
-    await _saveSessionIfPossible();
-    
-    // Note: Summary will be calculated AFTER successful payment
-
+    // NOTE: Profile will be saved AFTER payment success in _fetchAndSetSummary()
+    // This avoids RLS policy issues with unauthenticated or newly created users
     
     // Auto-select consultation plan if not already selected
     if (_selectedPlan == null) {
@@ -2091,107 +2086,235 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     setState(() => _isProcessingPayment = true);
 
     final email = _emailController.text.trim();
-    final password = _passwordController.text;
     final phone = _phoneController.text.trim();
     final name = '${_nameAController.text} & ${_nameBController.text}';
 
-    KkiapayService.instance.startPayment(
+    // Check available payment methods
+    final kkiapayAvailable = KkiapayService.instance.isConfigured;
+    // Check Fedapay via PaymentManager/Gateway
+    final fedapayAvailable = FedapayGateway.instance.isConfigured;
+    
+    if (!kkiapayAvailable && !fedapayAvailable) {
+      _showSnack('Aucun moyen de paiement configuré.');
+      setState(() => _isProcessingPayment = false);
+      return;
+    }
+
+    final paymentFunc = (String provider) {
+      final reason = _selectedPlan!.isSubscription
+            ? 'Abonnement mensuel Compatibilité'
+            : 'Rapport de compatibilité';
+            
+      if (provider == 'kkiapay') {
+        KkiapayService.instance.startPayment(
+          context: context,
+          amount: _selectedPlan!.priceFcfa,
+          reason: reason,
+          email: email,
+          name: name,
+          phone: phone.isNotEmpty ? phone : null,
+          callback: (success, transactionId, error) {
+             if (!success || transactionId == null) {
+               setState(() => _isProcessingPayment = false);
+               _showSnack(error ?? 'Paiement échoué. Veuillez réessayer.');
+               return;
+             }
+             _handlePaymentSuccess(transactionId, 'kkiapay');
+          },
+        );
+      } else if (provider == 'fedapay') {
+         FedapayGateway.instance.initiatePayment(
+          context: context,
+          amountFcfa: _selectedPlan!.priceFcfa,
+          reason: reason,
+          customerEmail: email,
+          customerName: name,
+          customerPhone: phone.isNotEmpty ? phone : null,
+          callback: (result) {
+            if (!result.success || result.transactionId == null) {
+              setState(() => _isProcessingPayment = false);
+              _showSnack(result.errorMessage ?? 'Paiement échoué.');
+              return;
+            }
+            _handlePaymentSuccess(result.transactionId!, 'fedapay');
+          },
+        );
+      }
+    };
+
+    if (kkiapayAvailable && fedapayAvailable) {
+      // Show selection dialog
+      _showPaymentMethodSelector(context, (provider) {
+         paymentFunc(provider);
+      });
+    } else if (kkiapayAvailable) {
+      paymentFunc('kkiapay');
+    } else {
+      paymentFunc('fedapay');
+    }
+  }
+
+  void _showPaymentMethodSelector(BuildContext context, Function(String) onSelected) {
+    showModalBottomSheet(
       context: context,
-      amount: _selectedPlan!.priceFcfa,
-      reason: _selectedPlan!.isSubscription
-          ? 'Abonnement mensuel Compatibilité'
-          : 'Rapport de compatibilité',
-      email: email,
-      name: name,
-      phone: phone.isNotEmpty ? phone : null,
-      callback: (success, transactionId, error) async {
-        if (!success || transactionId == null) {
-          setState(() => _isProcessingPayment = false);
-          _showSnack(error ?? 'Paiement échoué. Veuillez réessayer.');
-          return;
-        }
-
-        try {
-          // Create or sign in user
-          final authService = AuthService.instance;
-          AppUser? user;
-
-          if (await authService.emailExists(email)) {
-            user = await authService.signIn(email: email, password: password);
-          } else {
-            user = await authService.signUp(
-              email: email,
-              password: password,
-              name: name,
-            );
-          }
-
-          if (user == null) {
-            if (mounted) setState(() => _isProcessingPayment = false);
-            _showSnack('Erreur lors de la création du compte.');
-            return;
-          }
-
-          // Record payment
-          final payment = await KkiapayService.instance.recordPayment(
-            userId: user.id,
-            sessionId: _sessionId,
-            transactionId: transactionId,
-            amountFcfa: _selectedPlan!.priceFcfa,
-            status: PaymentStatus.success,
-            planType: _selectedPlan!.planType,
-          );
-
-          // If subscription, create subscription record
-          if (_selectedPlan!.isSubscription && _selectedPlan!.durationDays != null) {
-            await authService.createSubscription(
-              userId: user.id,
-              planId: _selectedPlan!.id,
-              paymentId: payment?.id ?? transactionId,
-              durationDays: _selectedPlan!.durationDays!,
-            );
-          }
-
-          // Link report to user
-          if (_sessionId != null) {
-            await KkiapayService.instance.linkReportToUser(
-              userId: user.id,
-              sessionId: _sessionId!,
-            );
-          }
-
-          if (mounted) {
-            setState(() {
-              _isProcessingPayment = false;
-              _paymentCompleted = true;
-            });
-            _showSnack('Paiement réussi !');
-          }
-
-          // NOW calculate the summary after payment is confirmed
-          debugPrint('>>> Payment success: Fetching summary...');
-          await _fetchAndSetSummary();
-          
-          // Load temporal reports as bonuses
-          if (mounted) {
-            _loadTemporalReports();
-            setState(() {
-              _currentStep = _totalSteps - 1; // Jump to results
-            });
-            _pageController.animateToPage(
-              _totalSteps - 1,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOut,
-            );
-          }
-        } catch (e) {
-          if (mounted) {
-            setState(() => _isProcessingPayment = false);
-            _showSnack('Erreur: ${e.toString()}');
-          }
-        }
-      },
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      backgroundColor: const Color(0xFF142933),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Choisir le moyen de paiement',
+              style: GoogleFonts.philosopher(
+                fontSize: 20,
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
+            _buildPaymentMethodTile(
+              'Kkiapay (Mobile Money & Carte)',
+              'assets/images/kkiapay_logo.png', // Provided it exists, else use icon
+              () {
+                Navigator.pop(ctx);
+                onSelected('kkiapay');
+              },
+            ),
+            const SizedBox(height: 12),
+            _buildPaymentMethodTile(
+              'FedaPay (Mobile Money & Carte)',
+              'assets/images/fedapay_logo.png',
+              () {
+                Navigator.pop(ctx);
+                onSelected('fedapay');
+              },
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
     );
+  }
+
+  Widget _buildPaymentMethodTile(String title, String assetPath, VoidCallback onTap) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E3B48),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+      ),
+      child: ListTile(
+        onTap: onTap,
+        leading: Container(
+          width: 40,
+          height: 40,
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          // Try to load asset, fallback to icon if fails
+          child: Image.asset(
+            assetPath, 
+            errorBuilder: (c, o, s) => Icon(Icons.payment, color: AppColors.primary),
+          ),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white70),
+      ),
+    );
+  }
+
+  Future<void> _handlePaymentSuccess(String transactionId, String providerName) async {
+    try {
+      // User is already authenticated from _registerOrSignInUser() before payment
+      final authService = AuthService.instance;
+      final user = authService.currentUser;
+
+      if (user == null) {
+        if (mounted) setState(() => _isProcessingPayment = false);
+        _showSnack('Erreur: session expirée. Veuillez réessayer.');
+        return;
+      }
+      
+      debugPrint('>>> Payment success callback: Using authenticated user ${user.id} ($providerName)');
+
+      // Record payment via the appropriate service or manually
+      // Since KkiapayService.recordPayment is specific, 
+      // and FedapayGateway doesn't seem to have a recordPayment helper exposed same way?
+      // Wait, PaymentManager does. But we bypassed PaymentManager. 
+      // KkiapayService has recordPayment. FedapayGateway doesn't seem to have one in the interface calling it directly here.
+      // However KkiapayService.recordPayment interacts with 'payments' table.
+      // We should use KkiapayService.instance.recordPayment for now as it writes to 'payments' table which is generic enough
+      // OR use PaymentManager logic if accessible.
+      // Let's use KkiapayService.instance.recordPayment for consistency as it was used before, 
+      // just passing the provider name correctly.
+
+      final payment = await KkiapayService.instance.recordPayment(
+        userId: user.id,
+        sessionId: _sessionId,
+        transactionId: transactionId,
+        amountFcfa: _selectedPlan!.priceFcfa,
+        status: PaymentStatus.success,
+        planType: _selectedPlan!.planType,
+        paymentMethod: providerName, // Passing provider name
+      );
+
+      // If subscription, create subscription record
+      if (_selectedPlan!.isSubscription && _selectedPlan!.durationDays != null) {
+        await authService.createSubscription(
+          userId: user.id,
+          planId: _selectedPlan!.id,
+          paymentId: payment?.id ?? transactionId,
+          durationDays: _selectedPlan!.durationDays!,
+        );
+      }
+
+      // Link report to user
+      if (_sessionId != null) {
+        await KkiapayService.instance.linkReportToUser(
+          userId: user.id,
+          sessionId: _sessionId!,
+        );
+      }
+
+      if (mounted) {
+        setState(() {
+          _isProcessingPayment = false;
+          _paymentCompleted = true;
+        });
+        _showSnack('Paiement réussi !');
+      }
+
+      // NOW calculate the summary after payment is confirmed
+      debugPrint('>>> Payment success: Fetching summary...');
+      await _fetchAndSetSummary();
+      
+      // Load temporal reports as bonuses
+      if (mounted) {
+        _loadTemporalReports();
+        setState(() {
+          _currentStep = _totalSteps - 1; // Jump to results
+        });
+        _pageController.animateToPage(
+          _totalSteps - 1,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isProcessingPayment = false);
+        _showSnack('Erreur: ${e.toString()}');
+      }
+    }
   }
 
 Widget _buildResultsStep() {

@@ -8,7 +8,62 @@ adb connect 10.41.145.37
 flutter run -d 192.168.100.80:5555 2>&1
 flutter run -d 10.61.165.102:5555 --dart-define-from-file=.env
 adb connect 10.61.165.102
-flutter run --dart-define-from-file=.env
+Hilali (2022) : distinction des deux conceptualisations du bien-être (p.23). 
+
+Wedad_Basma_Hilali_aout2022
+
+
+Grosjean (2005) : distinction QVT comme causes collectives versus bien-être comme effets sur la personne (p.33). 
+
+bien_etre_objectif_prevention
+
+
+EN3S & OIT (2023) : bien-être au travail comme satisfaction et épanouissement dépassant l’absence d’atteinte à la santé (p.7) ; définition OMS du bien-être au travail (p.9). 
+
+Guide_GBN_2023-EN3S-ENTREPRISES…
+
+ 
+
+Guide_GBN_2023-EN3S-ENTREPRISES…
+
+
+Document maître : organisation du Chapitre 1, section 1.1 et ses sous-sections (1.1.1 ; 1.1.2). 
+
+Alpha Ousmane Diallo document (…
+
+Couverture du corpus
+
+PDF mobilisés : Wedad_Basma_Hilali_aout2022.pdf ; bien_etre_objectif_prevention.pdf ; Guide_GBN_2023-EN3S-ENTREPRISES-MONDIALES-ET-BIEN-ETRE-AU-TRAVAIL-OIT.pdf ; Alpha Ousmane Diallo document (mémoir).docx. 
+
+Wedad_Basma_Hilali_aout2022
+
+ 
+
+bien_etre_objectif_prevention
+
+ 
+
+Guide_GBN_2023-EN3S-ENTREPRISES…
+
+ 
+
+Alpha Ousmane Diallo document (…
+
+
+PDF consultés mais non retenus (raison brève) :
+anact-revue-03-qualite-vie-travail.pdf, utile pour approfondir QVT et débats, mais non indispensable pour l’introduction de 1.1 centrée sur la clarification du bien-être. 
+
+anact-revue-03-qualite-vie-trav…
+
+
+ABALO-Jean-Le-bien-etre-au-travail-a-travers-le-prisme-de-la-complexite.pdf, intéressant sur les concepts voisins, mais redondant à ce stade avec la clarification déjà appuyée par des sources institutionnelles et un article INRS. 
+
+ABALO-Jean-Le-bien-etre-au-trav…
+
+
+2025_08_sante_travail.pdf, centré sur la prévention en santé au travail, à mobiliser plutôt pour articuler bien-être et prévention dans des sections ultérieures. 
+
+2025_08_sante_travail
 
 
 
