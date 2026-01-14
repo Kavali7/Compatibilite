@@ -392,6 +392,30 @@ Future<bool> hasCoupleProfile({String? userId}) async {
         }
       }
 
+      // Use RPC function with SECURITY DEFINER to bypass RLS
+      // This is the same approach used for payments (fn_insert_payment)
+      try {
+        debugPrint('TemporalReportService: Trying RPC fn_upsert_couple_profile...');
+        final result = await client.rpc('fn_upsert_couple_profile', params: {
+          'p_user_id': effectiveUserId,
+          'p_user_firstname': userFirstname,
+          'p_user_birthdate': userBirthdate.toIso8601String().split('T').first,
+          'p_user_gender': mapGender(userGender),
+          'p_partner_firstname': partnerFirstname,
+          'p_partner_birthdate': partnerBirthdate.toIso8601String().split('T').first,
+          'p_partner_gender': mapGender(partnerGender),
+        });
+        
+        debugPrint('TemporalReportService: RPC result: $result');
+        if (result != null && result['success'] == true) {
+          debugPrint('TemporalReportService: Couple profile created via RPC successfully');
+          return true;
+        }
+      } catch (rpcError) {
+        debugPrint('TemporalReportService: RPC failed ($rpcError), trying direct upsert...');
+      }
+
+      // Fallback: try direct upsert (might work if RLS policies are fixed)
       await client.from('couple_profiles').upsert({
         'user_id': effectiveUserId,
         'user_firstname': userFirstname,
@@ -402,7 +426,7 @@ Future<bool> hasCoupleProfile({String? userId}) async {
         'partner_gender': mapGender(partnerGender),
       }, onConflict: 'user_id');
 
-      debugPrint('TemporalReportService: Couple profile created successfully');
+      debugPrint('TemporalReportService: Couple profile created successfully via direct upsert');
       return true;
     } catch (e) {
       debugPrint('TemporalReportService: Error creating couple profile: $e');
@@ -412,6 +436,7 @@ Future<bool> hasCoupleProfile({String? userId}) async {
 
   /// Get the Couple Profile ID for the current user
   /// Required for RPC calls that need couple_id
+  /// Uses RPC with SECURITY DEFINER to bypass RLS (supports custom auth)
   Future<String?> getCoupleProfileId({String? userId}) async {
       final client = _client;
       if (client == null) return null;
@@ -423,13 +448,30 @@ Future<bool> hasCoupleProfile({String? userId}) async {
       if (effectiveUserId == null) return null;
 
       try {
-        final response = await client
+        // Use RPC function with SECURITY DEFINER to bypass RLS
+        // This is needed because the app uses custom auth (users table)
+        // and auth.uid() doesn't match the custom user_id
+        debugPrint('TemporalReportService: Getting couple ID for user: $effectiveUserId');
+        
+        final response = await client.rpc('fn_get_couple_profile_id', params: {
+          'p_user_id': effectiveUserId,
+        });
+        
+        debugPrint('TemporalReportService: RPC fn_get_couple_profile_id result: $response');
+        
+        if (response != null) {
+          return response as String;
+        }
+        
+        // Fallback: try direct query (might work if RLS is disabled or user is service_role)
+        debugPrint('TemporalReportService: RPC returned null, trying direct query...');
+        final directResponse = await client
             .from('couple_profiles')
             .select('id')
             .eq('user_id', effectiveUserId)
             .maybeSingle();
         
-        return response?['id'] as String?;
+        return directResponse?['id'] as String?;
       } catch (e) {
         debugPrint('TemporalReportService: Error fetching couple ID: $e');
         return null;
@@ -457,11 +499,16 @@ Future<bool> hasCoupleProfile({String? userId}) async {
         'p_couple_id': coupleId,
       });
       
-      debugPrint('>>> fetchFullProfile response received');
+     debugPrint('>>> fetchFullProfile response received');
+      debugPrint('>>> fetchFullProfile response data: $response');
       
-      if (response == null) return null;
+      if (response == null) {
+        debugPrint('>>> fetchFullProfile: Response is NULL - RPC returned nothing');
+        return null;
+      }
       
       final data = response as Map<String, dynamic>;
+      debugPrint('>>> fetchFullProfile parsed data keys: ${data.keys.toList()}');
       
       // Helper to extract text text
       String? extractText(Map<String, dynamic>? textObj) {

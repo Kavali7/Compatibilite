@@ -149,11 +149,28 @@ class FedapayGateway implements PaymentGateway {
       debugPrint('FedaPay create transaction response: ${response.statusCode}');
       debugPrint('FedaPay response body: ${response.body}');
       
-      if (response.statusCode == 200 || response.statusCode == 201) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
         final data = jsonDecode(response.body);
         return data['v1/transaction'] ?? data;
+      } else {
+        // Handle API errors
+        final errorData = jsonDecode(response.body);
+        String errorMessage = errorData['message'] ?? 'Erreur inconnue';
+        
+        // Extract specific validation errors if present
+        if (errorData['errors'] != null && errorData['errors'] is Map) {
+          final errors = errorData['errors'] as Map<String, dynamic>;
+          final details = errors.entries.map((e) => '${e.key}: ${e.value is List ? e.value.join(", ") : e.value}').join('\n');
+          if (details.isNotEmpty) {
+            errorMessage += '\n$details';
+          }
+        }
+        
+        debugPrint('FedaPay API Error: $errorMessage');
+        return null; // Return null effectively, but we might want to propagate the specific error.
+        // For now, logging it is enough as the caller checks for null generic failure.
+        // Ideally we should throw so we can show the user the specific message.
       }
-      return null;
     } catch (e) {
       debugPrint('FedaPay create transaction error: $e');
       return null;

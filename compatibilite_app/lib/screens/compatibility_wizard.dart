@@ -2164,46 +2164,211 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   }
 
   void _showPaymentMethodSelector(BuildContext context, Function(String) onSelected) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      backgroundColor: const Color(0xFF142933),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Choisir le moyen de paiement',
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (ctx) => Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: AppBar(
+            backgroundColor: AppColors.background,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () {
+                Navigator.pop(ctx);
+                setState(() => _isProcessingPayment = false);
+              },
+            ),
+            title: Text(
+              'Finaliser le paiement',
               style: GoogleFonts.philosopher(
-                fontSize: 20,
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 24),
-            _buildPaymentMethodTile(
-              'Kkiapay (Mobile Money & Carte)',
-              'assets/images/kkiapay_logo.png', // Provided it exists, else use icon
-              () {
-                Navigator.pop(ctx);
-                onSelected('kkiapay');
-              },
+          ),
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Plan Summary Card
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [AppColors.primary.withOpacity(0.2), AppColors.secondary.withOpacity(0.1)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.receipt_outlined, color: AppColors.primary, size: 28),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                'Votre commande',
+                                style: GoogleFonts.philosopher(
+                                  fontSize: 20,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _selectedPlan?.name ?? 'Rapport de compatibilité',
+                          style: const TextStyle(color: Colors.white, fontSize: 16),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${_selectedPlan?.priceFcfa ?? 0} FCFA',
+                          style: GoogleFonts.philosopher(
+                            fontSize: 32,
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 32),
+                  
+                  Text(
+                    'Choisissez votre moyen de paiement',
+                    style: GoogleFonts.philosopher(
+                      fontSize: 18,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  
+                  const SizedBox(height: 16),
+                  
+                  // Kkiapay Option
+                  _buildPaymentMethodCard(
+                    ctx: ctx,
+                    title: 'Kkiapay',
+                    subtitle: 'Mobile Money & Cartes bancaires',
+                    icon: Icons.account_balance_wallet,
+                    color: const Color(0xFF9C27B0),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      onSelected('kkiapay');
+                    },
+                  ),
+                  
+                  const SizedBox(height: 16),
+                  
+                  // FedaPay Option
+                  _buildPaymentMethodCard(
+                    ctx: ctx,
+                    title: 'FedaPay',
+                    subtitle: 'Mobile Money & Cartes bancaires',
+                    icon: Icons.payments_outlined,
+                    color: const Color(0xFF4CAF50),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      onSelected('fedapay');
+                    },
+                  ),
+                  
+                  const SizedBox(height: 32),
+                  
+                  // Security note
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.lock_outline, color: Colors.white70, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Paiement sécurisé. Vos informations sont protégées.',
+                            style: TextStyle(color: Colors.white70, fontSize: 13),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            _buildPaymentMethodTile(
-              'FedaPay (Mobile Money & Carte)',
-              'assets/images/fedapay_logo.png',
-              () {
-                Navigator.pop(ctx);
-                onSelected('fedapay');
-              },
-            ),
-            const SizedBox(height: 24),
-          ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentMethodCard({
+    required BuildContext ctx,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E3B48),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withOpacity(0.4), width: 1.5),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.philosopher(
+                        fontSize: 18,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: color, size: 28),
+            ],
+          ),
         ),
       ),
     );
