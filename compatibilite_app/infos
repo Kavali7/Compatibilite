@@ -1,28 +1,19 @@
-connected to 192.168.43.194:5555
-adb connect 192.168.43.194
-adb connect 192.168.139.126
-adb connect 192.168.100.80 
-adb connect 10.6.52.17
-adb tcpip 5555
-adb connect 10.41.145.37
-flutter run -d 192.168.100.80:5555 2>&1
-flutter run -d 10.61.165.102:5555 --dart-define-from-file=.env
-adb connect 10.61.165.102
-
-flutter pub get
-flutter run --dart-define-from-file=.env
-
-
-
-
-
-
-A lire et à modifier en cas de mis à jour meilleurs compphrésension (seule partie modifiables dans ce fichier elle doit s'actuliser pour permettre à n'importe qui à n'importe quel moment de savoir comment lire et comprendre c fichier) 
-
 # 📘 Documentation Technique - Projet "Compatibilité & Guidance"
 
-> **Fichier de référence pour tout développeur/IA rejoignant le projet.**  
-> Dernière mise à jour: 12/01/2026
+> **Fichier de référence OBLIGATOIRE pour tout développeur/IA rejoignant le projet.**  
+> Dernière mise à jour: **17 Janvier 2026**
+
+---
+
+## ⚠️ AVERTISSEMENT CRITIQUE
+
+> [!CAUTION]
+> **Les fichiers SQL locaux NE reflètent PAS l'état actuel du backend !**
+> 
+> Le backend Supabase a été modifié via des scripts directs. Avant toute intervention:
+> 1. Vérifier l'état RÉEL du backend via SQL Editor ou prendre directement controle de supabase en utilisant Control-
+> 2. Ne JAMAIS se fier uniquement aux fichiers `.sql` du projet
+> 3. Consulter cette documentation d'abord
 
 ---
 
@@ -43,73 +34,186 @@ A lire et à modifier en cas de mis à jour meilleurs compphrésension (seule pa
 
 ---
 
-## 2. Base de Données Supabase
+## 2. 🔴 SYSTÈME D'AUTHENTIFICATION (CRITIQUE)
 
-### Tables Principales (24 tables)
+> [!IMPORTANT]
+> L'application utilise un système d'authentification **HYBRIDE/CUSTOM**, pas uniquement Supabase Auth !
 
-| Table | Description |
-|-------|-------------|
-| `couple_profiles` | Infos brutes des partenaires |
-| `payments` | Transactions (Kkiapay/FedaPay) |
-| `pricing_plans` | Configuration dynamique des prix |
-| `content_bricks` | Fragments de texte pour rapports |
-| `generated_reports` | Cache des résultats calculés |
-| `marketing_prospects` | Tracking leads/abandons |
+### Deux systèmes coexistent :
 
-### Fonctions RPC Clés
+| Système | Table | Usage | Fonction de vérification |
+|---------|-------|-------|--------------------------|
+| **Supabase Auth** | `auth.users` | Géré par Supabase | `auth.uid()` |
+| **Custom Auth** | `public.users` | Géré par l'app Flutter | `AuthService.instance.currentUser?.id` |
 
-| Fonction | Description |
-|----------|-------------|
-| `rpc_generer_rapport` | Assemble un rapport complet JSON |
-| `fn_insert_payment` | Insert paiement (SECURITY DEFINER - bypass RLS) |
-| `fn_record_purchase` | Enregistre un achat |
-| `fn_calcul_*` | Calculs numérologiques |
+### ⚠️ Conséquence sur RLS
 
-### Politiques RLS (Row Level Security)
+Les politiques RLS utilisent `auth.uid()` mais l'app utilise le `user_id` de la table custom !
 
-- **Principe** : Un utilisateur ne voit QUE ses propres données
-- **Problème fréquent** : INSERT échoue si `user_id != auth.uid()`
-- **Solution** : Utiliser des fonctions `SECURITY DEFINER` pour contourner RLS
+```
+┌──────────────────────────────────────────────────────────────┐
+│  Flutter App (AuthService)                                   │
+│  → Utilise un user_id de la table custom "users"             │
+│  → Ce user_id N'EST PAS dans auth.users                      │
+└──────────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌──────────────────────────────────────────────────────────────┐
+│  Supabase RLS vérifie: auth.uid() = user_id                  │
+│  → auth.uid() est NULL ou différent                          │
+│  → SELECT/INSERT bloqué !                                    │
+└──────────────────────────────────────────────────────────────┘
+```
+
+### ✅ Solution Appliquée
+
+Toutes les opérations sur `couple_profiles` utilisent des fonctions RPC `SECURITY DEFINER` qui:
+1. Reçoivent le `user_id` en paramètre explicite
+2. Bypass RLS
+3. Fonctionnent avec l'auth custom
 
 ---
 
-## 3. Système de Paiement
+## 3. Base de Données Supabase - ÉTAT RÉEL
 
-### Providers Disponibles
+### Table `couple_profiles` - Structure EXACTE
 
-| Provider | Fichier Gateway | Clés .env |
-|----------|-----------------|-----------|
-| Kkiapay | `kkiapay_gateway.dart` | `KKIAPAY_PUBLIC_KEY`, `KKIAPAY_SANDBOX` |
-| FedaPay | `fedapay_gateway.dart` | `FEDAPAY_PUBLIC_KEY`, `FEDAPAY_SECRET_KEY`, `FEDAPAY_SANDBOX` |
-
-### Flux de Paiement
-
+```sql
+-- Colonnes RÉELLES (vérifiées le 14/01/2026)
+| column_name             | data_type     | is_nullable |
+|-------------------------|---------------|-------------|
+| id                      | uuid          | NO          |
+| user_id                 | uuid          | NO          |
+| user_firstname          | text          | NO          |
+| user_birthdate          | date          | NO          |
+| user_gender             | sexe_personne | NO          |  -- ENUM !
+| partner_firstname       | text          | NO          |
+| partner_birthdate       | date          | NO          |
+| partner_gender          | sexe_personne | NO          |  -- ENUM !
+| relationship_start_date | date          | YES         |
+| created_at              | timestamptz   | NO          |
+| updated_at              | timestamptz   | NO          |
 ```
-1. User sélectionne plan → _initiatePayment()
-2. Check availability: KkiapayService.isConfigured / FedapayGateway.isConfigured
-3. Gateway.initiatePayment() → redirection/widget
-4. Callback success → _handlePaymentSuccess(transactionId, provider)
-5. Record via RPC: fn_insert_payment (bypass RLS)
-6. Génère rapport → _fetchAndSetSummary()
+
+### Types ENUM Définis dans le Backend
+
+```sql
+-- Valeurs RÉELLES des enums (vérifiées le 14/01/2026)
+sexe_personne       = {non_precise, homme, femme, non_binaire}
+etat_relationnel    = {indifferent, harmonieux, neutre, tendu}
+statut_utilisateur  = {indifferent, en_couple, celibataire}
+periode_rapport     = {jour, mois, annee}
+periode_contenu     = {jour, mois, annee, toutes}
+ton_redaction       = {direct_doux, direct, intense, neutre, encourageant, avertissement, motivant, reflexif}
 ```
 
-### Debugging FedaPay
+### Politiques RLS sur `couple_profiles`
 
-Si FedaPay n'apparaît pas:
-1. Vérifier `.env` contient bien les clés
-2. Vérifier que `.env` est listé dans `pubspec.yaml` → `assets:`
-3. Vérifier logs: `FedapayGateway.instance.isConfigured`
-4. Le fichier doit être à la RACINE du projet Flutter
+```sql
+| policyname               | cmd    | roles           |
+|--------------------------|--------|-----------------|
+| allow_insert_own_profile | INSERT | {authenticated} |
+| allow_select_own_profile | SELECT | {authenticated} |
+| allow_update_own_profile | UPDATE | {authenticated} |
+| service_role_full_access | ALL    | {service_role}  |
+```
 
 ---
 
-## 4. Configuration Environnement
+## 4. Fonctions RPC ACTUELLES du Backend
+
+### `fn_upsert_couple_profile` - Création/Mise à jour profil
+
+```sql
+CREATE OR REPLACE FUNCTION public.fn_upsert_couple_profile(
+  p_user_id uuid, 
+  p_user_firstname text, 
+  p_user_birthdate date, 
+  p_user_gender text DEFAULT 'non_precise'::text,    -- TEXT, sera casté en enum
+  p_partner_firstname text DEFAULT NULL::text, 
+  p_partner_birthdate date DEFAULT NULL::date, 
+  p_partner_gender text DEFAULT 'non_precise'::text  -- TEXT, sera casté en enum
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE v_profile_id uuid;
+BEGIN
+  INSERT INTO couple_profiles (...)
+  VALUES (
+    ...
+    p_user_gender::sexe_personne,      -- CAST obligatoire !
+    ...
+    p_partner_gender::sexe_personne    -- CAST obligatoire !
+  )
+  ON CONFLICT (user_id) DO UPDATE SET ...
+  RETURNING id INTO v_profile_id;
+  
+  RETURN jsonb_build_object('success', true, 'profile_id', v_profile_id, 'user_id', p_user_id);
+END;
+$$;
+```
+
+### `fn_get_couple_profile_id` - Récupération ID profil (bypass RLS)
+
+```sql
+CREATE OR REPLACE FUNCTION public.fn_get_couple_profile_id(p_user_id uuid)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE v_profile_id uuid;
+BEGIN
+  SELECT id INTO v_profile_id
+  FROM couple_profiles
+  WHERE user_id = p_user_id
+  LIMIT 1;
+  
+  RETURN v_profile_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.fn_get_couple_profile_id TO authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_get_couple_profile_id TO anon;
+```
+
+### Autres Fonctions RPC Clés
+
+| Fonction | Description | SECURITY DEFINER |
+|----------|-------------|------------------|
+| `rpc_generer_rapport` | Génère rapport complet JSON | Non |
+| `rpc_generer_profil_complet` | Génère profil numérologique complet | Non |
+| `fn_insert_payment` | Insert paiement (bypass RLS) | **OUI** |
+| `fn_record_purchase` | Enregistre un achat | OUI |
+
+---
+
+## 5. Flux de Paiement et Génération de Rapport
+
+```
+1. User complète le wizard → _initiatePayment()
+2. Authentification via AuthService (custom auth)
+3. Gateway.initiatePayment() → Kkiapay/FedaPay widget
+4. Callback PAYMENT_SUCCESS → _handlePaymentSuccess()
+5. Enregistrement paiement → fn_insert_payment (RPC SECURITY DEFINER)
+6. Sauvegarde profil couple → fn_upsert_couple_profile (RPC SECURITY DEFINER)
+7. Récupération ID profil → fn_get_couple_profile_id (RPC SECURITY DEFINER)
+8. Génération rapport → rpc_generer_profil_complet
+9. Affichage résultat
+```
+
+---
+
+## 6. Configuration Environnement
 
 ### Fichier `.env` (à la racine de `compatibilite_app/`)
 
 ```env
 # Supabase
-SUPABASE_URL=https://xxxxx.supabase.co
+SUPABASE_URL=https://lqhdvlkfzjbwujfkceis.supabase.co
 SUPABASE_ANON_KEY=eyJhbG...
 
 # Paiements
@@ -118,72 +222,141 @@ KKIAPAY_SANDBOX=false
 FEDAPAY_PUBLIC_KEY=pk_live_xxx
 FEDAPAY_SECRET_KEY=sk_live_xxx
 FEDAPAY_SANDBOX=false
-
-# Admin
-ADMIN_PASSWORD=xxx
 ```
 
 ### Lancement
 
 ```bash
-# Développement avec .env
+flutter pub get
 flutter run --dart-define-from-file=.env
-
-# Build release
-flutter build apk --release --dart-define-from-file=.env
 ```
 
 ---
 
-## 5. Résolution de Problèmes Courants
+## 7. Résolution de Problèmes
+
+### Erreur "Profil couple non trouvé"
+
+**Cause** : `getCoupleProfileId()` utilise SELECT direct bloqué par RLS
+
+**Solution** : Utiliser la fonction RPC `fn_get_couple_profile_id` (déjà implémenté dans le code)
+
+### Erreur "Impossible de sauvegarder le profil"
+
+**Cause possible 1** : Cast enum manquant dans `fn_upsert_couple_profile`
+```sql
+-- Vérifier que le cast est présent :
+p_user_gender::sexe_personne
+p_partner_gender::sexe_personne
+```
+
+**Cause possible 2** : Fonction RPC inexistante
+```sql
+-- Vérifier l'existence :
+SELECT routine_name FROM information_schema.routines 
+WHERE routine_name = 'fn_upsert_couple_profile';
+```
 
 ### Erreur RLS "new row violates row-level security policy"
 
-**Cause** : INSERT direct avec `user_id` qui ne matche pas `auth.uid()`
+**Cause** : INSERT/SELECT direct avec `user_id` custom qui ne matche pas `auth.uid()`
 
-**Solution** : Utiliser une fonction RPC `SECURITY DEFINER`
+**Solution** : Utiliser TOUJOURS les fonctions RPC `SECURITY DEFINER`
+
+---
+
+## 8. Requêtes de Diagnostic Backend
+
 ```sql
-CREATE OR REPLACE FUNCTION fn_insert_payment(...) 
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER AS $$
-```
+-- 1. Voir les colonnes d'une table
+SELECT column_name, data_type, is_nullable 
+FROM information_schema.columns 
+WHERE table_name = 'couple_profiles'
+ORDER BY ordinal_position;
 
-### FedaPay n'apparaît pas comme option
+-- 2. Voir tous les enums
+SELECT t.typname AS enum_name, 
+       array_agg(e.enumlabel ORDER BY e.enumsortorder) AS values
+FROM pg_type t
+JOIN pg_enum e ON t.oid = e.enumtypid
+GROUP BY t.typname;
 
-1. Vérifier les clés dans `.env`
-2. Vérifier `pubspec.yaml` → `assets: - .env`
-3. Faire `flutter clean && flutter pub get`
-4. Ajouter debug: `debugPrint('FedaPay configured: ${FedapayGateway.instance.isConfigured}')`
+-- 3. Voir les politiques RLS d'une table
+SELECT policyname, cmd, roles 
+FROM pg_policies 
+WHERE tablename = 'couple_profiles';
 
-### Prix affiché "0 FCFA"
+-- 4. Voir une fonction RPC
+SELECT pg_get_functiondef(oid) AS function_definition
+FROM pg_proc 
+WHERE proname = 'fn_upsert_couple_profile';
 
-**Cause** : RLS empêche lecture de `pricing_plans`
+-- 5. Vérifier les profils récents
+SELECT id, user_id, user_firstname, created_at 
+FROM couple_profiles 
+ORDER BY created_at DESC LIMIT 5;
 
-**Solution** : Ajouter politique RLS pour `anon`:
-```sql
-CREATE POLICY "Allow anon select pricing" ON pricing_plans FOR SELECT TO anon USING (true);
+-- 6. Vérifier les utilisateurs auth.users
+SELECT id, email, created_at 
+FROM auth.users 
+ORDER BY created_at DESC LIMIT 5;
 ```
 
 ---
 
-## 6. Règles d'Or
+## 9. Structure du Projet
 
-1. **Zéro Logique Mobile** : Tout calcul numérologique = SQL
-2. **RLS First** : Chaque table a ses politiques de sécurité
-3. **Admin Maître** : Toute feature doit être configurable via Admin
-4. **Synchronisation** : Modif DB → update types TypeScript + modèles Dart
-5. **Test avec vrais clés** : Sandbox pour dev, Live pour prod
+```
+Compatibilite/
+├── compatibilite_app/          # App Flutter mobile
+│   ├── lib/
+│   │   ├── screens/            # compatibility_wizard.dart (principal)
+│   │   ├── services/           # temporal_report_service.dart, kkiapay_service.dart
+│   │   │   └── payment/        # fedapay_gateway.dart, payment_manager.dart
+│   │   ├── models/             # CompatibilitySummary, etc.
+│   │   └── widgets/
+│   ├── .env                    # Variables (NE PAS COMMITTER)
+│   └── pubspec.yaml
+│
+├── Admin/                      # Panneau d'administration React
+│   ├── src/
+│   │   ├── pages/              # Dashboard, Settings, Pricing, etc.
+│   │   └── components/
+│   └── package.json
+│
+└── *.sql                       # Scripts SQL (ATTENTION: pas à jour !)
+```
 
 ---
 
-## 7. URLs Importantes
+## 10. URLs Importantes
 
 - **Supabase Dashboard**: https://supabase.com/dashboard/project/lqhdvlkfzjbwujfkceis
-- **FedaPay Dashboard**: https://live.fedapay.com/
 - **SQL Editor**: https://supabase.com/dashboard/project/lqhdvlkfzjbwujfkceis/sql/new
+- **Table Editor**: https://supabase.com/dashboard/project/lqhdvlkfzjbwujfkceis/editor
 
 ---
 
-## 8. Commandes ADB (Debug Mobile)
+## 11. Checklist Nouveau Développeur
+
+1. [ ] Lire ENTIÈREMENT ce fichier
+2. [ ] Cloner le repo
+3. [ ] Créer `.env` à partir de `.env.example`
+4. [ ] `flutter pub get`
+5. [ ] Vérifier l'état du backend via les requêtes SQL section 8
+6. [ ] `flutter run --dart-define-from-file=.env`
+7. [ ] Tester le flux : inscription → paiement → rapport
+
+### Règles d'Or
+
+1. **JAMAIS d'INSERT/SELECT direct** sur `couple_profiles` ou `payments` → utiliser RPC
+2. **Vérifier le backend avant de modifier** : les fichiers SQL locaux sont obsolètes
+3. **L'auth est CUSTOM** : `AuthService.currentUser?.id` ≠ `auth.uid()`
+4. **Toujours caster les enums** : `'homme'::sexe_personne`
+
+---
+
+## 12. Commandes ADB (Debug Mobile)
 
 ```bash
 adb tcpip 5555
@@ -193,155 +366,5 @@ flutter run -d <IP_PHONE>:5555 --dart-define-from-file=.env
 
 ---
 
-## 9. 🔧 Corrections RLS Critiques (Janvier 2026)
-
-### Table `couple_profiles` - Fonction RPC
-
-La table `couple_profiles` nécessite une fonction `SECURITY DEFINER` pour contourner RLS lors de l'insertion :
-
-```sql
-CREATE OR REPLACE FUNCTION public.fn_upsert_couple_profile(
-  p_user_id uuid,
-  p_user_firstname text,
-  p_user_birthdate date,
-  p_user_gender text DEFAULT 'non_precise',
-  p_partner_firstname text DEFAULT NULL,
-  p_partner_birthdate date DEFAULT NULL,
-  p_partner_gender text DEFAULT 'non_precise'
-)
-RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
-AS $$
-DECLARE v_profile_id uuid;
-BEGIN
-  INSERT INTO couple_profiles (user_id, user_firstname, user_birthdate, user_gender, 
-    partner_firstname, partner_birthdate, partner_gender, updated_at)
-  VALUES (p_user_id, p_user_firstname, p_user_birthdate, p_user_gender, 
-    p_partner_firstname, p_partner_birthdate, p_partner_gender, NOW())
-  ON CONFLICT (user_id) DO UPDATE SET
-    user_firstname = EXCLUDED.user_firstname, user_birthdate = EXCLUDED.user_birthdate,
-    user_gender = EXCLUDED.user_gender, partner_firstname = EXCLUDED.partner_firstname,
-    partner_birthdate = EXCLUDED.partner_birthdate, partner_gender = EXCLUDED.partner_gender,
-    updated_at = NOW()
-  RETURNING id INTO v_profile_id;
-  RETURN jsonb_build_object('success', true, 'profile_id', v_profile_id);
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.fn_upsert_couple_profile TO authenticated;
-```
-
-### Politiques RLS Propres pour `couple_profiles`
-
-```sql
--- Politiques recommandées (supprimer les doublons d'abord)
-CREATE POLICY "allow_insert_own_profile" ON couple_profiles FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "allow_update_own_profile" ON couple_profiles FOR UPDATE TO authenticated USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "allow_select_own_profile" ON couple_profiles FOR SELECT TO authenticated USING (auth.uid() = user_id);
-CREATE POLICY "service_role_full_access" ON couple_profiles FOR ALL TO service_role USING (true) WITH CHECK (true);
-```
-
----
-
-## 10. 📱 Configuration Android pour URLs Externes
-
-Pour que FedaPay fonctionne (ouverture de liens https), ajouter dans `android/app/src/main/AndroidManifest.xml` :
-
-```xml
-<queries>
-    <!-- Pour url_launcher (FedaPay, liens externes) -->
-    <intent>
-        <action android:name="android.intent.action.VIEW" />
-        <data android:scheme="https" />
-    </intent>
-</queries>
-```
-
----
-
-## 11. 🔍 Guide de Debugging Approfondi
-
-### Étape 1 : Vérifier les Logs Flutter
-
-Chercher ces patterns dans les logs :
-- `TemporalReportService: Trying RPC fn_upsert_couple_profile...` → Appel RPC
-- `TemporalReportService: RPC result:` → Succès
-- `TemporalReportService: RPC failed` → Échec (lire le message d'erreur)
-- `PostgrestException` → Problème Supabase (RLS, permissions, etc.)
-
-### Étape 2 : Diagnostics SQL
-
-Exécuter dans Supabase SQL Editor :
-```sql
--- Voir toutes les politiques d'une table
-SELECT policyname, cmd, roles FROM pg_policies WHERE tablename = 'couple_profiles';
-
--- Vérifier si une fonction existe
-SELECT routine_name FROM information_schema.routines WHERE routine_name = 'fn_upsert_couple_profile';
-
--- Tester un INSERT en tant qu'utilisateur
-SELECT fn_upsert_couple_profile('UUID_ICI'::uuid, 'Test', '1990-01-01'::date, 'homme', 'Partner', '1992-01-01'::date, 'femme');
-```
-
-### Étape 3 : Cache Flutter
-
-Si les changements de code ne sont pas appliqués :
-```bash
-flutter clean
-flutter pub get
-flutter run --dart-define-from-file=.env
-```
-
----
-
-## 12. 📂 Structure du Projet
-
-```
-Compatibilite/
-├── compatibilite_app/          # App Flutter mobile
-│   ├── lib/
-│   │   ├── screens/            # Écrans UI (compatibility_wizard.dart = principal)
-│   │   ├── services/           # Logique métier (kkiapay_service, temporal_report_service)
-│   │   ├── repositories/       # Accès données Supabase
-│   │   └── models/             # Classes Dart (CompatibilitySummary, etc.)
-│   ├── .env                    # Variables d'environnement (NE PAS COMMITTER)
-│   └── pubspec.yaml            # Dépendances + assets
-│
-├── Admin/                      # Panneau d'administration React
-│   ├── src/
-│   └── package.json
-│
-└── *.sql                       # Scripts SQL de migration/fix
-```
-
----
-
-## 13. 🚀 Checklist Nouveau Développeur
-
-1. [ ] Cloner le repo
-2. [ ] Créer `.env` à partir de `.env.example` avec les vraies clés
-3. [ ] `flutter pub get`
-4. [ ] Connecter un device via ADB ou émulateur
-5. [ ] `flutter run --dart-define-from-file=.env`
-6. [ ] Créer un compte test dans l'app
-7. [ ] Tester le flux complet : inscription → paiement → rapport
-
-### Points d'Attention
-
-- **Ne JAMAIS faire d'INSERT direct** sur `payments` ou `couple_profiles` → utiliser les fonctions RPC
-- **Toujours vérifier les logs** pour comprendre les erreurs
-- **FedaPay minimum = 100 FCFA** en production (pas de micro-transactions)
-- **Kkiapay** peut avoir des erreurs CORS que le code gère automatiquement
-
----
-
-## 14. 🔐 Sécurité
-
-- Les clés Supabase `anon` sont publiques (côté client)
-- Les clés `service_role` ne doivent JAMAIS être dans l'app mobile
-- Les fonctions `SECURITY DEFINER` exécutent avec les droits du créateur (owner)
-- Toujours valider `auth.uid()` dans les politiques RLS
-
----
-
 *Cette documentation est ta boussole. Réfère-t'y avant chaque intervention.*
-*Dernière mise à jour : 14 Janvier 2026*
+*Dernière mise à jour : 17 Janvier 2026*
