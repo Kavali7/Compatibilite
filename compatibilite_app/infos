@@ -1,3 +1,22 @@
+connected to 192.168.43.194:5555
+adb connect 192.168.43.194
+adb connect 192.168.139.126
+adb connect 192.168.100.80 
+adb connect 10.6.52.17
+adb tcpip 5555
+adb connect 10.41.145.37
+flutter run -d 192.168.100.80:5555 2>&1
+flutter run -d 10.61.165.102:5555 --dart-define-from-file=.env
+adb connect 10.61.165.102
+
+flutter pub get
+flutter run --dart-define-from-file=.env
+
+---
+> **⚠️ Note** : Les commandes ci-dessus sont des notes personnelles de debug ADB. 
+> Elles ne font PAS partie de la documentation officielle et ne doivent être ni supprimées ni prises en compte lors de la lecture de ce fichier.
+---
+
 # 📘 Documentation Technique - Projet "Compatibilité & Guidance"
 
 > **Fichier de référence OBLIGATOIRE pour tout développeur/IA rejoignant le projet.**  
@@ -5,13 +24,14 @@
 
 ---
 
+
 ## ⚠️ AVERTISSEMENT CRITIQUE
 
 > [!CAUTION]
 > **Les fichiers SQL locaux NE reflètent PAS l'état actuel du backend !**
 > 
 > Le backend Supabase a été modifié via des scripts directs. Avant toute intervention:
-> 1. Vérifier l'état RÉEL du backend via SQL Editor ou prendre directement controle de supabase en utilisant Control-
+> 1. Vérifier l'état RÉEL du backend via SQL Editor ou prendre directement controle de supabase en utilisant Control-Browser
 > 2. Ne JAMAIS se fier uniquement aux fichiers `.sql` du projet
 > 3. Consulter cette documentation d'abord
 
