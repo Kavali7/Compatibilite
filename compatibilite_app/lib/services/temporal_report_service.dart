@@ -352,7 +352,8 @@ Future<bool> hasCoupleProfile({String? userId}) async {
   /// Create a couple profile for the current user
   /// This is required before generating reports
   /// userId parameter supports custom auth systems (like the custom users table)
-  Future<bool> createCoupleProfile({
+  /// paymentId links this consultation to a specific payment (multi-consultations)
+  Future<String?> createCoupleProfile({
     required String userFirstname,
     required DateTime userBirthdate,
     required String userGender,
@@ -360,9 +361,10 @@ Future<bool> hasCoupleProfile({String? userId}) async {
     required DateTime partnerBirthdate,
     required String partnerGender,
     String? userId, // Optional: pass for custom auth systems
+    String? paymentId, // Optional: link to payment for multi-consultations
   }) async {
     final client = _client;
-    if (client == null) return false;
+    if (client == null) return null;
 
     try {
       // Use provided userId, or fallback to AuthService, or Supabase auth
@@ -372,10 +374,10 @@ Future<bool> hasCoupleProfile({String? userId}) async {
           
       if (effectiveUserId == null) {
         debugPrint('TemporalReportService: No authenticated user (userId not provided, AuthService.currentUser is null, and supabase.auth.currentUser is null)');
-        return false;
+        return null;
       }
       
-      debugPrint('TemporalReportService: Creating couple profile for user: $effectiveUserId');
+      debugPrint('TemporalReportService: Creating couple profile for user: $effectiveUserId, paymentId: $paymentId');
 
       // Convert gender strings to enum values
       String mapGender(String gender) {
@@ -392,11 +394,11 @@ Future<bool> hasCoupleProfile({String? userId}) async {
         }
       }
 
-      // Use RPC function with SECURITY DEFINER to bypass RLS
-      // This is the same approach used for payments (fn_insert_payment)
+      // Use NEW RPC function fn_create_couple_profile (INSERT, not UPSERT)
+      // This allows multiple consultations per user
       try {
-        debugPrint('TemporalReportService: Trying RPC fn_upsert_couple_profile...');
-        final result = await client.rpc('fn_upsert_couple_profile', params: {
+        debugPrint('TemporalReportService: Trying RPC fn_create_couple_profile...');
+        final result = await client.rpc('fn_create_couple_profile', params: {
           'p_user_id': effectiveUserId,
           'p_user_firstname': userFirstname,
           'p_user_birthdate': userBirthdate.toIso8601String().split('T').first,
@@ -404,33 +406,42 @@ Future<bool> hasCoupleProfile({String? userId}) async {
           'p_partner_firstname': partnerFirstname,
           'p_partner_birthdate': partnerBirthdate.toIso8601String().split('T').first,
           'p_partner_gender': mapGender(partnerGender),
+          'p_payment_id': paymentId,
         });
         
         debugPrint('TemporalReportService: RPC result: $result');
         if (result != null && result['success'] == true) {
-          debugPrint('TemporalReportService: Couple profile created via RPC successfully');
-          return true;
+          final profileId = result['profile_id'] as String?;
+          debugPrint('TemporalReportService: Couple profile created via RPC successfully, ID: $profileId');
+          return profileId;
         }
       } catch (rpcError) {
-        debugPrint('TemporalReportService: RPC failed ($rpcError), trying direct upsert...');
+        debugPrint('TemporalReportService: fn_create_couple_profile failed ($rpcError), trying fn_upsert_couple_profile...');
+        
+        // Fallback to old function for backwards compatibility
+        try {
+          final result = await client.rpc('fn_upsert_couple_profile', params: {
+            'p_user_id': effectiveUserId,
+            'p_user_firstname': userFirstname,
+            'p_user_birthdate': userBirthdate.toIso8601String().split('T').first,
+            'p_user_gender': mapGender(userGender),
+            'p_partner_firstname': partnerFirstname,
+            'p_partner_birthdate': partnerBirthdate.toIso8601String().split('T').first,
+            'p_partner_gender': mapGender(partnerGender),
+          });
+          
+          if (result != null && result['success'] == true) {
+            return result['profile_id'] as String?;
+          }
+        } catch (fallbackError) {
+          debugPrint('TemporalReportService: Fallback also failed: $fallbackError');
+        }
       }
 
-      // Fallback: try direct upsert (might work if RLS policies are fixed)
-      await client.from('couple_profiles').upsert({
-        'user_id': effectiveUserId,
-        'user_firstname': userFirstname,
-        'user_birthdate': userBirthdate.toIso8601String().split('T').first,
-        'user_gender': mapGender(userGender),
-        'partner_firstname': partnerFirstname,
-        'partner_birthdate': partnerBirthdate.toIso8601String().split('T').first,
-        'partner_gender': mapGender(partnerGender),
-      }, onConflict: 'user_id');
-
-      debugPrint('TemporalReportService: Couple profile created successfully via direct upsert');
-      return true;
+      return null;
     } catch (e) {
       debugPrint('TemporalReportService: Error creating couple profile: $e');
-      return false;
+      return null;
     }
   }
 

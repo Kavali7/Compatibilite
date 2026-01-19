@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
 import '../theme/app_theme.dart';
+import '../services/app_settings_service.dart';
 
 class LegalSection {
   const LegalSection({required this.title, required this.body});
@@ -22,12 +22,11 @@ class LegalPage extends StatelessWidget {
   factory LegalPage.confidentialite() {
     return LegalPage(
       title: 'Politique de confidentialité',
-      sections: const [
+      sections: [
         LegalSection(
           title: 'Responsable et contacts',
           body:
-              'Growpeak Agence est responsable du traitement. Contact : growpeak.agence@gmail.com / +225 54 255 584. '
-              'Ajoutez votre adresse postale et, si nommé, un référent données ou DPO.',
+              'Growpeak Agence est responsable du traitement. Contact : ${AppSettingsService.instance.contactEmail} / ${AppSettingsService.instance.contactWhatsApp}. ',
         ),
         LegalSection(
           title: 'Données collectées',
@@ -56,7 +55,7 @@ class LegalPage extends StatelessWidget {
           title: 'Droits des personnes',
           body:
               'Accès, rectification, effacement, limitation, opposition, portabilité, directives post-mortem (si applicables). '
-              'Exercez vos droits via growpeak.agence@gmail.com. Réclamation possible auprès de l’autorité locale (ex. CNIL).',
+              'Exercez vos droits via ${AppSettingsService.instance.contactEmail}. Réclamation possible auprès de l’autorité locale.',
         ),
         LegalSection(
           title: 'Sécurité',

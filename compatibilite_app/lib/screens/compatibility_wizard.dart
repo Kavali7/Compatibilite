@@ -17,6 +17,7 @@ import '../services/payment/fedapay_gateway.dart';
 import '../services/payment/payment_gateway.dart';
 import '../services/temporal_report_service.dart';
 import '../services/legal_repository.dart'; // Added
+import '../services/app_settings_service.dart'; // Phase 2
 import '../theme/app_theme.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/hamburger_menu_overlay.dart';
@@ -28,6 +29,7 @@ import 'dynamic_legal_page.dart'; // Added
 import 'temporal_purchase_screen.dart';
 import 'auth/login_page.dart';
 import 'auth/simple_signup_screen.dart';
+import 'purchase_history_screen.dart';
 
 // ===========================================
 // DEBUG: Mettre à true pour bypasser le paiement
@@ -96,10 +98,15 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   bool _isCheckingEmail = false;
   bool _emailExists = false;
   String? _emailCheckError;
+  
+  // Multi-consultations: track current payment and profile IDs
+  String? _lastPaymentId;
+  String? _currentCoupleProfileId;
 
 
-  static const _supportEmail = 'growpeak.agence@gmail.com';
-  static const _supportPhone = '0022654255584';
+  // Dynamic supports loaded via AppSettingsService
+  String get _supportEmail => AppSettingsService.instance.contactEmail;
+  String get _supportPhone => AppSettingsService.instance.contactWhatsApp;
 
   static const _totalSteps = 7; // Welcome, Names, BirthA, BirthB, Context, Contact, Results
   static const _challengeOptions = [
@@ -339,9 +346,9 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
       
       // Create or update couple profile first
       debugPrint('_loadTemporalReports: Creating couple profile for user ${authUser.id}...');
-      bool profileCreated = false;
+      String? profileId;
       try {
-        profileCreated = await service.createCoupleProfile(
+        profileId = await service.createCoupleProfile(
           userFirstname: _nameAController.text.trim(),
           userBirthdate: _birthA!,
           userGender: _genderA ?? 'Autre',
@@ -353,11 +360,11 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
       } catch (profileError) {
         debugPrint('_loadTemporalReports: Error creating profile: $profileError');
         // Continue anyway - profile might already exist
-        profileCreated = true; 
+        profileId = "error_but_continuing"; 
       }
-      debugPrint('_loadTemporalReports: Profile created: $profileCreated');
+      debugPrint('_loadTemporalReports: Profile ID: $profileId');
       
-      if (!profileCreated) {
+      if (profileId == null) {
         debugPrint('_loadTemporalReports: Profile not created, using existing or skipping');
         // Don't block - try to fetch reports anyway, profile might exist
       }
@@ -498,19 +505,18 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         role: 'Partenaire 2',
       );
       
-      // 1. Ensure profile exists (Upsert)
-      final profileSaved = await _saveCoupleProfile();
-      if (!profileSaved) {
+      // 1. Create profile with payment ID (multi-consultations)
+      final profileId = await _saveCoupleProfile(paymentId: _lastPaymentId);
+      if (profileId == null) {
         throw Exception('Impossible de sauvegarder le profil. Vérifiez votre connexion.');
       }
       
-      // 2. Get ID
-      final coupleId = await _reportService.getCoupleProfileId(userId: user.id);
-      if (coupleId == null) throw Exception('Profil couple non trouvé');
+      // 2. Use the returned profileId directly (no need to fetch again)
+      debugPrint('Using profileId: $profileId for report generation');
       
-      // 3. RPC Call
+      // 3. RPC Call with the new profileId
       final summary = await _reportService.fetchFullProfile(
-        coupleId: coupleId,
+        coupleId: profileId,
         partnerAInput: partnerA,
         partnerBInput: partnerB,
       );
@@ -530,16 +536,16 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     }
   }
 
-  Future<bool> _saveCoupleProfile() async {
+  Future<String?> _saveCoupleProfile({String? paymentId}) async {
     final user = AuthService.instance.currentUser;
-    if (user == null) return false;
+    if (user == null) return null;
     
     // Check required fields
-    if (_birthA == null || _birthB == null) return false;
+    if (_birthA == null || _birthB == null) return null;
 
     try {
-      debugPrint('Saving couple profile for user ${user.id}...');
-      final success = await TemporalReportService.instance.createCoupleProfile(
+      debugPrint('Saving couple profile for user ${user.id}, paymentId: $paymentId...');
+      final profileId = await TemporalReportService.instance.createCoupleProfile(
         userFirstname: _nameAController.text.trim(),
         userBirthdate: _birthA!,
         userGender: _genderA ?? 'Autre',
@@ -547,16 +553,18 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         partnerBirthdate: _birthB!,
         partnerGender: _genderB ?? 'Autre',
         userId: user.id,
+        paymentId: paymentId,
       );
-      if (success) {
-        debugPrint('Couple profile saved successfully');
+      if (profileId != null) {
+        debugPrint('Couple profile saved successfully, ID: $profileId');
+        _currentCoupleProfileId = profileId;
       } else {
-         debugPrint('Failed to save couple profile (service returned false)');
+         debugPrint('Failed to save couple profile (service returned null)');
       }
-      return success;
+      return profileId;
     } catch (e) {
       debugPrint('Error saving couple profile: $e');
-      return false;
+      return null;
     }
   }
 
@@ -715,7 +723,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
             _showSnack('Compte: ${AuthService.instance.currentUser?.email}');
           },
         )
-      else
+      else ...[
         MenuEntry(
           label: 'Se connecter',
           onTap: () async {
@@ -723,7 +731,6 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
               MaterialPageRoute(builder: (_) => const LoginPage()),
             );
             if (result == true) {
-              // Login successful, restore session
               _checkSession();
             }
           },
@@ -735,11 +742,11 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
               MaterialPageRoute(builder: (_) => const SimpleSignupScreen()),
             );
             if (result == true) {
-              // Signup successful, restore session
               _checkSession();
             }
           },
         ),
+      ],
         
       if (AuthService.instance.isLoggedIn)
          MenuEntry(
@@ -753,6 +760,27 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           },
         ),
 
+      // Mes achats - Historique des rapports (Toujours visible pour discoverability)
+      MenuEntry(
+        label: 'Mes achats',
+        onTap: () async {
+          if (AuthService.instance.isLoggedIn) {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const PurchaseHistoryScreen()),
+            );
+          } else {
+            final result = await Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const LoginPage()),
+            );
+            if (result == true) {
+              if (mounted) Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const PurchaseHistoryScreen()),
+              );
+            }
+          }
+        },
+      ),
+
       // Dynamic Legal Pages
       ..._legalPages.map((page) => MenuEntry(
         label: page.title,
@@ -762,9 +790,16 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
       )),
 
       MenuEntry(label: 'Contacter Growpeak', onTap: () => _launchUri(_supportEmailUri)),
+      MenuEntry(label: 'WhatsApp Growpeak', onTap: () => _launchWhatsApp()),
       MenuEntry(label: 'Appeler Growpeak', onTap: () => _launchUri(_supportPhoneUri)),
       // Admin menu removed as requested
     ];
+  }
+
+  Future<void> _launchWhatsApp() async {
+    final phone = _supportPhone.replaceAll(' ', '').replaceAll('+', '');
+    final url = Uri.parse("https://wa.me/$phone");
+    await _launchUri(url);
   }
 
   Uri get _supportEmailUri => Uri(
@@ -898,7 +933,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         const Align(
           alignment: Alignment.center,
           child: Text(
-            'Parcours en 6 étapes rapides, conçu pour rester fluide.',
+            'Parcours simple et rapide, conçu pour rester fluide.',
             textAlign: TextAlign.center,
             style: TextStyle(color: AppColors.textMuted),
           ),
@@ -2441,6 +2476,10 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         paymentMethod: providerName, // Passing provider name
       );
 
+      // Store payment ID for multi-consultations
+      _lastPaymentId = payment?.id;
+      debugPrint('>>> Payment recorded, ID: $_lastPaymentId');
+
       // If subscription, create subscription record
       if (_selectedPlan!.isSubscription && _selectedPlan!.durationDays != null) {
         await authService.createSubscription(
@@ -2497,10 +2536,14 @@ Widget _buildResultsStep() {
     }
     final summary = _summary!;
     final saveStatus = _buildSaveStatus();
-    final partnerCards = [
+    
+    // Phase 2: Use AppSettingsService to conditionally show sections
+    final settings = AppSettingsService.instance;
+    
+    final partnerCards = settings.isSectionActive('partner_portraits') ? [
       _partnerCard('Partenaire 1', summary.partnerA),
       _partnerCard('Partenaire 2', summary.partnerB),
-    ];
+    ] : <Widget>[];
 
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -2516,30 +2559,45 @@ Widget _buildResultsStep() {
             saveStatus,
             const SizedBox(height: 12),
           ],
-          _coupleCard(summary),
-          const SizedBox(height: 12),
-          _coupleDeepCard(summary),
-          const SizedBox(height: 12),
-          ...partnerCards,
-          const SizedBox(height: 12),
-          _dailyAdviceCard(summary),
-          if (_relationStatus != null || _durationController.text.isNotEmpty || _meetingDate != null) ...[
+          
+          // Dynamique du couple (controlled by admin)
+          if (settings.isSectionActive('couple_dynamic')) ...[
+            _coupleCard(summary),
             const SizedBox(height: 12),
-            _contextCard(),
           ],
           
-          // Temporal Reports Section
-          const SizedBox(height: 24),
-          Text(
-            'Prévisions Temporelles',
-            style: GoogleFonts.philosopher(fontSize: 22, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Découvrez vos prévisions pour l\'année, le mois et la journée en cours.',
-            style: TextStyle(color: AppColors.textMuted, fontSize: 14),
-          ),
-          const SizedBox(height: 16),
+          // Rapport du couple (controlled by admin)
+          if (settings.isSectionActive('couple_report')) ...[
+            _coupleDeepCard(summary),
+            const SizedBox(height: 12),
+          ],
+          
+          // Portraits des partenaires (controlled by admin)
+          ...partnerCards,
+          if (partnerCards.isNotEmpty) const SizedBox(height: 12),
+          
+          // Conseil du jour (controlled by admin)
+          if (settings.isSectionActive('daily_advice')) ...[
+            _dailyAdviceCard(summary),
+          ],
+          
+          // Section "Contexte noté" supprimée (Phase 1)
+          // Les données de contexte sont conservées en base mais non affichées
+          
+          // Temporal Reports Section (controlled by admin)
+          if (settings.isSectionActive('temporal_reports')) ...[
+            const SizedBox(height: 24),
+            Text(
+              settings.getSectionLabel('temporal_reports', fallback: 'Prévisions Temporelles'),
+              style: GoogleFonts.philosopher(fontSize: 22, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Découvrez vos prévisions pour l\'année, le mois et la journée en cours.',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+          ],
           
           // Loading state
           if (_isLoadingReports) ...[
@@ -2616,35 +2674,8 @@ Widget _buildResultsStep() {
 
 
   Widget? _buildSaveStatus() {
-    if (_repository == null) {
-      return _infoBox(
-        title: 'Sauvegarde inactive',
-        body: 'Ajoutez SUPABASE_URL et SUPABASE_ANON_KEY dans .env pour synchroniser vos rapports.',
-        tone: AppColors.block,
-      );
-    }
-    if (_isSaving) {
-      return _infoBox(
-        title: 'Enregistrement en cours',
-        body: 'Vos donnees sont envoyees de maniere securisee.',
-        tone: AppColors.block,
-      );
-    }
-    if (_saveError != null) {
-      return _infoBox(
-        title: 'Sauvegarde echouee',
-        body: _saveError!,
-        tone: AppColors.block,
-      );
-    }
-    if (_sessionId != null) {
-      final token = _clientToken ?? 'token en cours';
-      return _infoBox(
-        title: 'Rapport enregistre',
-        body: 'Session: $_sessionId\nToken de reprise: $token',
-        tone: AppColors.primary.withValues(alpha: 0.15),
-      );
-    }
+    // Session ID et Token ne sont plus affichés à l'utilisateur (Phase 1)
+    // La sauvegarde se fait en arrière-plan silencieusement
     return null;
   }
 
@@ -2694,7 +2725,7 @@ Widget _coupleCard(CompatibilitySummary summary) {
           Text(interpretation),
           const SizedBox(height: 10),
           Text(
-            'Calculé le ${DateFormat('dd/MM').format(summary.generatedAt)}',
+            'Date de consultation : ${DateFormat('dd/MM/yyyy').format(summary.generatedAt)}',
             style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
           ),
         ],

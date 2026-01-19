@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../models/legal_models.dart';
+import '../services/app_settings_service.dart';
 import '../theme/app_theme.dart';
 
 class DynamicLegalPage extends StatelessWidget {
@@ -38,7 +39,7 @@ class DynamicLegalPage extends StatelessWidget {
               border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
             ),
             child: MarkdownBody(
-              data: page.content,
+              data: _processContent(page.content),
               styleSheet: MarkdownStyleSheet(
                 p: const TextStyle(color: AppColors.textMuted, height: 1.5, fontSize: 15),
                 h1: GoogleFonts.philosopher(color: AppColors.textLight, fontSize: 24, fontWeight: FontWeight.bold),
@@ -54,5 +55,12 @@ class DynamicLegalPage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  String _processContent(String content) {
+    final settings = AppSettingsService.instance;
+    return content
+        .replaceAll('{{EMAIL}}', settings.contactEmail)
+        .replaceAll('{{WHATSAPP}}', settings.contactWhatsApp);
   }
 }

@@ -1,14 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../theme/app_theme.dart';
-import '../services/kkiapay_service.dart';
-import '../services/pricing_service.dart';
 import '../services/temporal_report_service.dart';
 import '../services/auth_service.dart';
+import '../services/kkiapay_service.dart';
+import '../services/pricing_service.dart';
+import '../services/app_settings_service.dart';
+import '../services/payment/fedapay_gateway.dart';
+import '../services/payment/payment_gateway.dart';
+import '../core/constants.dart';
+import 'auth/login_page.dart';
+import 'auth/simple_signup_screen.dart';
+import 'purchase_history_screen.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/hamburger_menu_overlay.dart';
-import 'auth/simple_signup_screen.dart';
-import 'auth/login_page.dart';
 
 /// Screen for purchasing temporal predictions (year, month, day)
 class TemporalPurchaseScreen extends StatefulWidget {
@@ -159,9 +167,9 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
       case 'jour':
         if (_isRange && _endDate != null) {
           final days = _endDate!.difference(_selectedDate).inDays + 1;
-          final daysInMonth = DateTime(_selectedDate.year, _selectedDate.month + 1, 0).day;
-          if (days > daysInMonth / 2) {
-            bonuses.add('Prévision du mois concerné (bonus > 50% des jours)');
+          // Bonus: si 15+ jours achetés, le mois est offert
+          if (days >= 15) {
+            bonuses.add('Prévision du mois concerné (bonus 15+ jours)');
           }
         }
         break;
@@ -333,7 +341,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Profil Couple',
+                  'Votre Profil',
                   style: GoogleFonts.philosopher(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
@@ -342,7 +350,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Pour générer votre prévision, nous avons besoin des informations de votre couple.',
+                  'Pour générer votre prévision, nous avons besoin de vos informations personnelles.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.textMuted),
                 ),
@@ -370,21 +378,8 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
 
           const SizedBox(height: 24),
 
-          // Partner info section
-          _buildSectionTitle('Informations de votre partenaire'),
-          const SizedBox(height: 12),
-          _buildNameField(_partnerNameController, 'Prénom du partenaire'),
-          const SizedBox(height: 12),
-          _buildDatePickerField(
-            label: 'Date de naissance du partenaire',
-            value: _partnerBirthdate,
-            onPicked: (date) => setState(() => _partnerBirthdate = date),
-          ),
-          const SizedBox(height: 12),
-          _buildGenderSelector(
-            value: _partnerGender,
-            onChanged: (val) => setState(() => _partnerGender = val),
-          ),
+          // Section partenaire supprimée - Prévisions temporelles = 1 personne uniquement
+          // Les prévisions sont personnelles et ne nécessitent que les infos du consultant
 
           const SizedBox(height: 32),
 
@@ -1051,30 +1046,27 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
     final user = AuthService.instance.currentUser;
     if (user == null) return;
 
-    // Validate form
-    if (_userNameController.text.trim().isEmpty ||
-        _partnerNameController.text.trim().isEmpty ||
-        _userBirthdate == null ||
-        _partnerBirthdate == null) {
-      _showSnack('Veuillez remplir tous les champs du profil couple.');
+    // Validate form (User only for temporal reports)
+    if (_userNameController.text.trim().isEmpty || _userBirthdate == null) {
+      _showSnack('Veuillez remplir vos informations de profil.');
       return;
     }
 
     setState(() => _isProcessingPayment = true);
 
     try {
-      // Create couple profile
-      final created = await TemporalReportService.instance.createCoupleProfile(
+      // Create profile (using one person logic: partner is ignored but required by API)
+      final createdId = await TemporalReportService.instance.createCoupleProfile(
         userFirstname: _userNameController.text.trim(),
         userBirthdate: _userBirthdate!,
         userGender: _userGender,
-        partnerFirstname: _partnerNameController.text.trim(),
-        partnerBirthdate: _partnerBirthdate!,
-        partnerGender: _partnerGender,
+        partnerFirstname: 'Consultant', // Default for 1-person temporal reports
+        partnerBirthdate: DateTime(1900, 1, 1),
+        partnerGender: 'Autre',
         userId: user.id,
       );
 
-      if (created) {
+      if (createdId != null) {
         setState(() {
           _hasCoupleProfile = true;
           _showCoupleForm = false;
@@ -1083,7 +1075,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
         _proceedWithPayment(user.id);
       } else {
         setState(() => _isProcessingPayment = false);
-        _showSnack('Erreur lors de la création du profil couple.');
+        _showSnack('Erreur lors de la création de votre profil.');
       }
     } catch (e) {
       setState(() => _isProcessingPayment = false);
@@ -1092,54 +1084,273 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
   }
 
   void _proceedWithPayment(String userId) {
+    if (!_isPriceConfigured) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        decoration: BoxDecoration(
+          color: AppColors.block,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(30),
+            topRight: Radius.circular(30),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.5),
+              blurRadius: 20,
+              spreadRadius: 5,
+            )
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 24),
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Text(
+              'Moyen de Paiement',
+              style: GoogleFonts.philosopher(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Sélectionnez votre méthode préférée pour finaliser votre commande.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+            ),
+            const SizedBox(height: 32),
+            _buildPaymentMethodTile(
+              'Kkiapay',
+              'Cartes, Mobile Money (Bénin, Togo...)',
+              'assets/images/kkiapay_logo.png',
+              () {
+                Navigator.pop(ctx);
+                _handleKkiapayPayment(userId);
+              },
+            ),
+            const SizedBox(height: 16),
+            _buildPaymentMethodTile(
+              'FedaPay',
+              'Mobile Money, Cartes (Afrique de l\'Ouest)',
+              'assets/images/fedapay_logo.png',
+              () {
+                Navigator.pop(ctx);
+                _handleFedapayPayment(userId);
+              },
+            ),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Annuler', style: TextStyle(color: AppColors.textMuted)),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPaymentMethodTile(String title, String subtitle, String assetPath, VoidCallback onTap) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF1E3B48),
+            const Color(0xFF142933).withOpacity(0.8),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          splashColor: AppColors.primary.withOpacity(0.1),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.9),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 4,
+                      )
+                    ],
+                  ),
+                  child: Image.asset(
+                    assetPath,
+                    fit: BoxFit.contain,
+                    errorBuilder: (c, o, s) => const Icon(Icons.payment, color: AppColors.primary, size: 30),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.philosopher(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.primary),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _handleKkiapayPayment(String userId) {
     setState(() => _isProcessingPayment = true);
-    
     KkiapayService.instance.startPayment(
       context: context,
       amount: _totalPrice,
       reason: 'Prévision $_selectedPeriod - $_periodLabel',
       callback: (success, transactionId, error) async {
-        if (!success || transactionId == null) {
+        if (success && transactionId != null) {
+          _onPaymentSuccess(userId, transactionId, 'kkiapay');
+        } else {
           setState(() => _isProcessingPayment = false);
-          _showSnack(error ?? 'Paiement échoué. Veuillez réessayer.');
-          return;
-        }
-
-        // Generate the report
-        try {
-          final service = TemporalReportService.instance;
-          final report = await service.generateReport(
-            periode: _selectedPeriod,
-            date: _selectedDate,
-            userId: userId,
-          );
-          
-          setState(() => _isProcessingPayment = false);
-          
-          if (report != null) {
-            _showSnack('Paiement réussi ! Votre prévision est prête.');
-            if (mounted) Navigator.pop(context, report);
-          } else {
-            _showSnack('Erreur lors de la génération du rapport.');
-          }
-        } catch (e) {
-          setState(() => _isProcessingPayment = false);
-          _showSnack('Erreur: ${e.toString()}');
+          _showSnack(error ?? 'Paiement échoué.');
         }
       },
     );
+  }
+
+  void _handleFedapayPayment(String userId) {
+    final user = AuthService.instance.currentUser;
+    setState(() => _isProcessingPayment = true);
+    FedapayGateway.instance.initiatePayment(
+      context: context,
+      amountFcfa: _totalPrice,
+      reason: 'Prévision $_selectedPeriod - $_periodLabel',
+      customerEmail: user?.email ?? 'client@growpeak.agence',
+      customerName: _userNameController.text,
+      callback: (result) async {
+        if (result.success && result.transactionId != null) {
+          _onPaymentSuccess(userId, result.transactionId!, 'fedapay');
+        } else {
+          setState(() => _isProcessingPayment = false);
+          _showSnack(result.errorMessage ?? 'Paiement annulé ou échoué.');
+        }
+      },
+    );
+  }
+
+  Future<void> _onPaymentSuccess(String userId, String transactionId, String paymentMethod) async {
+    try {
+      // 1. Record payment in database
+      await KkiapayService.instance.recordPayment(
+        userId: userId,
+        sessionId: null, // Not a compatibility session
+        transactionId: transactionId,
+        amountFcfa: _totalPrice,
+        status: PaymentStatus.success,
+        planType: 'temporel_$_selectedPeriod',
+        paymentMethod: paymentMethod,
+      );
+
+      // 2. Generate the report
+      final service = TemporalReportService.instance;
+      final report = await service.generateReport(
+        periode: _selectedPeriod,
+        date: _selectedDate,
+        userId: userId,
+      );
+      
+      if (mounted) {
+        setState(() => _isProcessingPayment = false);
+        
+        if (report != null) {
+          _showSnack('Paiement réussi ! Votre prévision est prête.');
+          Navigator.pop(context, report);
+        } else {
+          _showSnack('Erreur lors de la génération du rapport.');
+        }
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isProcessingPayment = false);
+      _showSnack('Erreur: ${e.toString()}');
+    }
   }
 
   void _toggleMenu() => setState(() => _isMenuOpen = !_isMenuOpen);
 
   List<MenuEntry> _buildMenuEntries() {
     return [
-      if (AuthService.instance.isLoggedIn)
-        MenuEntry(
-          label: 'Mon Compte',
-          onTap: () => _showSnack('Compte: ${AuthService.instance.currentUser?.email}'),
-        )
-      else
+      // Mes achats - Historique
+      MenuEntry(
+        label: 'Mes achats',
+        onTap: () async {
+          if (AuthService.instance.isLoggedIn) {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const PurchaseHistoryScreen()),
+            );
+          } else {
+            final result = await Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const LoginPage()),
+            );
+            if (result == true) {
+              if (mounted) Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const PurchaseHistoryScreen()),
+              );
+            }
+          }
+        },
+      ),
+      if (!AuthService.instance.isLoggedIn) ...[
         MenuEntry(
           label: 'Se connecter',
           onTap: () async {
@@ -1150,7 +1361,6 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
             if (result == true) _checkCoupleProfile();
           },
         ),
-      if (!AuthService.instance.isLoggedIn)
         MenuEntry(
           label: 'Créer un compte',
           onTap: () async {
@@ -1161,6 +1371,8 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
             if (result == true) _checkCoupleProfile();
           },
         ),
+      ],
+
       if (AuthService.instance.isLoggedIn)
         MenuEntry(
           label: 'Se déconnecter',
@@ -1173,7 +1385,36 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
             _showSnack('Vous êtes déconnecté.');
           },
         ),
+
+      MenuEntry(label: 'Contacter Growpeak', onTap: () => _launchUri(_supportEmailUri)),
+      MenuEntry(label: 'WhatsApp Growpeak', onTap: () => _launchWhatsApp()),
+      MenuEntry(label: 'Appeler Growpeak', onTap: () => _launchUri(_supportPhoneUri)),
     ];
+  }
+
+  // Dynamic support links helpers
+  String get _supportEmail => AppSettingsService.instance.contactEmail;
+  String get _supportWhatsApp => AppSettingsService.instance.contactWhatsApp;
+
+  Uri get _supportEmailUri => Uri(
+        scheme: 'mailto',
+        path: _supportEmail,
+        queryParameters: {'subject': 'Support Growpeak Agence'},
+      );
+
+  Uri get _supportPhoneUri => Uri(scheme: 'tel', path: _supportWhatsApp); // Using WhatsApp number as phone too or separate if needed
+
+  Future<void> _launchWhatsApp() async {
+    final phone = _supportWhatsApp.replaceAll(' ', '').replaceAll('+', '');
+    final url = Uri.parse("https://wa.me/$phone");
+    await _launchUri(url);
+  }
+
+  Future<void> _launchUri(Uri uri) async {
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched) {
+      _showSnack('Impossible d\'ouvrir ce lien pour le moment.');
+    }
   }
 
   void _showSnack(String message) {
