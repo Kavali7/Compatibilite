@@ -11,6 +11,10 @@ adb connect 10.61.165.102
 
 flutter pub get
 flutter run --dart-define-from-file=.env
+
+Important pour le déploiement :
+Quand tu déploieras sur O2switch, assure-toi que le domaine growpeak-agence.com pointe bien vers le dossier où tu mets le build Flutter web.
+
 cd e:\Mes traveaux\Amour\Kbal\Services\Compatibilite\compatibilite_app
 flutter run -d 10.61.41.153:5555 --dart-define-from-file=.env
 flutter run -d web-server --web-hostname 0.0.0.0 --web-port 8080

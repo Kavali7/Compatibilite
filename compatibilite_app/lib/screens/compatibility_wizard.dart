@@ -2291,32 +2291,36 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
                   const SizedBox(height: 16),
                   
                   // Kkiapay Option
-                  _buildPaymentMethodCard(
-                    ctx: ctx,
-                    title: 'Kkiapay',
-                    subtitle: 'Mobile Money & Cartes bancaires',
-                    icon: Icons.account_balance_wallet,
-                    color: const Color(0xFF9C27B0),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      onSelected('kkiapay');
-                    },
-                  ),
+                  if (AppSettingsService.instance.isPaymentMethodEnabled('kkiapay'))
+                    _buildPaymentMethodCard(
+                      ctx: ctx,
+                      title: 'Kkiapay',
+                      subtitle: 'Cartes bancaires & Mobile Money (Bénin, Togo, Côte d\'Ivoire...)',
+                      imagePath: 'assets/images/kkiapay_logo.png',
+                      color: const Color(0xFF9C27B0),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        onSelected('kkiapay');
+                      },
+                    ),
                   
-                  const SizedBox(height: 16),
+                  if (AppSettingsService.instance.isPaymentMethodEnabled('kkiapay') && 
+                      AppSettingsService.instance.isPaymentMethodEnabled('fedapay'))
+                    const SizedBox(height: 16),
                   
                   // FedaPay Option
-                  _buildPaymentMethodCard(
-                    ctx: ctx,
-                    title: 'FedaPay',
-                    subtitle: 'Mobile Money & Cartes bancaires',
-                    icon: Icons.payments_outlined,
-                    color: const Color(0xFF4CAF50),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      onSelected('fedapay');
-                    },
-                  ),
+                  if (AppSettingsService.instance.isPaymentMethodEnabled('fedapay'))
+                    _buildPaymentMethodCard(
+                      ctx: ctx,
+                      title: 'FedaPay',
+                      subtitle: 'Mobile Money & Cartes (Bénin, Togo, Mali, Sénégal...)',
+                      imagePath: 'assets/images/fedapay_logo.png',
+                      color: const Color(0xFF4CAF50),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        onSelected('fedapay');
+                      },
+                    ),
                   
                   const SizedBox(height: 32),
                   
@@ -2353,7 +2357,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     required BuildContext ctx,
     required String title,
     required String subtitle,
-    required IconData icon,
+    required String imagePath,
     required Color color,
     required VoidCallback onTap,
   }) {
@@ -2367,18 +2371,30 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           decoration: BoxDecoration(
             color: const Color(0xFF1E3B48),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: color.withOpacity(0.4), width: 1.5),
+            border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              )
+            ],
           ),
           child: Row(
             children: [
               Container(
                 width: 56,
                 height: 56,
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.2),
+                  color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: color, size: 28),
+                child: Image.asset(
+                  imagePath,
+                  fit: BoxFit.contain,
+                  errorBuilder: (c, o, s) => Icon(Icons.payment, color: color, size: 28),
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -2396,7 +2412,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
                     ),
                   ],
                 ),
@@ -2409,37 +2425,6 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     );
   }
 
-  Widget _buildPaymentMethodTile(String title, String assetPath, VoidCallback onTap) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E3B48),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withOpacity(0.3)),
-      ),
-      child: ListTile(
-        onTap: onTap,
-        leading: Container(
-          width: 40,
-          height: 40,
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          // Try to load asset, fallback to icon if fails
-          child: Image.asset(
-            assetPath, 
-            errorBuilder: (c, o, s) => Icon(Icons.payment, color: AppColors.primary),
-          ),
-        ),
-        title: Text(
-          title,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
-        ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.white70),
-      ),
-    );
-  }
 
   Future<void> _handlePaymentSuccess(String transactionId, String providerName) async {
     try {

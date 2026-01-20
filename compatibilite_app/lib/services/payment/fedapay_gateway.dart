@@ -113,7 +113,8 @@ class FedapayGateway implements PaymentGateway {
       }
     } catch (e) {
       debugPrint('FedaPay error: $e');
-      callback(PaymentResult.failure('Erreur FedaPay: ${e.toString()}'));
+      final msg = e.toString().replaceFirst('Exception: ', '').replaceFirst('Exception', '');
+      callback(PaymentResult.failure('Erreur FedaPay: $msg'));
     }
   }
   
@@ -126,6 +127,34 @@ class FedapayGateway implements PaymentGateway {
     String? customerPhone,
   }) async {
     try {
+      // Split name safely
+      String firstname = 'Client';
+      String lastname = 'Compatibilite';
+      
+      if (customerName != null && customerName.trim().isNotEmpty) {
+        final parts = customerName.trim().split(' ');
+        if (parts.length >= 2) {
+          firstname = parts.first;
+          lastname = parts.sublist(1).join(' ');
+        } else {
+          firstname = parts.first;
+        }
+      }
+
+      final Map<String, dynamic> customerData = {
+        'email': customerEmail,
+        'firstname': firstname,
+        'lastname': lastname,
+      };
+
+      // Only add phone_number if provided and valid-looking
+      if (customerPhone != null && customerPhone.trim().length >= 8) {
+        customerData['phone_number'] = {
+          'number': customerPhone.trim().replaceAll('+', '').replaceAll(' ', ''), 
+          'country': 'bj' // Default country
+        };
+      }
+
       final response = await http.post(
         Uri.parse('$_baseUrl/v1/transactions'),
         headers: {
@@ -136,44 +165,40 @@ class FedapayGateway implements PaymentGateway {
           'description': description,
           'amount': amount,
           'currency': {'iso': 'XOF'},
-          'callback_url': 'https://compatibilite.app/payment/callback',
-          'customer': {
-            'email': customerEmail,
-            'firstname': customerName?.split(' ').first ?? '',
-            'lastname': customerName?.split(' ').skip(1).join(' ') ?? '',
-            'phone_number': {'number': customerPhone ?? '', 'country': 'bj'},
-          },
+          // Callback URL for web - FedaPay will redirect here after payment
+          'callback_url': 'https://growpeak-agence.com/#/payment-callback',
+          'customer': customerData,
         }),
       );
       
       debugPrint('FedaPay create transaction response: ${response.statusCode}');
       debugPrint('FedaPay response body: ${response.body}');
       
+      final data = jsonDecode(response.body);
+
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        final data = jsonDecode(response.body);
         return data['v1/transaction'] ?? data;
       } else {
         // Handle API errors
-        final errorData = jsonDecode(response.body);
-        String errorMessage = errorData['message'] ?? 'Erreur inconnue';
+        String errorMessage = data['message'] ?? 'Erreur lors de la création de la transaction';
         
         // Extract specific validation errors if present
-        if (errorData['errors'] != null && errorData['errors'] is Map) {
-          final errors = errorData['errors'] as Map<String, dynamic>;
-          final details = errors.entries.map((e) => '${e.key}: ${e.value is List ? e.value.join(", ") : e.value}').join('\n');
+        if (data['errors'] != null && data['errors'] is Map) {
+          final errors = data['errors'] as Map<String, dynamic>;
+          final details = errors.entries
+              .map((e) => '${e.key}: ${e.value is List ? e.value.join(", ") : e.value}')
+              .join('\n');
           if (details.isNotEmpty) {
             errorMessage += '\n$details';
           }
         }
         
         debugPrint('FedaPay API Error: $errorMessage');
-        return null; // Return null effectively, but we might want to propagate the specific error.
-        // For now, logging it is enough as the caller checks for null generic failure.
-        // Ideally we should throw so we can show the user the specific message.
+        throw Exception(errorMessage);
       }
     } catch (e) {
-      debugPrint('FedaPay create transaction error: $e');
-      return null;
+      debugPrint('FedaPay _createTransaction error: $e');
+      rethrow;
     }
   }
   
@@ -189,16 +214,34 @@ class FedapayGateway implements PaymentGateway {
       );
       
       debugPrint('FedaPay token response: ${response.statusCode}');
+      debugPrint('FedaPay token body: ${response.body}');
       
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
-        final token = data['token'];
         
-        // Build checkout URL
+        // FedaPay returns the complete payment URL in the 'url' field
+        final paymentUrl = data['url'] as String?;
+        
+        if (paymentUrl != null && paymentUrl.isNotEmpty) {
+          debugPrint('FedaPay: Using returned payment URL: $paymentUrl');
+          return paymentUrl;
+        }
+        
+        // Fallback: construct URL from token if 'url' is not provided
+        final token = data['token'];
+        if (token == null || token.toString().isEmpty) {
+          debugPrint('FedaPay: Token is null or empty');
+          return null;
+        }
+        
         final checkoutBase = isSandbox 
-            ? 'https://sandbox-checkout.fedapay.com'
-            : 'https://checkout.fedapay.com';
-        return '$checkoutBase/checkout/$token';
+            ? 'https://sandbox-process.fedapay.com'
+            : 'https://process.fedapay.com';
+        final constructedUrl = '$checkoutBase/$token';
+        debugPrint('FedaPay: Constructed payment URL: $constructedUrl');
+        return constructedUrl;
+      } else {
+        debugPrint('FedaPay token error: ${response.body}');
       }
       return null;
     } catch (e) {

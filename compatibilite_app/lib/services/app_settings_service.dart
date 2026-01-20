@@ -11,6 +11,7 @@ class AppSettingsService {
   String _primaryService = 'compatibilite';
   String _contactEmail = 'growpeak.agence@gmail.com';
   String _contactWhatsApp = '+22654255584';
+  Map<String, bool> _paymentMethods = {'kkiapay': true, 'fedapay': true};
   bool _settingsLoaded = false;
   
   // Report sections cache
@@ -33,6 +34,9 @@ class AppSettingsService {
 
   /// Get the contact WhatsApp number
   String get contactWhatsApp => _contactWhatsApp;
+
+  /// Check if a payment method is enabled
+  bool isPaymentMethodEnabled(String method) => _paymentMethods[method.toLowerCase()] ?? true;
 
   /// Check if settings have been loaded
   bool get isLoaded => _settingsLoaded;
@@ -82,6 +86,21 @@ class AppSettingsService {
         _contactWhatsApp = value['whatsapp'] ?? '+22654255584';
       }
 
+      // Fetch payment methods configuration
+      final paymentResponse = await client
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'modes_paiement')
+          .maybeSingle();
+
+      if (paymentResponse != null && paymentResponse['value'] != null) {
+        final value = paymentResponse['value'] as Map<String, dynamic>;
+        _paymentMethods = {
+          'kkiapay': value['kkiapay'] ?? true,
+          'fedapay': value['fedapay'] ?? true,
+        };
+      }
+
       debugPrint('AppSettingsService: Primary service = $_primaryService');
       debugPrint('AppSettingsService: Contact = $_contactEmail, WhatsApp = $_contactWhatsApp');
       _settingsLoaded = true;
@@ -107,11 +126,13 @@ class AppSettingsService {
     
     try {
       final client = SupabaseManager.client;
+      debugPrint('AppSettingsService: Fetching report_sections...');
       final response = await client
           .from('report_sections')
           .select('*')
           .order('display_order', ascending: true);
       
+      debugPrint('AppSettingsService: Received response for report_sections');
       if (response != null && response is List && response.isNotEmpty) {
         _reportSections = response
             .map((json) => ReportSection.fromJson(json as Map<String, dynamic>))
@@ -119,11 +140,11 @@ class AppSettingsService {
         debugPrint('AppSettingsService: Loaded ${_reportSections.length} report sections');
       } else {
         _reportSections = List.from(ReportSection.defaults);
-        debugPrint('AppSettingsService: No sections found, using defaults');
+        debugPrint('AppSettingsService: No sections found in DB, using defaults');
       }
       _sectionsLoaded = true;
     } catch (e) {
-      debugPrint('AppSettingsService: Error fetching report sections: $e');
+      debugPrint('AppSettingsService: CRITICAL Error fetching report sections: $e');
       _reportSections = List.from(ReportSection.defaults);
       _sectionsLoaded = true;
     }

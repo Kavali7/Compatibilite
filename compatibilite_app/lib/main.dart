@@ -3,6 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'screens/compatibility_wizard.dart';
 import 'screens/temporal_purchase_screen.dart';
+import 'screens/payment_callback_screen.dart';
 import 'services/supabase_manager.dart';
 import 'services/app_settings_service.dart';
 import 'theme/app_theme.dart';
@@ -51,6 +52,7 @@ Future<void> main() async {
     
     // Load app settings after Supabase is ready
     await AppSettingsService.instance.fetchSettings();
+    debugPrint('Main: Initialization complete, starting runApp...');
   } catch (e) {
     debugPrint('Supabase init failed: $e');
     // Continue anyway, app will work with limited functionality
@@ -68,11 +70,39 @@ class CompatibiliteApp extends StatelessWidget {
       title: 'Compatibilité & Guidance',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
+      // Use onGenerateRoute to handle payment callback for web
+      onGenerateRoute: (settings) {
+        // Check for payment callback route (FedaPay redirect)
+        if (settings.name != null && settings.name!.contains('payment-callback')) {
+          // Extract transaction ID from URL if present
+          String? transactionId;
+          final uri = Uri.tryParse(settings.name!);
+          if (uri != null) {
+            transactionId = uri.queryParameters['id'] ?? 
+                           uri.queryParameters['transaction_id'];
+          }
+          
+          return MaterialPageRoute(
+            builder: (_) => PaymentCallbackScreen(
+              transactionId: transactionId,
+              onSuccess: () {
+                debugPrint('FedaPay payment verified successfully');
+              },
+              onFailure: () {
+                debugPrint('FedaPay payment verification failed');
+              },
+            ),
+          );
+        }
+        
+        // Default route
+        return MaterialPageRoute(builder: (_) => _buildHomeScreen());
+      },
       home: _buildHomeScreen(),
     );
   }
 
-  Widget _buildHomeScreen() {
+  static Widget _buildHomeScreen() {
     final settings = AppSettingsService.instance;
     
     // Route to the appropriate screen based on primary service setting

@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../theme/app_theme.dart';
+import '../theme/app_theme.dart' as theme;
 import '../services/temporal_report_service.dart';
 import '../services/auth_service.dart';
 import '../services/kkiapay_service.dart';
@@ -11,7 +11,6 @@ import '../services/pricing_service.dart';
 import '../services/app_settings_service.dart';
 import '../services/payment/fedapay_gateway.dart';
 import '../services/payment/payment_gateway.dart';
-import '../core/constants.dart';
 import 'auth/login_page.dart';
 import 'auth/simple_signup_screen.dart';
 import 'purchase_history_screen.dart';
@@ -213,7 +212,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
                     child: Row(
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.arrow_back, color: AppColors.textLight),
+                          icon: const Icon(Icons.arrow_back, color: theme.AppColors.textLight),
                           onPressed: () => Navigator.pop(context),
                         ),
                         Expanded(
@@ -222,7 +221,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
                             style: GoogleFonts.philosopher(
                               fontSize: 22,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.textLight,
+                              color: theme.AppColors.textLight,
                             ),
                           ),
                         ),
@@ -263,13 +262,13 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
             style: GoogleFonts.philosopher(
               fontSize: 24,
               fontWeight: FontWeight.w700,
-              color: AppColors.textLight,
+              color: theme.AppColors.textLight,
             ),
           ),
           const SizedBox(height: 8),
           const Text(
             'Anticipez les énergies de votre couple pour mieux naviguer ensemble.',
-            style: TextStyle(color: AppColors.textMuted),
+            style: TextStyle(color: theme.AppColors.textMuted),
           ),
           
           const SizedBox(height: 24),
@@ -303,7 +302,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
           const Center(
             child: Text(
               'Paiement sécurisé par Kkiapay',
-              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+              style: TextStyle(color: theme.AppColors.textMuted, fontSize: 12),
             ),
           ),
         ],
@@ -321,21 +320,21 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppColors.block.withValues(alpha: 0.6),
+              color: theme.AppColors.block.withValues(alpha: 0.6),
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+              border: Border.all(color: theme.AppColors.primary.withValues(alpha: 0.3)),
             ),
             child: Column(
               children: [
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.15),
+                    color: theme.AppColors.primary.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
                     Icons.favorite_outline,
-                    color: AppColors.primary,
+                    color: theme.AppColors.primary,
                     size: 40,
                   ),
                 ),
@@ -345,14 +344,14 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
                   style: GoogleFonts.philosopher(
                     fontSize: 24,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textLight,
+                    color: theme.AppColors.textLight,
                   ),
                 ),
                 const SizedBox(height: 8),
                 const Text(
                   'Pour générer votre prévision, nous avons besoin de vos informations personnelles.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textMuted),
+                  style: TextStyle(color: theme.AppColors.textMuted),
                 ),
               ],
             ),
@@ -391,12 +390,12 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
                   onPressed: () => setState(() => _showCoupleForm = false),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(0, 50),
-                    side: const BorderSide(color: AppColors.textMuted),
+                    side: const BorderSide(color: theme.AppColors.textMuted),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text('Annuler', style: TextStyle(color: AppColors.textMuted)),
+                  child: const Text('Annuler', style: TextStyle(color: theme.AppColors.textMuted)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -406,7 +405,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
                   onPressed: _isProcessingPayment ? null : _createCoupleProfileAndPay,
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size(0, 50),
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: theme.AppColors.primary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -436,7 +435,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
       style: GoogleFonts.philosopher(
         fontSize: 18,
         fontWeight: FontWeight.w600,
-        color: AppColors.textLight,
+        color: theme.AppColors.textLight,
       ),
     );
   }
@@ -444,24 +443,24 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
   Widget _buildNameField(TextEditingController controller, String label) {
     return TextFormField(
       controller: controller,
-      style: const TextStyle(color: AppColors.textLight),
+      style: const TextStyle(color: theme.AppColors.textLight),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: AppColors.textMuted),
-        prefixIcon: const Icon(Icons.person_outline, color: AppColors.textMuted),
+        labelStyle: const TextStyle(color: theme.AppColors.textMuted),
+        prefixIcon: const Icon(Icons.person_outline, color: theme.AppColors.textMuted),
         filled: true,
-        fillColor: AppColors.block.withValues(alpha: 0.6),
+        fillColor: theme.AppColors.block.withValues(alpha: 0.6),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+          borderSide: BorderSide(color: theme.AppColors.primary.withValues(alpha: 0.3)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+          borderSide: BorderSide(color: theme.AppColors.primary.withValues(alpha: 0.3)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppColors.primary),
+          borderSide: const BorderSide(color: theme.AppColors.primary),
         ),
       ),
     );
@@ -483,8 +482,8 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
             return Theme(
               data: ThemeData.dark().copyWith(
                 colorScheme: const ColorScheme.dark(
-                  primary: AppColors.primary,
-                  surface: AppColors.block,
+                  primary: theme.AppColors.primary,
+                  surface: theme.AppColors.block,
                 ),
               ),
               child: child!,
@@ -496,13 +495,13 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.block.withValues(alpha: 0.6),
+          color: theme.AppColors.block.withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+          border: Border.all(color: theme.AppColors.primary.withValues(alpha: 0.3)),
         ),
         child: Row(
           children: [
-            const Icon(Icons.calendar_today, color: AppColors.textMuted),
+            const Icon(Icons.calendar_today, color: theme.AppColors.textMuted),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
@@ -510,11 +509,11 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
                     ? '${value.day}/${value.month}/${value.year}'
                     : label,
                 style: TextStyle(
-                  color: value != null ? AppColors.textLight : AppColors.textMuted,
+                  color: value != null ? theme.AppColors.textLight : theme.AppColors.textMuted,
                 ),
               ),
             ),
-            const Icon(Icons.chevron_right, color: AppColors.textMuted),
+            const Icon(Icons.chevron_right, color: theme.AppColors.textMuted),
           ],
         ),
       ),
@@ -537,18 +536,18 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
               padding: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? AppColors.primary.withValues(alpha: 0.2)
-                    : AppColors.block.withValues(alpha: 0.6),
+                    ? theme.AppColors.primary.withValues(alpha: 0.2)
+                    : theme.AppColors.block.withValues(alpha: 0.6),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: isSelected ? AppColors.primary : AppColors.primary.withValues(alpha: 0.3),
+                  color: isSelected ? theme.AppColors.primary : theme.AppColors.primary.withValues(alpha: 0.3),
                 ),
               ),
               child: Center(
                 child: Text(
                   option,
                   style: TextStyle(
-                    color: isSelected ? AppColors.primary : AppColors.textMuted,
+                    color: isSelected ? theme.AppColors.primary : theme.AppColors.textMuted,
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                   ),
                 ),
@@ -564,9 +563,9 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppColors.block.withValues(alpha: 0.6),
+        color: theme.AppColors.block.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+        border: Border.all(color: theme.AppColors.primary.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -591,7 +590,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary : Colors.transparent,
+            color: isSelected ? theme.AppColors.primary : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -600,13 +599,13 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
               Icon(
                 icon,
                 size: 18,
-                color: isSelected ? Colors.white : AppColors.textMuted,
+                color: isSelected ? Colors.white : theme.AppColors.textMuted,
               ),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: TextStyle(
-                  color: isSelected ? Colors.white : AppColors.textMuted,
+                  color: isSelected ? Colors.white : theme.AppColors.textMuted,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
@@ -621,9 +620,9 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.block.withValues(alpha: 0.6),
+        color: theme.AppColors.block.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+        border: Border.all(color: theme.AppColors.primary.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -639,13 +638,13 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
+                color: theme.AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                border: Border.all(color: theme.AppColors.primary.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.calendar_month, color: AppColors.primary),
+                  const Icon(Icons.calendar_month, color: theme.AppColors.primary),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
@@ -653,7 +652,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
                       style: const TextStyle(fontSize: 16),
                     ),
                   ),
-                  const Icon(Icons.chevron_right, color: AppColors.textMuted),
+                  const Icon(Icons.chevron_right, color: theme.AppColors.textMuted),
                 ],
               ),
             ),
@@ -671,13 +670,13 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.1),
+                  color: theme.AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                  border: Border.all(color: theme.AppColors.primary.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.calendar_month, color: AppColors.primary),
+                    const Icon(Icons.calendar_month, color: theme.AppColors.primary),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
@@ -687,7 +686,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
                         style: const TextStyle(fontSize: 16),
                       ),
                     ),
-                    const Icon(Icons.chevron_right, color: AppColors.textMuted),
+                    const Icon(Icons.chevron_right, color: theme.AppColors.textMuted),
                   ],
                 ),
               ),
@@ -708,18 +707,18 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: _isRange 
-              ? AppColors.primary.withValues(alpha: 0.15)
-              : AppColors.block.withValues(alpha: 0.6),
+              ? theme.AppColors.primary.withValues(alpha: 0.15)
+              : theme.AppColors.block.withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: _isRange ? AppColors.primary : AppColors.primary.withValues(alpha: 0.3),
+            color: _isRange ? theme.AppColors.primary : theme.AppColors.primary.withValues(alpha: 0.3),
           ),
         ),
         child: Row(
           children: [
             Icon(
               _isRange ? Icons.check_box : Icons.check_box_outline_blank,
-              color: _isRange ? AppColors.primary : AppColors.textMuted,
+              color: _isRange ? theme.AppColors.primary : theme.AppColors.textMuted,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -732,7 +731,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
                         : 'Sélectionner plusieurs jours',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: _isRange ? AppColors.primary : AppColors.textLight,
+                      color: _isRange ? theme.AppColors.primary : theme.AppColors.textLight,
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -740,7 +739,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
                     'Activez pour choisir une plage',
                     style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.textMuted,
+                      color: theme.AppColors.textMuted,
                     ),
                   ),
                 ],
@@ -760,14 +759,14 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppColors.primary.withValues(alpha: 0.15),
-            AppColors.secondary.withValues(alpha: 0.15),
+            theme.AppColors.primary.withValues(alpha: 0.15),
+            theme.AppColors.secondary.withValues(alpha: 0.15),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+        border: Border.all(color: theme.AppColors.primary.withValues(alpha: 0.4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -777,10 +776,10 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.2),
+                  color: theme.AppColors.primary.withValues(alpha: 0.2),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.receipt_long, color: AppColors.primary),
+                child: const Icon(Icons.receipt_long, color: theme.AppColors.primary),
               ),
               const SizedBox(width: 12),
               const Expanded(
@@ -807,13 +806,13 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
           
           // Bonuses
           if (bonuses.isNotEmpty) ...[
-            const Divider(color: AppColors.textMuted),
+            const Divider(color: theme.AppColors.textMuted),
             const SizedBox(height: 8),
             const Text(
               '🎁 Bonus inclus',
               style: TextStyle(
                 fontWeight: FontWeight.w600,
-                color: AppColors.primary,
+                color: theme.AppColors.primary,
               ),
             ),
             const SizedBox(height: 8),
@@ -828,7 +827,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
               ),
             )),
             const SizedBox(height: 8),
-            const Divider(color: AppColors.textMuted),
+            const Divider(color: theme.AppColors.textMuted),
           ],
           
           const SizedBox(height: 12),
@@ -849,7 +848,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
+                  color: theme.AppColors.primary,
                 ),
               ),
             ],
@@ -866,12 +865,12 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
   }) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: AppColors.textMuted),
+        Icon(icon, size: 20, color: theme.AppColors.textMuted),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
             label,
-            style: const TextStyle(color: AppColors.textMuted),
+            style: const TextStyle(color: theme.AppColors.textMuted),
           ),
         ),
         Text(
@@ -888,7 +887,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.3),
+          color: theme.AppColors.primary.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(24),
         ),
         child: const Row(
@@ -913,7 +912,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
       onPressed: _initiatePurchase,
       style: ElevatedButton.styleFrom(
         minimumSize: const Size(double.infinity, 56),
-        backgroundColor: AppColors.primary,
+        backgroundColor: theme.AppColors.primary,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       ),
       child: Row(
@@ -956,8 +955,8 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
         return Theme(
           data: ThemeData.dark().copyWith(
             colorScheme: const ColorScheme.dark(
-              primary: AppColors.primary,
-              surface: AppColors.block,
+              primary: theme.AppColors.primary,
+              surface: theme.AppColors.block,
             ),
           ),
           child: child!,
@@ -1000,11 +999,11 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.block,
-        title: const Text('Connexion requise', style: TextStyle(color: AppColors.textLight)),
+        backgroundColor: theme.AppColors.block,
+        title: const Text('Connexion requise', style: TextStyle(color: theme.AppColors.textLight)),
         content: const Text(
           'Veuillez créer un compte ou vous connecter pour effectuer cet achat.',
-          style: TextStyle(color: AppColors.textMuted),
+          style: TextStyle(color: theme.AppColors.textMuted),
         ),
         actions: [
           TextButton(
@@ -1093,7 +1092,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
       builder: (ctx) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
         decoration: BoxDecoration(
-          color: AppColors.block,
+          color: theme.AppColors.block,
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(30),
             topRight: Radius.circular(30),
@@ -1134,32 +1133,36 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
             const Text(
               'Sélectionnez votre méthode préférée pour finaliser votre commande.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+              style: TextStyle(color: theme.AppColors.textMuted, fontSize: 13),
             ),
             const SizedBox(height: 32),
-            _buildPaymentMethodTile(
-              'Kkiapay',
-              'Cartes, Mobile Money (Bénin, Togo...)',
-              'assets/images/kkiapay_logo.png',
-              () {
-                Navigator.pop(ctx);
-                _handleKkiapayPayment(userId);
-              },
-            ),
-            const SizedBox(height: 16),
-            _buildPaymentMethodTile(
-              'FedaPay',
-              'Mobile Money, Cartes (Afrique de l\'Ouest)',
-              'assets/images/fedapay_logo.png',
-              () {
-                Navigator.pop(ctx);
-                _handleFedapayPayment(userId);
-              },
-            ),
+            if (AppSettingsService.instance.isPaymentMethodEnabled('kkiapay'))
+              _buildPaymentMethodTile(
+                'Kkiapay',
+                'Cartes, Mobile Money (Bénin, Togo...)',
+                'assets/images/kkiapay_logo.png',
+                () {
+                  Navigator.pop(ctx);
+                  _handleKkiapayPayment(userId);
+                },
+              ),
+            if (AppSettingsService.instance.isPaymentMethodEnabled('kkiapay') && 
+                AppSettingsService.instance.isPaymentMethodEnabled('fedapay'))
+              const SizedBox(height: 16),
+            if (AppSettingsService.instance.isPaymentMethodEnabled('fedapay'))
+              _buildPaymentMethodTile(
+                'FedaPay',
+                'Mobile Money, Cartes (Afrique de l\'Ouest)',
+                'assets/images/fedapay_logo.png',
+                () {
+                  Navigator.pop(ctx);
+                  _handleFedapayPayment(userId);
+                },
+              ),
             const SizedBox(height: 16),
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Annuler', style: TextStyle(color: AppColors.textMuted)),
+              child: const Text('Annuler', style: TextStyle(color: theme.AppColors.textMuted)),
             ),
             const SizedBox(height: 12),
           ],
@@ -1180,7 +1183,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+        border: Border.all(color: theme.AppColors.primary.withOpacity(0.2)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
@@ -1194,7 +1197,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),
-          splashColor: AppColors.primary.withOpacity(0.1),
+          splashColor: theme.AppColors.primary.withOpacity(0.1),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -1216,7 +1219,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
                   child: Image.asset(
                     assetPath,
                     fit: BoxFit.contain,
-                    errorBuilder: (c, o, s) => const Icon(Icons.payment, color: AppColors.primary, size: 30),
+                    errorBuilder: (c, o, s) => const Icon(Icons.payment, color: theme.AppColors.primary, size: 30),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -1236,14 +1239,14 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
                       Text(
                         subtitle,
                         style: const TextStyle(
-                          color: AppColors.textMuted,
+                          color: theme.AppColors.textMuted,
                           fontSize: 12,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.primary),
+                const Icon(Icons.arrow_forward_ios, size: 16, color: theme.AppColors.primary),
               ],
             ),
           ),
