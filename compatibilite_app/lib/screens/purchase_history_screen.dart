@@ -65,15 +65,40 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
       // Combine into purchase history
       final List<Map<String, dynamic>> purchases = [];
       
+      // First, add all payments with their matching profiles
       for (final payment in (payments as List)) {
         final paymentId = payment['id'];
         final planType = payment['plan_type'] as String? ?? '';
         
-        // Find matching profile if any
-        final matchingProfile = (profiles as List).cast<Map<String, dynamic>>().firstWhere(
+        // Find matching profile if any (by payment_id or closest date)
+        var matchingProfile = (profiles as List).cast<Map<String, dynamic>>().firstWhere(
           (p) => p['payment_id'] == paymentId,
           orElse: () => <String, dynamic>{},
         );
+        
+        // If no match by payment_id, try to find by closest creation date
+        if (matchingProfile.isEmpty && !planType.contains('temporel')) {
+          final paymentDate = DateTime.parse(payment['created_at'] as String);
+          Map<String, dynamic>? closestProfile;
+          Duration? closestDiff;
+          
+          for (final profile in (profiles as List).cast<Map<String, dynamic>>()) {
+            final profileDate = DateTime.parse(profile['created_at'] as String);
+            final diff = (profileDate.difference(paymentDate)).abs();
+            
+            // If within 1 hour of payment, consider it a match
+            if (diff.inMinutes <= 60) {
+              if (closestDiff == null || diff < closestDiff) {
+                closestDiff = diff;
+                closestProfile = profile;
+              }
+            }
+          }
+          
+          if (closestProfile != null) {
+            matchingProfile = closestProfile;
+          }
+        }
         
         purchases.add({
           'id': paymentId,
@@ -87,6 +112,29 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
           'partnerFirstname': matchingProfile['partner_firstname'],
         });
       }
+      
+      // Add standalone profiles that don't have matching payments (free or manual access)
+      for (final profile in (profiles as List).cast<Map<String, dynamic>>()) {
+        final profileId = profile['id'];
+        final alreadyAdded = purchases.any((p) => p['profileId'] == profileId);
+        
+        if (!alreadyAdded) {
+          purchases.add({
+            'id': profileId,
+            'type': 'compatibility',
+            'title': _getPurchaseTitle('compatibility', profile),
+            'subtitle': 'Accès manuel',
+            'date': DateTime.parse(profile['created_at'] as String),
+            'amount': 0,
+            'profileId': profileId,
+            'userFirstname': profile['user_firstname'],
+            'partnerFirstname': profile['partner_firstname'],
+          });
+        }
+      }
+      
+      // Sort by date descending
+      purchases.sort((a, b) => (b['date'] as DateTime).compareTo(a['date'] as DateTime));
       
       setState(() {
         _purchases = purchases;

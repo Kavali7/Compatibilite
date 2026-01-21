@@ -1867,6 +1867,29 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
               ],
             ),
           ),
+          
+          // Bouton pour basculer entre inscription et connexion
+          const SizedBox(height: 16),
+          Center(
+            child: TextButton.icon(
+              onPressed: () {
+                setState(() {
+                  _emailExists = !_emailExists;
+                });
+              },
+              icon: Icon(
+                _emailExists ? Icons.person_add : Icons.login,
+                color: AppColors.secondary,
+                size: 18,
+              ),
+              label: Text(
+                _emailExists 
+                    ? 'Créer un nouveau compte'
+                    : 'J\'ai déjà un compte',
+                style: const TextStyle(color: AppColors.secondary),
+              ),
+            ),
+          ),
         ],
       ),
     );
