@@ -1853,39 +1853,6 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
               debugPrint('Phone: ${phone.completeNumber}');
             },
           ),
-          const SizedBox(height: 12),
-          SwitchListTile(
-            value: _wantsNotifications,
-            onChanged: (value) => setState(() => _wantsNotifications = value),
-            activeThumbColor: AppColors.primary,
-            activeTrackColor: AppColors.primary.withValues(alpha: 0.35),
-            title: const Text('Recevoir la guidance quotidienne'),
-            subtitle: const Text('Optionnel, par email.'),
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.block.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.security, color: AppColors.primary.withValues(alpha: 0.8)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    _emailExists
-                        ? 'Connectez-vous pour retrouver vos précédentes analyses et vos éventuels abonnements actifs.'
-                        : 'Ce mot de passe sécurise l\'accès à votre rapport et protège vos données personnelles. Choisissez-le avec soin et mémorisez-le pour pouvoir retrouver vos analyses à tout moment.',
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
-                  ),
-                ),
-              ],
-            ),
-          ),
           
           // Bouton pour basculer entre inscription et connexion
           const SizedBox(height: 16),
@@ -1905,8 +1872,32 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
                 _emailExists 
                     ? 'Créer un nouveau compte'
                     : 'J\'ai déjà un compte',
-                style: const TextStyle(color: AppColors.secondary),
+                style: const TextStyle(color: AppColors.secondary, fontWeight: FontWeight.w500),
               ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.block.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.security, color: AppColors.primary.withValues(alpha: 0.8)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _emailExists
+                        ? 'Connectez-vous pour retrouver vos analyses.'
+                        : 'Ce mot de passe protège vos données. Choisissez-le avec soin.',
+                    style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
