@@ -5,6 +5,7 @@ import '../services/auth_service.dart';
 import '../services/supabase_manager.dart';
 import '../widgets/animated_background.dart';
 import 'compatibility_wizard.dart';
+import 'purchased_report_view_screen.dart';
 
 /// Screen to view purchase history (compatibility reports and temporal predictions)
 class PurchaseHistoryScreen extends StatefulWidget {
@@ -125,22 +126,80 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
     return '${date.day}/${date.month}/${date.year} • $amount FCFA • $method';
   }
 
-  void _openReport(Map<String, dynamic> purchase) {
-    // Navigate to view the report
-    // For compatibility reports, we can show the wizard in results mode
-    if (purchase['type'] == 'compatibility' && purchase['profileId'] != null) {
-      // TODO: Implement report viewing
+  void _openReport(Map<String, dynamic> purchase) async {
+    final profileId = purchase['profileId'];
+    
+    // For compatibility reports with a valid profileId
+    if (purchase['type'] == 'compatibility' && profileId != null) {
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
+      
+      try {
+        // Fetch the report data from Supabase
+        final client = SupabaseManager.client;
+        
+        // Get couple profile data
+        final profileResponse = await client
+            .from('couple_profiles')
+            .select('*')
+            .eq('id', profileId)
+            .maybeSingle();
+        
+        if (!mounted) return;
+        Navigator.pop(context); // Close loading dialog
+        
+        if (profileResponse == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Rapport introuvable'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+        
+        // Navigate to a dedicated report viewing screen
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PurchasedReportViewScreen(
+              profileId: profileId,
+              profileData: profileResponse,
+              purchaseTitle: purchase['title'] as String,
+            ),
+          ),
+        );
+      } catch (e) {
+        if (!mounted) return;
+        Navigator.pop(context); // Close loading dialog
+        
+        debugPrint('Error opening report: $e');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } else if (purchase['type'] == 'temporal') {
+      // For temporal predictions, show a message (can be expanded later)
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Ouverture du rapport: ${purchase['title']}'),
-          backgroundColor: AppColors.primary,
+          content: Text('Prévision: ${purchase['title']}'),
+          backgroundColor: AppColors.secondary,
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Cette fonctionnalité sera bientôt disponible'),
-          backgroundColor: AppColors.secondary,
+          content: Text('Ce rapport n\'est plus disponible'),
+          backgroundColor: Colors.orange,
         ),
       );
     }

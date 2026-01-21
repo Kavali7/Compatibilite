@@ -25,6 +25,35 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  /// Traduit les erreurs Supabase en messages clairs pour l'utilisateur
+  String _translateError(String error) {
+    final errorLower = error.toLowerCase();
+    
+    if (errorLower.contains('email_not_confirmed')) {
+      return 'Votre email n\'est pas encore confirmé. Veuillez vérifier votre boîte de réception (et les spams) pour cliquer sur le lien de confirmation.';
+    }
+    if (errorLower.contains('invalid_credentials') || errorLower.contains('invalid login credentials')) {
+      return 'Email ou mot de passe incorrect.';
+    }
+    if (errorLower.contains('user_not_found')) {
+      return 'Aucun compte n\'existe avec cet email.';
+    }
+    if (errorLower.contains('too_many_requests') || errorLower.contains('rate_limit')) {
+      return 'Trop de tentatives. Veuillez patienter quelques minutes avant de réessayer.';
+    }
+    if (errorLower.contains('network') || errorLower.contains('connection')) {
+      return 'Erreur de connexion réseau. Vérifiez votre connexion internet.';
+    }
+    
+    // Nettoyer le message par défaut
+    return error
+        .replaceAll('Exception: ', '')
+        .replaceAll('AuthApiException', '')
+        .replaceAll(RegExp(r'\(message:\s*'), '')
+        .replaceAll(RegExp(r',\s*statusCode:.*\)'), '')
+        .trim();
+  }
+
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -51,7 +80,7 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = e.toString().replaceAll('Exception: ', '');
+          _errorMessage = _translateError(e.toString());
         });
       }
     } finally {

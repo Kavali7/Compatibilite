@@ -1075,7 +1075,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 12),
             child: Text(
-              'Nous calculons votre nombre de couple, vos chemins de vie et vous offrons un conseil quotidien personnalisé.',
+              'Nous analysons la compatibilité de votre couple, vos profils personnels et vous offrons un conseil quotidien personnalisé.',
               textAlign: TextAlign.center,
               style: TextStyle(color: AppColors.textMuted, fontSize: 14),
             ),
