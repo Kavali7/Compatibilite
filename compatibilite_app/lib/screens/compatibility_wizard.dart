@@ -1830,7 +1830,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
             keyboardType: TextInputType.phone,
             decoration: const InputDecoration(
               labelText: 'Téléphone (optionnel)',
-              hintText: '+226...',
+              hintText: 'Ex: +229 00 00 00 00',
               prefixIcon: Icon(Icons.phone_outlined, color: AppColors.secondary),
             ),
           ),
