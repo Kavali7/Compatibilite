@@ -256,45 +256,100 @@ class FedapayGateway implements PaymentGateway {
     String transactionId,
     PaymentCallback callback,
   ) {
+    bool isVerifying = false;
+    String? errorMessage;
+    
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E3B48),
-        title: const Text(
-          'Confirmer le paiement',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: const Text(
-          'Avez-vous terminé le paiement sur FedaPay ?',
-          style: TextStyle(color: Color(0xFFB6C4CC)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              callback(PaymentResult.failure('Paiement annulé'));
-            },
-            child: const Text('Annuler'),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF1E3B48),
+          title: const Text(
+            'Confirmer le paiement',
+            style: TextStyle(color: Colors.white),
           ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              
-              // Verify transaction status
-              final status = await verifyPayment(transactionId);
-              if (status == PaymentVerificationStatus.completed) {
-                callback(PaymentResult.success(transactionId));
-              } else {
-                callback(PaymentResult.failure('Paiement non confirmé'));
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF14D5C2),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Avez-vous terminé le paiement sur FedaPay ?',
+                style: TextStyle(color: Color(0xFFB6C4CC)),
+              ),
+              if (isVerifying) ...[
+                const SizedBox(height: 16),
+                const CircularProgressIndicator(color: Color(0xFF14D5C2)),
+                const SizedBox(height: 8),
+                const Text(
+                  'Vérification en cours...',
+                  style: TextStyle(color: Color(0xFFB6C4CC), fontSize: 12),
+                ),
+              ],
+              if (errorMessage != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    errorMessage!,
+                    style: const TextStyle(color: Colors.orange, fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: isVerifying ? null : () {
+                Navigator.pop(ctx);
+                callback(PaymentResult.failure('Paiement annulé'));
+              },
+              child: Text(
+                'Annuler',
+                style: TextStyle(color: isVerifying ? Colors.grey : null),
+              ),
             ),
-            child: const Text('J\'ai payé', style: TextStyle(color: Colors.white)),
-          ),
-        ],
+            ElevatedButton(
+              onPressed: isVerifying ? null : () async {
+                setDialogState(() {
+                  isVerifying = true;
+                  errorMessage = null;
+                });
+                
+                // Verify transaction status
+                debugPrint('FedaPay: Verifying transaction $transactionId...');
+                final status = await verifyPayment(transactionId);
+                debugPrint('FedaPay: Verification result: $status');
+                
+                if (status == PaymentVerificationStatus.completed) {
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  callback(PaymentResult.success(transactionId));
+                } else if (status == PaymentVerificationStatus.pending) {
+                  setDialogState(() {
+                    isVerifying = false;
+                    errorMessage = 'Le paiement est encore en cours de traitement. Veuillez patienter quelques secondes et réessayer.';
+                  });
+                } else {
+                  setDialogState(() {
+                    isVerifying = false;
+                    errorMessage = 'Paiement non confirmé. Veuillez vérifier que vous avez bien finalisé le paiement sur FedaPay, puis réessayez.';
+                  });
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isVerifying ? Colors.grey : const Color(0xFF14D5C2),
+              ),
+              child: Text(
+                isVerifying ? 'Vérification...' : 'J\'ai payé',
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
