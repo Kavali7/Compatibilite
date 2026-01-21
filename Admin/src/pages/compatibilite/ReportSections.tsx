@@ -120,13 +120,12 @@ export default function ReportSections() {
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <button
                                         onClick={() => handleActiveToggle(section.code)}
-                                        className={`relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${section.is_active ? 'bg-green-600' : 'bg-gray-200'}`}
+                                        className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${section.is_active
+                                                ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                                                : 'bg-red-100 text-red-800 hover:bg-red-200'
+                                            }`}
                                     >
-                                        <span className="sr-only">Use setting</span>
-                                        <span
-                                            aria-hidden="true"
-                                            className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200 ${section.is_active ? 'translate-x-5' : 'translate-x-0'}`}
-                                        />
+                                        {section.is_active ? '✓ Actif' : '✗ Inactif'}
                                     </button>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
