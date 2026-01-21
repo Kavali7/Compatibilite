@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:step_progress_indicator/step_progress_indicator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:intl_phone_field/intl_phone_field.dart';
 
 import '../models/compatibility_models.dart';
 import '../models/legal_models.dart'; // Added
@@ -1825,14 +1826,32 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
               ),
             ),
           const SizedBox(height: 12),
-          TextField(
+          IntlPhoneField(
             controller: _phoneController,
-            keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Téléphone (optionnel)',
-              hintText: 'Ex: +229 00 00 00 00',
-              prefixIcon: Icon(Icons.phone_outlined, color: AppColors.secondary),
+              labelStyle: const TextStyle(color: AppColors.textMuted),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.primary),
+              ),
             ),
+            initialCountryCode: 'BJ', // Bénin par défaut
+            dropdownTextStyle: const TextStyle(color: AppColors.textLight),
+            style: const TextStyle(color: AppColors.textLight),
+            disableLengthCheck: true,
+            onChanged: (phone) {
+              // Stocker le numéro complet avec indicatif
+              debugPrint('Phone: ${phone.completeNumber}');
+            },
           ),
           const SizedBox(height: 12),
           SwitchListTile(
