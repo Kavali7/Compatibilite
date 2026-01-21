@@ -2,6 +2,7 @@ import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Payments from './pages/Payments';
+import Users from './pages/Users';
 import Settings from './pages/Settings';
 import LegalIndex from './pages/legal';
 import CompatibiliteIndex from './pages/compatibilite';
@@ -23,6 +24,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Dashboard /> },
       { path: 'payments', element: <Payments /> },
+      { path: 'users', element: <Users /> },
       { path: 'settings', element: <Settings /> },
       { path: 'legal', element: <LegalIndex /> },
       {

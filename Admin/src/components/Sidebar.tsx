@@ -36,6 +36,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {
             title: 'Suivi',
             items: [
+                { to: '/users', icon: '👤', label: 'Utilisateurs' },
                 { to: '/compatibilite/sessions', icon: '👥', label: 'Sessions' },
                 { to: '/compatibilite/temporal-purchases', icon: '🛒', label: 'Achats Temporels' },
                 { to: '/compatibilite/prospects', icon: '🎯', label: 'Prospects (Relances)' },

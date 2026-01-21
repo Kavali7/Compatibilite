@@ -36,6 +36,7 @@ export default function Settings() {
     const [primaryService, setPrimaryService] = useState<PrimaryServiceOption>('compatibilite');
     const [contactEmail, setContactEmail] = useState('growpeak.agence@gmail.com');
     const [contactWhatsApp, setContactWhatsApp] = useState('+22654255584');
+    const [currency, setCurrency] = useState<'FCFA' | 'EUR' | 'USD'>('FCFA');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<string | null>(null);
@@ -104,6 +105,18 @@ export default function Settings() {
                     fedapay: payData.value.fedapay ?? true,
                 });
             }
+
+            // Load currency setting
+            const { data: currencyData, error: currencyError } = await supabase
+                .from('app_settings')
+                .select('value')
+                .eq('key', 'devise')
+                .maybeSingle();
+
+            if (currencyError) throw currencyError;
+            if (currencyData?.value?.devise) {
+                setCurrency(currencyData.value.devise as 'FCFA' | 'EUR' | 'USD');
+            }
         } catch (e) {
             console.error('Load settings error:', e);
         }
@@ -170,6 +183,17 @@ export default function Settings() {
                 });
 
             if (payError) throw payError;
+
+            // Save currency setting
+            const { error: currencyError } = await supabase
+                .from('app_settings')
+                .upsert({
+                    key: 'devise',
+                    value: { devise: currency },
+                    updated_at: new Date().toISOString(),
+                });
+
+            if (currencyError) throw currencyError;
 
             setSaveStatus('✅ Paramètres enregistrés !');
             setTimeout(() => setSaveStatus(null), 3000);
@@ -347,6 +371,24 @@ export default function Settings() {
             </div>
 
             <div className="settings-section">
+                <h3>💰 Devise d'affichage</h3>
+                <p className="muted">
+                    Choisissez la devise pour l'affichage des montants dans l'application.
+                </p>
+                <div className="currency-selector">
+                    {(['FCFA', 'EUR', 'USD'] as const).map((c) => (
+                        <button
+                            key={c}
+                            className={`currency-option ${currency === c ? 'active' : ''}`}
+                            onClick={() => setCurrency(c)}
+                        >
+                            {c === 'FCFA' ? '🇧🇯 FCFA' : c === 'EUR' ? '🇪🇺 EUR' : '🇺🇸 USD'}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            <div className="settings-section">
                 <h3>🔗 Connexions</h3>
                 <div className="settings-item">
                     <span className="settings-label">Supabase</span>
@@ -496,6 +538,31 @@ export default function Settings() {
                     outline: none;
                     border-color: #667eea;
                     background: rgba(255,255,255,0.08);
+                }
+                .currency-selector {
+                    display: flex;
+                    gap: 12px;
+                    margin-top: 16px;
+                }
+                .currency-option {
+                    flex: 1;
+                    padding: 12px 16px;
+                    background: rgba(255,255,255,0.05);
+                    border: 2px solid rgba(255,255,255,0.1);
+                    border-radius: 12px;
+                    color: #aaa;
+                    cursor: pointer;
+                    font-size: 14px;
+                    transition: all 0.2s;
+                }
+                .currency-option:hover {
+                    background: rgba(255,255,255,0.08);
+                    border-color: rgba(255,255,255,0.2);
+                }
+                .currency-option.active {
+                    background: linear-gradient(135deg, rgba(102,126,234,0.2) 0%, rgba(159,122,234,0.2) 100%);
+                    border-color: #667eea;
+                    color: white;
                 }
             `}</style>
         </div>
