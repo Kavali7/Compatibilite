@@ -9,6 +9,7 @@ import '../services/auth_service.dart';
 import '../services/kkiapay_service.dart';
 import '../services/pricing_service.dart';
 import '../services/app_settings_service.dart';
+import '../services/currency_service.dart';
 import '../services/payment/fedapay_gateway.dart';
 import '../services/payment/payment_gateway.dart';
 import 'auth/login_page.dart';
@@ -979,7 +980,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
                 ),
               ),
               Text(
-                '$_totalPrice FCFA',
+                CurrencyService.instance.formatAmount(_totalPrice),
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -1056,7 +1057,7 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
           const Icon(Icons.lock, color: Colors.white),
           const SizedBox(width: 8),
           Text(
-            'Acheter pour $_totalPrice FCFA',
+            'Acheter pour ${CurrencyService.instance.formatAmount(_totalPrice)}',
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,

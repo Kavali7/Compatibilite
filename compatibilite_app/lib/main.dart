@@ -6,6 +6,7 @@ import 'screens/temporal_purchase_screen.dart';
 import 'screens/payment_callback_screen.dart';
 import 'services/supabase_manager.dart';
 import 'services/app_settings_service.dart';
+import 'services/currency_service.dart';
 import 'theme/app_theme.dart';
 
 Future<void> main() async {
@@ -52,6 +53,10 @@ Future<void> main() async {
     
     // Load app settings after Supabase is ready
     await AppSettingsService.instance.fetchSettings();
+    
+    // Load currency settings
+    await CurrencyService.instance.loadCurrency();
+    
     debugPrint('Main: Initialization complete, starting runApp...');
   } catch (e) {
     debugPrint('Supabase init failed: $e');
