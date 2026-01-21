@@ -1491,7 +1491,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Contexte (optionnel)',
+            'Contexte',
             style: GoogleFonts.philosopher(fontSize: 22, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
@@ -1515,26 +1515,11 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           _buildMeetingDateDropdowns(),
           
           const SizedBox(height: 20),
-          TextField(
-            controller: _durationController,
-            style: const TextStyle(color: AppColors.textLight),
-            decoration: InputDecoration(
-              labelText: 'Durée estimée de la relation',
-              labelStyle: const TextStyle(color: AppColors.textMuted),
-              hintText: 'Ex: 3 ans, 6 mois, quelques semaines...',
-              hintStyle: TextStyle(color: AppColors.textMuted.withValues(alpha: 0.5)),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.primary),
-              ),
-              filled: true,
-              fillColor: AppColors.block.withValues(alpha: 0.5),
-            ),
-          ),
+          
+          // Durée automatique calculée
+          if (_meetingYear != null) ...[
+            _buildAutoCalculatedDuration(),
+          ],
           const SizedBox(height: 20),
           
           // Défis de la relation
@@ -1678,7 +1663,72 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   void _updateMeetingDate() {
     if (_meetingYear != null) {
       _meetingDate = DateTime(_meetingYear!, _meetingMonth ?? 1, 1);
+      // Update duration controller with calculated duration
+      _durationController.text = _calculateDuration();
     }
+  }
+
+  /// Calculate duration from meeting date to today
+  String _calculateDuration() {
+    if (_meetingDate == null) return '';
+    
+    final now = DateTime.now();
+    final years = now.year - _meetingDate!.year;
+    final months = now.month - _meetingDate!.month + (years * 12);
+    
+    if (months < 1) {
+      return 'Moins d\'un mois';
+    } else if (months < 12) {
+      return '$months mois';
+    } else {
+      final yearsCalc = months ~/ 12;
+      final remainingMonths = months % 12;
+      if (remainingMonths == 0) {
+        return '$yearsCalc an${yearsCalc > 1 ? 's' : ''}';
+      } else {
+        return '$yearsCalc an${yearsCalc > 1 ? 's' : ''} et $remainingMonths mois';
+      }
+    }
+  }
+
+  /// Widget to display auto-calculated duration
+  Widget _buildAutoCalculatedDuration() {
+    final duration = _calculateDuration();
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.block,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.secondary.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.access_time, color: AppColors.secondary, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Durée de la relation',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  duration.isNotEmpty ? duration : 'Non définie',
+                  style: GoogleFonts.philosopher(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textLight,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _pillButton({required String label, required IconData icon, required VoidCallback onTap}) {
@@ -1880,18 +1930,45 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
       } else {
         // Otherwise, sign up
         debugPrint('>>> _registerOrSignInUser: Creating new account...');
-        await AuthService.instance.signUp(
-          email: email,
-          password: password,
-          name: name,
-        );
+        try {
+          await AuthService.instance.signUp(
+            email: email,
+            password: password,
+            name: name,
+          );
+        } catch (signUpError) {
+          // If user already exists, try to sign in instead
+          final errorStr = signUpError.toString().toLowerCase();
+          if (errorStr.contains('user_already_exists') || 
+              errorStr.contains('already registered') ||
+              errorStr.contains('user already')) {
+            debugPrint('>>> _registerOrSignInUser: User exists, trying signIn...');
+            await AuthService.instance.signIn(
+              email: email,
+              password: password,
+            );
+          } else {
+            rethrow;
+          }
+        }
       }
       return true;
     } catch (e) {
       debugPrint('>>> _registerOrSignInUser: Auth Error: $e');
-      _showSnack(_emailExists 
-        ? 'Échec de connexion. Vérifiez votre mot de passe.' 
-        : 'Échec de l\'inscription. ${e.toString()}');
+      final errorStr = e.toString().toLowerCase();
+      String errorMessage;
+      
+      if (errorStr.contains('invalid_credentials') || errorStr.contains('invalid login')) {
+        errorMessage = 'Mot de passe incorrect pour ce compte.';
+      } else if (errorStr.contains('email_not_confirmed')) {
+        errorMessage = 'Veuillez confirmer votre email avant de vous connecter.';
+      } else if (errorStr.contains('too_many_requests')) {
+        errorMessage = 'Trop de tentatives. Attendez quelques minutes.';
+      } else {
+        errorMessage = 'Échec de l\'authentification. Vérifiez vos identifiants.';
+      }
+      
+      _showSnack(errorMessage);
       return false;
     }
   }
