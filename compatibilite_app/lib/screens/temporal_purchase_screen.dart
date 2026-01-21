@@ -46,6 +46,11 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
   DateTime? _partnerBirthdate;
   String _userGender = 'Autre';
   String _partnerGender = 'Autre';
+  
+  // Birthdate dropdown state for user
+  int? _userBirthYear;
+  int? _userBirthMonth;
+  int? _userBirthDay;
 
   // Pricing (in FCFA) - loaded from database, null if not configured
   int? _priceDayFcfa;
@@ -364,10 +369,29 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
           const SizedBox(height: 12),
           _buildNameField(_userNameController, 'Votre prénom'),
           const SizedBox(height: 12),
-          _buildDatePickerField(
+          _buildBirthDateDropdowns(
             label: 'Votre date de naissance',
-            value: _userBirthdate,
-            onPicked: (date) => setState(() => _userBirthdate = date),
+            selectedYear: _userBirthYear,
+            selectedMonth: _userBirthMonth,
+            selectedDay: _userBirthDay,
+            onYearChanged: (val) {
+              setState(() {
+                _userBirthYear = val;
+                _updateUserBirthdate();
+              });
+            },
+            onMonthChanged: (val) {
+              setState(() {
+                _userBirthMonth = val;
+                _updateUserBirthdate();
+              });
+            },
+            onDayChanged: (val) {
+              setState(() {
+                _userBirthDay = val;
+                _updateUserBirthdate();
+              });
+            },
           ),
           const SizedBox(height: 12),
           _buildGenderSelector(
@@ -462,6 +486,117 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: theme.AppColors.primary),
         ),
+      ),
+    );
+  }
+
+  /// Update _userBirthdate from dropdown values
+  void _updateUserBirthdate() {
+    if (_userBirthYear != null && _userBirthMonth != null && _userBirthDay != null) {
+      setState(() {
+        _userBirthdate = DateTime(_userBirthYear!, _userBirthMonth!, _userBirthDay!);
+      });
+    }
+  }
+
+  /// Calculate days in month
+  int _daysInMonth(int? year, int? month) {
+    if (year == null || month == null) return 31;
+    return DateTime(year, month + 1, 0).day;
+  }
+
+  /// Build birth date dropdowns (year, month, day)
+  Widget _buildBirthDateDropdowns({
+    required String label,
+    required int? selectedYear,
+    required int? selectedMonth,
+    required int? selectedDay,
+    required ValueChanged<int?> onYearChanged,
+    required ValueChanged<int?> onMonthChanged,
+    required ValueChanged<int?> onDayChanged,
+  }) {
+    final years = List<int>.generate(DateTime.now().year - 1919, (i) => 1920 + i).reversed.toList();
+    final months = const [
+      'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+      'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
+    ];
+    final maxDay = _daysInMonth(selectedYear, selectedMonth);
+    final days = List<int>.generate(maxDay, (i) => i + 1);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.AppColors.block.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.AppColors.primary.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.philosopher(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: theme.AppColors.textMuted,
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Year dropdown
+          DropdownButtonFormField<int>(
+            decoration: const InputDecoration(
+              labelText: 'Année',
+              isDense: true,
+            ),
+            value: selectedYear,
+            items: years
+                .map((y) => DropdownMenuItem<int>(
+                      value: y,
+                      child: Text('$y'),
+                    ))
+                .toList(),
+            onChanged: onYearChanged,
+            dropdownColor: theme.AppColors.block,
+            style: const TextStyle(color: theme.AppColors.textLight),
+          ),
+          const SizedBox(height: 12),
+          // Month dropdown
+          DropdownButtonFormField<int>(
+            decoration: const InputDecoration(
+              labelText: 'Mois',
+              isDense: true,
+            ),
+            value: selectedMonth,
+            items: List.generate(
+              months.length,
+              (index) => DropdownMenuItem<int>(
+                value: index + 1,
+                child: Text(months[index]),
+              ),
+            ),
+            onChanged: onMonthChanged,
+            dropdownColor: theme.AppColors.block,
+            style: const TextStyle(color: theme.AppColors.textLight),
+          ),
+          const SizedBox(height: 12),
+          // Day dropdown
+          DropdownButtonFormField<int>(
+            decoration: const InputDecoration(
+              labelText: 'Jour',
+              isDense: true,
+            ),
+            value: selectedDay != null && selectedDay <= maxDay ? selectedDay : null,
+            items: days
+                .map((d) => DropdownMenuItem<int>(
+                      value: d,
+                      child: Text('$d'),
+                    ))
+                .toList(),
+            onChanged: onDayChanged,
+            dropdownColor: theme.AppColors.block,
+            style: const TextStyle(color: theme.AppColors.textLight),
+          ),
+        ],
       ),
     );
   }
@@ -1389,9 +1524,9 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
           },
         ),
 
-      MenuEntry(label: 'Contacter Growpeak', onTap: () => _launchUri(_supportEmailUri)),
-      MenuEntry(label: 'WhatsApp Growpeak', onTap: () => _launchWhatsApp()),
-      MenuEntry(label: 'Appeler Growpeak', onTap: () => _launchUri(_supportPhoneUri)),
+      MenuEntry(label: 'Contacter Growpeak Agence', onTap: () => _launchUri(_supportEmailUri)),
+      MenuEntry(label: 'WhatsApp Growpeak Agence', onTap: () => _launchWhatsApp()),
+      MenuEntry(label: 'Appeler Growpeak Agence', onTap: () => _launchUri(_supportPhoneUri)),
     ];
   }
 

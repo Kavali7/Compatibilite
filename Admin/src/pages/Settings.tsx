@@ -8,6 +8,11 @@ type TemporalBonusSettings = {
     day: boolean;
 };
 
+type PaymentMethodSettings = {
+    kkiapay: boolean;
+    fedapay: boolean;
+};
+
 type PrimaryServiceOption = 'compatibilite' | 'prevision_jour' | 'prevision_mois' | 'prevision_annee';
 
 const SERVICE_LABELS: Record<PrimaryServiceOption, string> = {
@@ -24,7 +29,13 @@ export default function Settings() {
         month: true,
         day: true,
     });
+    const [paymentMethods, setPaymentMethods] = useState<PaymentMethodSettings>({
+        kkiapay: true,
+        fedapay: true,
+    });
     const [primaryService, setPrimaryService] = useState<PrimaryServiceOption>('compatibilite');
+    const [contactEmail, setContactEmail] = useState('growpeak.agence@gmail.com');
+    const [contactWhatsApp, setContactWhatsApp] = useState('+22654255584');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<string | null>(null);
@@ -64,6 +75,34 @@ export default function Settings() {
             if (serviceError) throw serviceError;
             if (serviceData?.value?.service) {
                 setPrimaryService(serviceData.value.service as PrimaryServiceOption);
+            }
+
+            // Load contact details
+            const { data: contactData, error: contactError } = await supabase
+                .from('app_settings')
+                .select('value')
+                .eq('key', 'contact_details')
+                .maybeSingle();
+
+            if (contactError) throw contactError;
+            if (contactData?.value) {
+                setContactEmail(contactData.value.email || 'growpeak.agence@gmail.com');
+                setContactWhatsApp(contactData.value.whatsapp || '+22654255584');
+            }
+
+            // Load payment method settings
+            const { data: payData, error: payError } = await supabase
+                .from('app_settings')
+                .select('value')
+                .eq('key', 'modes_paiement')
+                .maybeSingle();
+
+            if (payError) throw payError;
+            if (payData?.value) {
+                setPaymentMethods({
+                    kkiapay: payData.value.kkiapay ?? true,
+                    fedapay: payData.value.fedapay ?? true,
+                });
             }
         } catch (e) {
             console.error('Load settings error:', e);
@@ -106,6 +145,31 @@ export default function Settings() {
                 });
 
             if (serviceError) throw serviceError;
+
+            // Save contact details
+            const { error: contactError } = await supabase
+                .from('app_settings')
+                .upsert({
+                    key: 'contact_details',
+                    value: {
+                        email: contactEmail,
+                        whatsapp: contactWhatsApp,
+                    },
+                    updated_at: new Date().toISOString(),
+                });
+
+            if (contactError) throw contactError;
+
+            // Save payment method settings
+            const { error: payError } = await supabase
+                .from('app_settings')
+                .upsert({
+                    key: 'modes_paiement',
+                    value: paymentMethods,
+                    updated_at: new Date().toISOString(),
+                });
+
+            if (payError) throw payError;
 
             setSaveStatus('✅ Paramètres enregistrés !');
             setTimeout(() => setSaveStatus(null), 3000);
@@ -242,7 +306,48 @@ export default function Settings() {
             </div>
 
             <div className="settings-section">
-                <h3>Connexions</h3>
+                <h3>💳 Modes de Paiement</h3>
+                <p className="muted">
+                    Activez ou désactivez les services de paiement disponibles pour les utilisateurs.
+                </p>
+
+                <div className="payment-method-settings">
+                    <div className="settings-toggle-row">
+                        <label className="toggle-label">
+                            <span className="toggle-icon">💜</span>
+                            <div>
+                                <strong>Kkiapay</strong>
+                                <p className="muted small">Cartes & Mobile Money (BJ, CI, SN, TG...)</p>
+                            </div>
+                        </label>
+                        <button
+                            className={`toggle-btn ${paymentMethods.kkiapay ? 'active' : ''}`}
+                            onClick={() => setPaymentMethods(prev => ({ ...prev, kkiapay: !prev.kkiapay }))}
+                        >
+                            {paymentMethods.kkiapay ? 'Activé' : 'Désactivé'}
+                        </button>
+                    </div>
+
+                    <div className="settings-toggle-row">
+                        <label className="toggle-label">
+                            <span className="toggle-icon">💚</span>
+                            <div>
+                                <strong>FedaPay</strong>
+                                <p className="muted small">Mobile Money & Cartes (BJ, TG, ML, SN...)</p>
+                            </div>
+                        </label>
+                        <button
+                            className={`toggle-btn ${paymentMethods.fedapay ? 'active' : ''}`}
+                            onClick={() => setPaymentMethods(prev => ({ ...prev, fedapay: !prev.fedapay }))}
+                        >
+                            {paymentMethods.fedapay ? 'Activé' : 'Désactivé'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="settings-section">
+                <h3>🔗 Connexions</h3>
                 <div className="settings-item">
                     <span className="settings-label">Supabase</span>
                     <span className="settings-value status-connected">Connecté</span>
@@ -251,13 +356,39 @@ export default function Settings() {
                     <span className="settings-label">Kkiapay</span>
                     <span className="settings-value status-connected">Configuré</span>
                 </div>
+                <div className="settings-item">
+                    <span className="settings-label">FedaPay</span>
+                    <span className="settings-value status-connected">Configuré</span>
+                </div>
             </div>
 
             <div className="settings-section">
-                <h3>Coordonnées Growpeak</h3>
-                <div className="contact-info">
-                    <p>📧 contact@growpeakagency.com</p>
-                    <p>📞 +229 XX XX XX XX</p>
+                <h3>Coordonnées Growpeak Agence</h3>
+                <p className="muted">
+                    Modifiez l'email et le numéro WhatsApp de contact utilisés dans l'application mobile.
+                </p>
+                <div className="contact-info-edit">
+                    <div className="input-group">
+                        <label>📧 Email de contact</label>
+                        <input
+                            type="email"
+                            value={contactEmail}
+                            onChange={(e) => setContactEmail(e.target.value)}
+                            className="settings-input"
+                            placeholder="growpeak.agence@gmail.com"
+                        />
+                    </div>
+                    <div className="input-group">
+                        <label>💬 WhatsApp (format international)</label>
+                        <input
+                            type="text"
+                            value={contactWhatsApp}
+                            onChange={(e) => setContactWhatsApp(e.target.value)}
+                            className="settings-input"
+                            placeholder="+22654255584"
+                        />
+                        <p className="muted small">Exemple: +229XXXXXXXX ou +226XXXXXXXX (sans espaces)</p>
+                    </div>
                 </div>
             </div>
 
@@ -336,6 +467,35 @@ export default function Settings() {
                     color: #667eea;
                     font-size: 20px;
                     font-weight: bold;
+                }
+                .contact-info-edit {
+                    margin-top: 16px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                }
+                .input-group {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                }
+                .input-group label {
+                    font-weight: 600;
+                    color: white;
+                }
+                .settings-input {
+                    padding: 12px 16px;
+                    background: rgba(255,255,255,0.05);
+                    border: 2px solid rgba(255,255,255,0.1);
+                    border-radius: 12px;
+                    color: white;
+                    font-size: 16px;
+                    width: 100%;
+                }
+                .settings-input:focus {
+                    outline: none;
+                    border-color: #667eea;
+                    background: rgba(255,255,255,0.08);
                 }
             `}</style>
         </div>

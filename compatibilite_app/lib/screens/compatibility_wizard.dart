@@ -789,9 +789,9 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         ),
       )),
 
-      MenuEntry(label: 'Contacter Growpeak', onTap: () => _launchUri(_supportEmailUri)),
-      MenuEntry(label: 'WhatsApp Growpeak', onTap: () => _launchWhatsApp()),
-      MenuEntry(label: 'Appeler Growpeak', onTap: () => _launchUri(_supportPhoneUri)),
+      MenuEntry(label: 'Contacter Growpeak Agence', onTap: () => _launchUri(_supportEmailUri)),
+      MenuEntry(label: 'WhatsApp Growpeak Agence', onTap: () => _launchWhatsApp()),
+      MenuEntry(label: 'Appeler Growpeak Agence', onTap: () => _launchUri(_supportPhoneUri)),
       // Admin menu removed as requested
     ];
   }
@@ -1830,7 +1830,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
             icon: Icons.description_outlined,
             features: const [
               'Rapport complet de compatibilité',
-              'Analyse numérologique des deux partenaires',
+              'Analyse approfondie des deux partenaires',
               'Conseil du jour personnalisé',
             ],
             onTap: () {
