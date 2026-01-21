@@ -62,6 +62,8 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   DateTime? _birthA;
   DateTime? _birthB;
   DateTime? _meetingDate;
+  int? _meetingYear;  // For meeting date dropdown
+  int? _meetingMonth; // For meeting date dropdown
   int? _yearA;
   int? _monthA;
   int? _dayA;
@@ -1494,23 +1496,53 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Personnalisez les textes sans rallonger le flux principal. Cette étape peut être ignorée.',
+            'Ces informations enrichissent votre rapport mais ne sont pas indispensables. Votre analyse sera tout aussi pertinente sans elles.',
             style: TextStyle(color: AppColors.textMuted),
           ),
-          const SizedBox(height: 16),
-          _pillButton(
-            label: _meetingDate == null ? 'Date de rencontre' : 'Rencontre : ${_formatDate(_meetingDate)}',
-            icon: Icons.event,
-            onTap: _pickMeetingDate,
+          const SizedBox(height: 20),
+          
+          // Date de rencontre avec dropdowns
+          Text(
+            'Date de rencontre',
+            style: GoogleFonts.philosopher(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textLight),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Si vous ne connaissez pas la date exacte, le mois et l\'année suffisent.',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
           ),
           const SizedBox(height: 12),
+          _buildMeetingDateDropdowns(),
+          
+          const SizedBox(height: 20),
           TextField(
             controller: _durationController,
-            decoration: const InputDecoration(
-              labelText: 'Durée de la relation (ex: 3 ans)',
+            style: const TextStyle(color: AppColors.textLight),
+            decoration: InputDecoration(
+              labelText: 'Durée estimée de la relation',
+              labelStyle: const TextStyle(color: AppColors.textMuted),
+              hintText: 'Ex: 3 ans, 6 mois, quelques semaines...',
+              hintStyle: TextStyle(color: AppColors.textMuted.withValues(alpha: 0.5)),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.primary),
+              ),
+              filled: true,
+              fillColor: AppColors.block.withValues(alpha: 0.5),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 20),
+          
+          // Défis de la relation
+          Text(
+            'Défis rencontrés (optionnel)',
+            style: GoogleFonts.philosopher(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textLight),
+          ),
+          const SizedBox(height: 8),
           Wrap(
             spacing: 10,
             runSpacing: 10,
@@ -1526,10 +1558,28 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
                 )
                 .toList(),
           ),
-          const SizedBox(height: 12),
-          const Text(
-            'Bouton « Passer » recommandé pour rappeler que la section est facultative.',
-            style: TextStyle(color: AppColors.textMuted),
+          const SizedBox(height: 24),
+          
+          // Message rassurant
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.info_outline, color: AppColors.primary, size: 20),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Vous pouvez passer cette étape. Votre rapport sera complet et personnalisé.',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
           Align(
@@ -1541,12 +1591,94 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
               ),
               onPressed: _goNext,
-              child: const Text('Passer'),
+              child: const Text('Passer cette étape'),
             ),
           ),
         ],
       ),
     );
+  }
+
+  /// Widget to select meeting date with dropdowns (month/year only)
+  Widget _buildMeetingDateDropdowns() {
+    final currentYear = DateTime.now().year;
+    final years = List<int>.generate(currentYear - 1969, (i) => 1970 + i).reversed.toList();
+    final months = const [
+      'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+      'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.block,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          // Month dropdown
+          Expanded(
+            child: DropdownButtonFormField<int>(
+              decoration: const InputDecoration(
+                labelText: 'Mois',
+                labelStyle: TextStyle(color: AppColors.textMuted),
+                border: InputBorder.none,
+              ),
+              value: _meetingMonth,
+              dropdownColor: AppColors.block,
+              style: const TextStyle(color: AppColors.textLight),
+              items: List.generate(
+                months.length,
+                (index) => DropdownMenuItem<int>(
+                  value: index + 1,
+                  child: Text(months[index]),
+                ),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _meetingMonth = value;
+                  _updateMeetingDate();
+                });
+              },
+            ),
+          ),
+          const SizedBox(width: 16),
+          // Year dropdown
+          Expanded(
+            child: DropdownButtonFormField<int>(
+              decoration: const InputDecoration(
+                labelText: 'Année',
+                labelStyle: TextStyle(color: AppColors.textMuted),
+                border: InputBorder.none,
+              ),
+              value: _meetingYear,
+              dropdownColor: AppColors.block,
+              style: const TextStyle(color: AppColors.textLight),
+              items: years
+                  .map((y) => DropdownMenuItem<int>(
+                        value: y,
+                        child: Text('$y'),
+                      ))
+                  .toList(),
+              onChanged: (value) {
+                setState(() {
+                  _meetingYear = value;
+                  _updateMeetingDate();
+                });
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Update _meetingDate from dropdowns
+  void _updateMeetingDate() {
+    if (_meetingYear != null) {
+      _meetingDate = DateTime(_meetingYear!, _meetingMonth ?? 1, 1);
+    }
   }
 
   Widget _pillButton({required String label, required IconData icon, required VoidCallback onTap}) {
