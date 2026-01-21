@@ -13,6 +13,10 @@ cd compatibilite_app
 flutter pub get
 flutter run --dart-define-from-file=.env
 
+Déployement
+flutter build web --release
+flutter build apk --release --obfuscate --split-debug-info=build/debug-info
+
 Important pour le déploiement :
 Quand tu déploieras sur O2switch, assure-toi que le domaine growpeak-agence.com pointe bien vers le dossier où tu mets le build Flutter web.
 

@@ -114,6 +114,8 @@ export default function ReportSections() {
                                         type="text"
                                         value={section.label_fr}
                                         onChange={(e) => handleLabelChange(section.code, e.target.value)}
+                                        title={`Label pour ${section.code}`}
+                                        placeholder="Entrez le label"
                                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm p-2 border"
                                     />
                                 </td>
@@ -121,8 +123,8 @@ export default function ReportSections() {
                                     <button
                                         onClick={() => handleActiveToggle(section.code)}
                                         className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${section.is_active
-                                                ? 'bg-green-100 text-green-800 hover:bg-green-200'
-                                                : 'bg-red-100 text-red-800 hover:bg-red-200'
+                                            ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                                            : 'bg-red-100 text-red-800 hover:bg-red-200'
                                             }`}
                                     >
                                         {section.is_active ? '✓ Actif' : '✗ Inactif'}
