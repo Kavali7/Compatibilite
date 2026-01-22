@@ -2,9 +2,9 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:kkiapay_flutter_sdk/kkiapay_flutter_sdk.dart';
 
+import '../env_config.dart';
 import 'payment_gateway.dart';
 
 /// Kkiapay payment gateway implementation
@@ -23,17 +23,14 @@ class KkiapayGateway implements PaymentGateway {
   
   @override
   bool get isConfigured {
-    final key = dotenv.env['KKIAPAY_PUBLIC_KEY'];
-    return key != null && key.isNotEmpty;
+    final key = EnvConfig.kkiapayPublicKey;
+    return key.isNotEmpty;
   }
   
   @override
-  bool get isSandbox {
-    final sandbox = dotenv.env['KKIAPAY_SANDBOX'];
-    return sandbox?.toLowerCase() == 'true';
-  }
+  bool get isSandbox => EnvConfig.kkiapaySandbox;
   
-  String? get _publicKey => dotenv.env['KKIAPAY_PUBLIC_KEY'];
+  String get _publicKey => EnvConfig.kkiapayPublicKey;
   
   @override
   Future<void> initiatePayment({

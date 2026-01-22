@@ -2376,8 +2376,6 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     debugPrint('=== PAYMENT PROVIDERS DEBUG ===');
     debugPrint('Kkiapay configured: $kkiapayAvailable');
     debugPrint('FedaPay configured: $fedapayAvailable');
-    debugPrint('FEDAPAY_PUBLIC_KEY from dotenv: ${dotenv.env['FEDAPAY_PUBLIC_KEY']}');
-    debugPrint('FEDAPAY_SECRET_KEY from dotenv: ${dotenv.env['FEDAPAY_SECRET_KEY']?.substring(0, 10)}...');
     debugPrint('==============================');
     
     if (!kkiapayAvailable && !fedapayAvailable) {

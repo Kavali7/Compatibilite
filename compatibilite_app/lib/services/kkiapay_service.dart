@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:kkiapay_flutter_sdk/kkiapay_flutter_sdk.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'supabase_manager.dart';
 import 'auth_service.dart';
 import 'pricing_service.dart';
+import 'env_config.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -74,9 +74,9 @@ class KkiapayService {
 
   /// Get the Kkiapay public API key from environment
   String get _apiKey {
-    final key = dotenv.env['KKIAPAY_PUBLIC_KEY'];
-    if (key == null || key.isEmpty) {
-      debugPrint('WARNING: KKIAPAY_PUBLIC_KEY not set in .env');
+    final key = EnvConfig.kkiapayPublicKey;
+    if (key.isEmpty) {
+      debugPrint('WARNING: KKIAPAY_PUBLIC_KEY not set');
       return '';
     }
     return key;
@@ -86,10 +86,7 @@ class KkiapayService {
   bool get isConfigured => _apiKey.isNotEmpty;
 
   /// Check if running in sandbox mode
-  bool get isSandbox {
-    final sandbox = dotenv.env['KKIAPAY_SANDBOX'];
-    return sandbox?.toLowerCase() == 'true';
-  }
+  bool get isSandbox => EnvConfig.kkiapaySandbox;
 
   /// Create Kkiapay payment widget
   KKiaPay createPaymentWidget({

@@ -2,11 +2,11 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import '../env_config.dart';
 import 'payment_gateway.dart';
 
 /// FedaPay payment gateway implementation
@@ -29,20 +29,16 @@ class FedapayGateway implements PaymentGateway {
   
   @override
   bool get isConfigured {
-    final publicKey = dotenv.env['FEDAPAY_PUBLIC_KEY'];
-    final secretKey = dotenv.env['FEDAPAY_SECRET_KEY'];
-    return publicKey != null && publicKey.isNotEmpty && 
-           secretKey != null && secretKey.isNotEmpty;
+    final publicKey = EnvConfig.fedapayPublicKey;
+    final secretKey = EnvConfig.fedapaySecretKey;
+    return publicKey.isNotEmpty && secretKey.isNotEmpty;
   }
   
   @override
-  bool get isSandbox {
-    final sandbox = dotenv.env['FEDAPAY_SANDBOX'];
-    return sandbox?.toLowerCase() == 'true';
-  }
+  bool get isSandbox => EnvConfig.fedapaySandbox;
   
   String get _baseUrl => isSandbox ? _sandboxBaseUrl : _liveBaseUrl;
-  String? get _secretKey => dotenv.env['FEDAPAY_SECRET_KEY'];
+  String get _secretKey => EnvConfig.fedapaySecretKey;
   
   // Transaction storage for callback verification
   final Map<String, PaymentCallback> _pendingCallbacks = {};
