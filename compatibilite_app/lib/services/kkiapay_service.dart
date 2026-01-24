@@ -139,12 +139,16 @@ class KkiapayService {
     switch (status) {
       case PAYMENT_SUCCESS:
         final transactionId = response['transactionId'] as String?;
-        Navigator.of(context).pop();
+        if (context.mounted) {
+          Navigator.of(context).pop();
+        }
         callback(true, transactionId, null);
         break;
 
       case PAYMENT_CANCELLED:
-        Navigator.of(context).pop();
+        if (context.mounted) {
+          Navigator.of(context).pop();
+        }
         callback(false, null, 'Paiement annulé');
         break;
 
@@ -164,13 +168,17 @@ class KkiapayService {
           final isActuallySuccessful = await verifyPaymentStatus(failedTransactionId);
           if (isActuallySuccessful) {
             debugPrint('>>> Payment verified as SUCCESSFUL via API despite CORS error!');
-            Navigator.of(context).pop();
+            if (context.mounted) {
+              Navigator.of(context).pop();
+            }
             callback(true, failedTransactionId, null);
             return;
           }
         }
         
-        Navigator.of(context).pop();
+        if (context.mounted) {
+          Navigator.of(context).pop();
+        }
         callback(false, null, 'Paiement échoué: $errorMessage');
         break;
 
@@ -198,7 +206,12 @@ class KkiapayService {
     String? email,
     String? name,
   }) {
+    debugPrint('>>> KKIAPAY: startPaymentMobile appelé');
+    debugPrint('>>> KKIAPAY: amount=$amount, reason=$reason');
+    debugPrint('>>> KKIAPAY: isConfigured=$isConfigured');
+    
     if (!isConfigured) {
+      debugPrint('>>> KKIAPAY: ERREUR - Non configuré!');
       callback(false, null, 'Configuration Kkiapay manquante');
       return;
     }
@@ -212,6 +225,7 @@ class KkiapayService {
       name: name,
     );
 
+    debugPrint('>>> KKIAPAY: Widget créé, navigation vers l\'écran de paiement...');
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => widget),
@@ -282,7 +296,11 @@ class KkiapayService {
     String? email,
     String? name,
   }) {
+    debugPrint('>>> KKIAPAY: startPayment appelé');
+    debugPrint('>>> KKIAPAY: kIsWeb=$kIsWeb');
+    
     if (kIsWeb) {
+      debugPrint('>>> KKIAPAY: Utilisation du flow WEB');
       startPaymentWeb(
         context: context,
         amount: amount,
@@ -293,6 +311,7 @@ class KkiapayService {
         name: name,
       );
     } else {
+      debugPrint('>>> KKIAPAY: Utilisation du flow MOBILE');
       startPaymentMobile(
         context: context,
         amount: amount,
