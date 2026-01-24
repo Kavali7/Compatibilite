@@ -61,7 +61,7 @@ class KkiapayGateway implements PaymentGateway {
       email: customerEmail,
       reason: reason,
       sandbox: isSandbox,
-      apikey: _publicKey!,
+      apikey: _publicKey,
       callback: (response, _) {
         _handleCallback(response, context, callback);
       },
@@ -86,24 +86,47 @@ class KkiapayGateway implements PaymentGateway {
     debugPrint('=== KKIAPAY CALLBACK ===');
     debugPrint('Response: $response');
     
-    // Pop the payment screen
-    if (context.mounted) {
-      Navigator.of(context).pop();
-    }
-    
     final status = response['status'] as String?;
     final transactionId = response['transactionId']?.toString();
     
-    if (status == 'SUCCESS' && transactionId != null) {
-      callback(PaymentResult.success(transactionId, response));
-    } else if (status == 'CANCELLED') {
-      callback(PaymentResult.failure('Paiement annulé', response));
-    } else {
-      final failureMessage = response['failureMessage'] as String?;
-      callback(PaymentResult.failure(
-        failureMessage ?? 'Paiement échoué',
-        response,
-      ));
+    debugPrint('Status: $status, TransactionId: $transactionId');
+    
+    // Use SDK constants for status comparison
+    switch (status) {
+      case PAYMENT_SUCCESS:
+        // Pop the payment screen first
+        if (context.mounted) {
+          Navigator.of(context).pop();
+        }
+        callback(PaymentResult.success(transactionId ?? '', response));
+        break;
+        
+      case PAYMENT_CANCELLED:
+        if (context.mounted) {
+          Navigator.of(context).pop();
+        }
+        callback(PaymentResult.failure('Paiement annulé', response));
+        break;
+        
+      case PENDING_PAYMENT:
+        debugPrint('Payment pending...');
+        break;
+        
+      case PAYMENT_INIT:
+        debugPrint('Payment initialized');
+        break;
+        
+      default:
+        // Handle PAYMENT_FAILED or unknown status
+        if (context.mounted) {
+          Navigator.of(context).pop();
+        }
+        final failureMessage = response['failureMessage'] as String?;
+        callback(PaymentResult.failure(
+          failureMessage ?? 'Paiement échoué (status: $status)',
+          response,
+        ));
+        break;
     }
   }
   
