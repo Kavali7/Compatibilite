@@ -2,12 +2,15 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 import '../env_config.dart';
 import 'payment_gateway.dart';
+// Conditional import for web popup
+import 'web_url_launcher_stub.dart' if (dart.library.html) 'web_url_launcher.dart';
 
 /// FedaPay payment gateway implementation
 /// Uses FedaPay API to create payment links and redirect users
@@ -339,16 +342,23 @@ class _PaymentPopupDialogState extends State<_PaymentPopupDialog> {
   }
 
   Future<void> _openPopupAndStartPolling() async {
-    // Open the payment URL
-    final uri = Uri.parse(widget.paymentUrl);
-    
     try {
-      // On web, use launchUrl with webOnlyWindowName to open popup
-      final launched = await launchUrl(
-        uri, 
-        mode: LaunchMode.externalApplication,
-        webOnlyWindowName: '_blank', // Opens in new tab/popup
-      );
+      bool launched = false;
+      
+      // On web, use window.open() for a real popup window
+      if (kIsWeb) {
+        launched = openUrlInPopup(widget.paymentUrl);
+        debugPrint('FedaPay: Opened popup via window.open(): $launched');
+      }
+      
+      // Fallback for non-web or if popup failed
+      if (!launched) {
+        final uri = Uri.parse(widget.paymentUrl);
+        launched = await launchUrl(
+          uri, 
+          mode: LaunchMode.externalApplication,
+        );
+      }
       
       if (launched) {
         setState(() {
