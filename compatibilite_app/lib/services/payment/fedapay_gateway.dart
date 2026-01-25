@@ -95,23 +95,40 @@ class FedapayGateway implements PaymentGateway {
       // Store callback for later verification
       _pendingCallbacks[transactionId] = callback;
       
-      // Step 3: Open payment URL in browser
-      final uri = Uri.parse(paymentUrl);
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-        
-        // Show dialog to user to confirm payment completion
-        if (context.mounted) {
-          _showPaymentConfirmationDialog(context, transactionId, callback);
-        }
-      } else {
-        callback(PaymentResult.failure('Impossible d\'ouvrir le lien de paiement'));
+      // Step 3: Open payment in popup and start polling
+      if (context.mounted) {
+        _openPaymentPopup(context, paymentUrl, transactionId, callback);
       }
     } catch (e) {
       debugPrint('FedaPay error: $e');
       final msg = e.toString().replaceFirst('Exception: ', '').replaceFirst('Exception', '');
       callback(PaymentResult.failure('Erreur FedaPay: $msg'));
     }
+  }
+  
+  /// Open payment URL in popup window and poll for completion
+  void _openPaymentPopup(
+    BuildContext context,
+    String paymentUrl,
+    String transactionId,
+    PaymentCallback callback,
+  ) {
+    debugPrint('FedaPay: Opening payment popup...');
+    
+    // Show loading dialog with popup management
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _PaymentPopupDialog(
+        paymentUrl: paymentUrl,
+        transactionId: transactionId,
+        onVerify: verifyPayment,
+        onComplete: (result) {
+          if (ctx.mounted) Navigator.pop(ctx);
+          callback(result);
+        },
+      ),
+    );
   }
   
   /// Create a transaction via FedaPay API
@@ -246,109 +263,6 @@ class FedapayGateway implements PaymentGateway {
     }
   }
   
-  /// Show dialog to confirm payment after user returns from browser
-  void _showPaymentConfirmationDialog(
-    BuildContext context,
-    String transactionId,
-    PaymentCallback callback,
-  ) {
-    bool isVerifying = false;
-    String? errorMessage;
-    
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF1E3B48),
-          title: const Text(
-            'Confirmer le paiement',
-            style: TextStyle(color: Colors.white),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Avez-vous terminé le paiement sur FedaPay ?',
-                style: TextStyle(color: Color(0xFFB6C4CC)),
-              ),
-              if (isVerifying) ...[
-                const SizedBox(height: 16),
-                const CircularProgressIndicator(color: Color(0xFF14D5C2)),
-                const SizedBox(height: 8),
-                const Text(
-                  'Vérification en cours...',
-                  style: TextStyle(color: Color(0xFFB6C4CC), fontSize: 12),
-                ),
-              ],
-              if (errorMessage != null) ...[
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    errorMessage!,
-                    style: const TextStyle(color: Colors.orange, fontSize: 12),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: isVerifying ? null : () {
-                Navigator.pop(ctx);
-                callback(PaymentResult.failure('Paiement annulé'));
-              },
-              child: Text(
-                'Annuler',
-                style: TextStyle(color: isVerifying ? Colors.grey : null),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: isVerifying ? null : () async {
-                setDialogState(() {
-                  isVerifying = true;
-                  errorMessage = null;
-                });
-                
-                // Verify transaction status
-                debugPrint('FedaPay: Verifying transaction $transactionId...');
-                final status = await verifyPayment(transactionId);
-                debugPrint('FedaPay: Verification result: $status');
-                
-                if (status == PaymentVerificationStatus.completed) {
-                  if (ctx.mounted) Navigator.pop(ctx);
-                  callback(PaymentResult.success(transactionId));
-                } else if (status == PaymentVerificationStatus.pending) {
-                  setDialogState(() {
-                    isVerifying = false;
-                    errorMessage = 'Le paiement est encore en cours de traitement. Veuillez patienter quelques secondes et réessayer.';
-                  });
-                } else {
-                  setDialogState(() {
-                    isVerifying = false;
-                    errorMessage = 'Paiement non confirmé. Veuillez vérifier que vous avez bien finalisé le paiement sur FedaPay, puis réessayez.';
-                  });
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: isVerifying ? Colors.grey : const Color(0xFF14D5C2),
-              ),
-              child: Text(
-                isVerifying ? 'Vérification...' : 'J\'ai payé',
-                style: const TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
   
   @override
   Future<PaymentVerificationStatus> verifyPayment(String transactionId) async {
@@ -389,5 +303,232 @@ class FedapayGateway implements PaymentGateway {
       debugPrint('FedaPay verify error: $e');
       return PaymentVerificationStatus.unknown;
     }
+  }
+}
+
+/// Widget that manages the FedaPay popup payment flow
+/// Opens payment URL in popup, polls for completion, closes automatically
+class _PaymentPopupDialog extends StatefulWidget {
+  final String paymentUrl;
+  final String transactionId;
+  final Future<PaymentVerificationStatus> Function(String) onVerify;
+  final void Function(PaymentResult) onComplete;
+
+  const _PaymentPopupDialog({
+    required this.paymentUrl,
+    required this.transactionId,
+    required this.onVerify,
+    required this.onComplete,
+  });
+
+  @override
+  State<_PaymentPopupDialog> createState() => _PaymentPopupDialogState();
+}
+
+class _PaymentPopupDialogState extends State<_PaymentPopupDialog> {
+  bool _isPolling = false;
+  bool _popupOpened = false;
+  String _statusMessage = 'Ouverture du paiement...';
+  int _pollCount = 0;
+  static const int _maxPollAttempts = 60; // 3 minutes max (60 * 3 seconds)
+
+  @override
+  void initState() {
+    super.initState();
+    _openPopupAndStartPolling();
+  }
+
+  Future<void> _openPopupAndStartPolling() async {
+    // Open the payment URL
+    final uri = Uri.parse(widget.paymentUrl);
+    
+    try {
+      // On web, use launchUrl with webOnlyWindowName to open popup
+      final launched = await launchUrl(
+        uri, 
+        mode: LaunchMode.externalApplication,
+        webOnlyWindowName: '_blank', // Opens in new tab/popup
+      );
+      
+      if (launched) {
+        setState(() {
+          _popupOpened = true;
+          _statusMessage = 'Paiement ouvert dans une nouvelle fenêtre.\nFinalisez votre paiement là-bas.';
+        });
+        
+        // Start polling after a short delay
+        await Future.delayed(const Duration(seconds: 2));
+        _startPolling();
+      } else {
+        widget.onComplete(PaymentResult.failure('Impossible d\'ouvrir le lien de paiement'));
+      }
+    } catch (e) {
+      debugPrint('FedaPay: Error opening popup: $e');
+      widget.onComplete(PaymentResult.failure('Erreur lors de l\'ouverture'));
+    }
+  }
+
+  Future<void> _startPolling() async {
+    if (_isPolling) return;
+    
+    setState(() => _isPolling = true);
+    debugPrint('FedaPay: Starting payment status polling...');
+    
+    while (_isPolling && _pollCount < _maxPollAttempts && mounted) {
+      _pollCount++;
+      
+      setState(() {
+        _statusMessage = 'Vérification du paiement...\n(Tentative $_pollCount)';
+      });
+      
+      final status = await widget.onVerify(widget.transactionId);
+      debugPrint('FedaPay: Poll #$_pollCount - Status: $status');
+      
+      if (status == PaymentVerificationStatus.completed) {
+        debugPrint('FedaPay: Payment completed! Closing dialog.');
+        _isPolling = false;
+        if (mounted) {
+          setState(() {
+            _statusMessage = 'Paiement confirmé! ✓';
+          });
+          await Future.delayed(const Duration(milliseconds: 500));
+          widget.onComplete(PaymentResult.success(widget.transactionId));
+        }
+        return;
+      } else if (status == PaymentVerificationStatus.failed) {
+        debugPrint('FedaPay: Payment failed.');
+        _isPolling = false;
+        if (mounted) {
+          widget.onComplete(PaymentResult.failure('Le paiement a été refusé'));
+        }
+        return;
+      }
+      
+      // Wait 3 seconds before next poll
+      await Future.delayed(const Duration(seconds: 3));
+    }
+    
+    // Timeout - but don't fail, let user manually confirm
+    if (mounted && _isPolling) {
+      setState(() {
+        _isPolling = false;
+        _statusMessage = 'Vérification automatique terminée.\nCliquez sur "J\'ai payé" pour confirmer.';
+      });
+    }
+  }
+
+  void _manualVerify() async {
+    setState(() {
+      _isPolling = true;
+      _statusMessage = 'Vérification manuelle...';
+    });
+    
+    final status = await widget.onVerify(widget.transactionId);
+    
+    if (status == PaymentVerificationStatus.completed) {
+      widget.onComplete(PaymentResult.success(widget.transactionId));
+    } else if (status == PaymentVerificationStatus.failed) {
+      widget.onComplete(PaymentResult.failure('Le paiement a été refusé'));
+    } else {
+      setState(() {
+        _isPolling = false;
+        _statusMessage = 'Paiement non encore confirmé.\nFinalisez le paiement dans l\'autre fenêtre.';
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _isPolling = false;
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: const Color(0xFF1E3B48),
+      title: Row(
+        children: [
+          if (_isPolling)
+            const SizedBox(
+              width: 20, height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: Color(0xFF14D5C2),
+              ),
+            ),
+          if (_isPolling) const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              'Paiement FedaPay',
+              style: TextStyle(color: Colors.white, fontSize: 18),
+            ),
+          ),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Status icon
+          Icon(
+            _popupOpened ? Icons.open_in_new : Icons.hourglass_empty,
+            color: const Color(0xFF14D5C2),
+            size: 48,
+          ),
+          const SizedBox(height: 16),
+          
+          // Status message
+          Text(
+            _statusMessage,
+            style: const TextStyle(color: Color(0xFFB6C4CC)),
+            textAlign: TextAlign.center,
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Info box
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.blue.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Le paiement sera vérifié automatiquement',
+                    style: TextStyle(color: Colors.blue, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            _isPolling = false;
+            widget.onComplete(PaymentResult.failure('Paiement annulé'));
+          },
+          child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
+        ),
+        if (!_isPolling)
+          ElevatedButton(
+            onPressed: _manualVerify,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF14D5C2),
+            ),
+            child: const Text(
+              'J\'ai payé',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+      ],
+    );
   }
 }
