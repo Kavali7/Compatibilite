@@ -488,15 +488,18 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   }
 
   Future<void> _fetchAndSetSummary() async {
+    debugPrint('>>> _fetchAndSetSummary: DÉBUT');
+    
     final user = AuthService.instance.currentUser;
     if (user == null) {
-      debugPrint('Skipping fetch: User not logged in');
+      debugPrint('>>> _fetchAndSetSummary: ERREUR - User not logged in');
       return;
     }
 
     setState(() => _isComputing = true);
 
     try {
+      debugPrint('>>> _fetchAndSetSummary: Création des PartnerInput...');
       final partnerA = PartnerInput(
         name: _nameAController.text,
         birthDate: _birthA!,
@@ -509,20 +512,32 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
       );
       
       // 1. Create profile with payment ID (multi-consultations)
-      final profileId = await _saveCoupleProfile(paymentId: _lastPaymentId);
+      debugPrint('>>> _fetchAndSetSummary: Appel _saveCoupleProfile...');
+      final profileId = await _saveCoupleProfile(paymentId: _lastPaymentId)
+          .timeout(const Duration(seconds: 15), onTimeout: () {
+        debugPrint('>>> _fetchAndSetSummary: TIMEOUT sur _saveCoupleProfile!');
+        return null;
+      });
+      
       if (profileId == null) {
+        debugPrint('>>> _fetchAndSetSummary: ERREUR - profileId est null');
         throw Exception('Impossible de sauvegarder le profil. Vérifiez votre connexion.');
       }
       
       // 2. Use the returned profileId directly (no need to fetch again)
-      debugPrint('Using profileId: $profileId for report generation');
+      debugPrint('>>> _fetchAndSetSummary: profileId=$profileId, appel fetchFullProfile...');
       
-      // 3. RPC Call with the new profileId
+      // 3. RPC Call with the new profileId - avec timeout
       final summary = await _reportService.fetchFullProfile(
         coupleId: profileId,
         partnerAInput: partnerA,
         partnerBInput: partnerB,
-      );
+      ).timeout(const Duration(seconds: 30), onTimeout: () {
+        debugPrint('>>> _fetchAndSetSummary: TIMEOUT sur fetchFullProfile!');
+        return null;
+      });
+      
+      debugPrint('>>> _fetchAndSetSummary: Réponse reçue, summary=${summary != null ? "OK" : "NULL"}');
       
       if (summary != null) {
         setState(() {
@@ -530,12 +545,17 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           _partnerAInput = partnerA;
           _partnerBInput = partnerB;
         });
+        debugPrint('>>> _fetchAndSetSummary: SUCCÈS - Summary défini');
+      } else {
+        debugPrint('>>> _fetchAndSetSummary: ATTENTION - Summary est null');
+        _showSnack('Le rapport n\'a pas pu être généré. Veuillez réessayer.');
       }
     } catch (e) {
-      debugPrint('Error fetching summary: $e');
+      debugPrint('>>> _fetchAndSetSummary: EXCEPTION - $e');
       _showSnack('Erreur lors du calcul: $e');
     } finally {
       if (mounted) setState(() => _isComputing = false);
+      debugPrint('>>> _fetchAndSetSummary: FIN');
     }
   }
 
