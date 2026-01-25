@@ -242,48 +242,35 @@ class KkiapayService {
     String? email,
     String? name,
   }) {
+    debugPrint('>>> KKIAPAY WEB: startPaymentWeb appelé');
+    
     if (!isConfigured) {
+      debugPrint('>>> KKIAPAY WEB: ERREUR - Non configuré!');
       callback(false, null, 'Configuration Kkiapay manquante');
       return;
     }
 
-    debugPrint('=== KKIAPAY WEB DEBUG ===');
-    debugPrint('Creating KKiaPay for web:');
-    debugPrint('  - Amount: $amount FCFA');
-    debugPrint('  - Sandbox: $isSandbox');
-    debugPrint('  - API Key: ${_apiKey.substring(0, 10)}...');
-    debugPrint('=========================');
+    debugPrint('>>> KKIAPAY WEB: Création du widget...');
+    debugPrint('>>> KKIAPAY WEB: Amount=$amount, Sandbox=$isSandbox');
+    debugPrint('>>> KKIAPAY WEB: API Key=${_apiKey.substring(0, 10)}...');
 
-    // Create widget WITHOUT callback (callback goes to pay() method for web)
-    final widget = KKiaPay(
+    // Use same approach as mobile - Navigator.push with widget
+    // KkiapayFlutterSdkPlatform.instance.pay() doesn't work reliably on web
+    final widget = createPaymentWidget(
       amount: amount,
-      apikey: _apiKey,
-      sandbox: isSandbox,
-      phone: phone ?? '',
-      name: name ?? '',
-      email: email ?? '',
       reason: reason,
-      theme: '#9C27B0',
-      countries: ['BJ', 'CI', 'SN', 'TG', 'BF', 'ML', 'NE'],
-      paymentMethods: ['momo', 'card'],
-      // NOTE: For web, callback should be passed to pay() method, not here
-      callback: (response, ctx) {
-        debugPrint('=== WIDGET CALLBACK (web) ===');
-        debugPrint('Response: $response');
-      },
+      callback: callback,
+      phone: phone,
+      email: email,
+      name: name,
     );
 
-    // Use the platform-specific pay method with callback
-    KkiapayFlutterSdkPlatform.instance.pay(
-      widget,
+    debugPrint('>>> KKIAPAY WEB: Navigation vers le widget de paiement...');
+    Navigator.push(
       context,
-      (response, ctx) {
-        debugPrint('=== PAY() CALLBACK RECEIVED ===');
-        debugPrint('Response: $response');
-        debugPrint('===============================');
-        _handlePaymentCallback(response, ctx, callback);
-      },
+      MaterialPageRoute(builder: (_) => widget),
     );
+    debugPrint('>>> KKIAPAY WEB: Navigation effectuée');
   }
 
   /// Start payment (auto-detect platform)
