@@ -395,8 +395,10 @@ class _PaymentPopupDialogState extends State<_PaymentPopupDialog> {
       debugPrint('FedaPay: Poll #$_pollCount - Status: $status');
       
       if (status == PaymentVerificationStatus.completed) {
-        debugPrint('FedaPay: Payment completed! Closing dialog.');
+        debugPrint('FedaPay: Payment completed! Closing popup and dialog.');
         _isPolling = false;
+        // Close the FedaPay popup window
+        closePaymentPopup();
         if (mounted) {
           setState(() {
             _statusMessage = 'Paiement confirmé! ✓';
@@ -436,8 +438,11 @@ class _PaymentPopupDialogState extends State<_PaymentPopupDialog> {
     final status = await widget.onVerify(widget.transactionId);
     
     if (status == PaymentVerificationStatus.completed) {
+      // Close the FedaPay popup window
+      closePaymentPopup();
       widget.onComplete(PaymentResult.success(widget.transactionId));
     } else if (status == PaymentVerificationStatus.failed) {
+      closePaymentPopup();
       widget.onComplete(PaymentResult.failure('Le paiement a été refusé'));
     } else {
       setState(() {

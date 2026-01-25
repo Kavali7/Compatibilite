@@ -6,3 +6,13 @@ bool openUrlInPopup(String url, {String windowName = 'FedaPayPayment'}) {
   // Return false to use fallback behavior
   return false;
 }
+
+/// Stub for closing popup - does nothing on non-web
+void closePaymentPopup() {
+  // No-op on non-web platforms
+}
+
+/// Stub for checking popup status
+bool isPopupOpen() {
+  return false;
+}
