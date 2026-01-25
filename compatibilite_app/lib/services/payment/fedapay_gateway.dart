@@ -122,12 +122,14 @@ class FedapayGateway implements PaymentGateway {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => _PaymentPopupDialog(
+      builder: (dialogContext) => _PaymentPopupDialog(
         paymentUrl: paymentUrl,
         transactionId: transactionId,
         onVerify: verifyPayment,
         onComplete: (result) {
-          if (ctx.mounted) Navigator.pop(ctx);
+          // Close the dialog first
+          Navigator.of(dialogContext, rootNavigator: true).pop();
+          // Then call the callback
           callback(result);
         },
       ),
