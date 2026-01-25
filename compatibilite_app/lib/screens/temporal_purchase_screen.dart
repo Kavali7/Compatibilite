@@ -15,6 +15,7 @@ import '../services/payment/payment_gateway.dart';
 import 'auth/login_page.dart';
 import 'auth/simple_signup_screen.dart';
 import 'purchase_history_screen.dart';
+import 'temporal_report_view_screen.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/hamburger_menu_overlay.dart';
 
@@ -1454,7 +1455,12 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
         
         if (report != null) {
           _showSnack('Paiement réussi ! Votre prévision est prête.');
-          Navigator.pop(context, report);
+          // Navigate to report view screen instead of pop
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => TemporalReportViewScreen(report: report),
+            ),
+          );
         } else {
           _showSnack('Erreur lors de la génération du rapport.');
         }
