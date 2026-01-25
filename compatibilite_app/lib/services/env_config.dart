@@ -1,7 +1,7 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 // Conditional import for web-specific config
-import 'web_config_stub.dart' if (dart.library.html) 'web_config.dart';
+import 'web_config_stub.dart' if (dart.library.js_interop) 'web_config.dart';
 
 /// Centralized environment configuration
 /// Priority: 1. Build-time variables, 2. window.flutterConfig (web), 3. dotenv (local dev)
@@ -20,19 +20,34 @@ class EnvConfig {
   static String get(String key) {
     // First try build-time variables (always available when built with --dart-define-from-file)
     final buildTimeValue = _getBuildTimeValue(key);
-    if (buildTimeValue.isNotEmpty) return buildTimeValue;
+    if (buildTimeValue.isNotEmpty) {
+      debugPrint('EnvConfig: $key from build-time: ${buildTimeValue.substring(0, buildTimeValue.length > 20 ? 20 : buildTimeValue.length)}...');
+      return buildTimeValue;
+    }
     
     // On web, try window.flutterConfig (from env_config.js)
     if (kIsWeb) {
-      final webValue = getWebConfigValue(key);
-      if (webValue.isNotEmpty) return webValue;
+      try {
+        final webValue = getWebConfigValue(key);
+        if (webValue.isNotEmpty) {
+          debugPrint('EnvConfig: $key from web config: ${webValue.substring(0, webValue.length > 20 ? 20 : webValue.length)}...');
+          return webValue;
+        }
+      } catch (e) {
+        debugPrint('EnvConfig: Error getting $key from web config: $e');
+      }
     }
     
     // Fallback to dotenv (for local development)
     if (!kIsWeb) {
-      return dotenv.env[key] ?? '';
+      final dotenvValue = dotenv.env[key] ?? '';
+      if (dotenvValue.isNotEmpty) {
+        debugPrint('EnvConfig: $key from dotenv');
+      }
+      return dotenvValue;
     }
     
+    debugPrint('EnvConfig: $key NOT FOUND in any source!');
     return '';
   }
   

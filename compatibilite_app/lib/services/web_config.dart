@@ -2,6 +2,7 @@
 library web_config;
 
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 
 /// Access window.flutterConfig from JavaScript
 @JS('window.flutterConfig')
@@ -11,18 +12,22 @@ external JSObject? get _flutterConfig;
 String getWebConfigValue(String key) {
   try {
     final config = _flutterConfig;
-    if (config == null) return '';
+    if (config == null) {
+      return '';
+    }
     
-    // Use dynamic access to get the property
-    final value = config.getProperty(key.toJS);
+    // Use js_interop_unsafe for property access
+    final value = config[key];
     if (value == null) return '';
     
-    return (value as JSString).toDart;
+    // Convert to Dart string
+    if (value.isA<JSString>()) {
+      return (value as JSString).toDart;
+    }
+    
+    // Fallback: try to convert to string
+    return value.toString();
   } catch (e) {
     return '';
   }
-}
-
-extension on JSObject {
-  external JSAny? getProperty(JSString key);
 }
