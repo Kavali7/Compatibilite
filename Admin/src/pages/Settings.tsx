@@ -13,6 +13,26 @@ type PaymentMethodSettings = {
     fedapay: boolean;
 };
 
+type MenuItemConfig = {
+    label: string;
+    enabled: boolean;
+    order: number;
+};
+
+type MenuConfigSettings = {
+    [key: string]: MenuItemConfig;
+};
+
+const DEFAULT_MENU_CONFIG: MenuConfigSettings = {
+    mes_achats: { label: 'Mes achats', enabled: true, order: 1 },
+    se_connecter: { label: 'Se connecter', enabled: true, order: 2 },
+    creer_compte: { label: 'Créer un compte', enabled: true, order: 3 },
+    se_deconnecter: { label: 'Se déconnecter', enabled: true, order: 4 },
+    contacter: { label: 'Contacter Growpeak Agence', enabled: true, order: 5 },
+    whatsapp: { label: 'WhatsApp Growpeak Agence', enabled: true, order: 6 },
+    appeler: { label: 'Appeler Growpeak Agence', enabled: true, order: 7 },
+};
+
 type PrimaryServiceOption = 'compatibilite' | 'prevision_jour' | 'prevision_mois' | 'prevision_annee';
 
 const SERVICE_LABELS: Record<PrimaryServiceOption, string> = {
@@ -33,6 +53,7 @@ export default function Settings() {
         kkiapay: true,
         fedapay: true,
     });
+    const [menuConfig, setMenuConfig] = useState<MenuConfigSettings>(DEFAULT_MENU_CONFIG);
     const [primaryService, setPrimaryService] = useState<PrimaryServiceOption>('compatibilite');
     const [contactEmail, setContactEmail] = useState('growpeak.agence@gmail.com');
     const [contactWhatsApp, setContactWhatsApp] = useState('+22654255584');
@@ -117,6 +138,18 @@ export default function Settings() {
             if (currencyData?.value?.devise) {
                 setCurrency(currencyData.value.devise as 'FCFA' | 'EUR' | 'USD');
             }
+
+            // Load menu configuration
+            const { data: menuData, error: menuError } = await supabase
+                .from('app_settings')
+                .select('value')
+                .eq('key', 'menu_config')
+                .maybeSingle();
+
+            if (menuError) throw menuError;
+            if (menuData?.value) {
+                setMenuConfig({ ...DEFAULT_MENU_CONFIG, ...menuData.value });
+            }
         } catch (e) {
             console.error('Load settings error:', e);
         }
@@ -195,6 +228,17 @@ export default function Settings() {
 
             if (currencyError) throw currencyError;
 
+            // Save menu configuration
+            const { error: menuError } = await supabase
+                .from('app_settings')
+                .upsert({
+                    key: 'menu_config',
+                    value: menuConfig,
+                    updated_at: new Date().toISOString(),
+                });
+
+            if (menuError) throw menuError;
+
             setSaveStatus('✅ Paramètres enregistrés !');
             setTimeout(() => setSaveStatus(null), 3000);
         } catch (e: any) {
@@ -206,6 +250,16 @@ export default function Settings() {
 
     function toggleSetting(key: keyof TemporalBonusSettings) {
         setBonusSettings(prev => ({ ...prev, [key]: !prev[key] }));
+    }
+
+    function toggleMenuEnabled(menuId: string) {
+        setMenuConfig(prev => ({
+            ...prev,
+            [menuId]: {
+                ...prev[menuId],
+                enabled: !prev[menuId].enabled,
+            }
+        }));
     }
 
     if (loading) {
@@ -431,6 +485,36 @@ export default function Settings() {
                         />
                         <p className="muted small">Exemple: +229XXXXXXXX ou +226XXXXXXXX (sans espaces)</p>
                     </div>
+                </div>
+            </div>
+
+            {/* Menu Configuration Section */}
+            <div className="settings-section">
+                <h3>📋 Configuration des Menus</h3>
+                <p className="muted">
+                    Activez ou désactivez les éléments du menu hamburger dans l'application mobile.
+                </p>
+
+                <div className="menu-config-settings">
+                    {Object.entries(menuConfig)
+                        .sort((a, b) => a[1].order - b[1].order)
+                        .map(([menuId, config]) => (
+                            <div key={menuId} className="settings-toggle-row">
+                                <label className="toggle-label">
+                                    <span className="toggle-icon">📌</span>
+                                    <div>
+                                        <strong>{config.label}</strong>
+                                        <p className="muted small">ID: {menuId}</p>
+                                    </div>
+                                </label>
+                                <button
+                                    className={`toggle-btn ${config.enabled ? 'active' : ''}`}
+                                    onClick={() => toggleMenuEnabled(menuId)}
+                                >
+                                    {config.enabled ? 'Visible' : 'Masqué'}
+                                </button>
+                            </div>
+                        ))}
                 </div>
             </div>
 

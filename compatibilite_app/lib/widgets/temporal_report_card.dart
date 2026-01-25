@@ -108,16 +108,8 @@ class TemporalReportCard extends StatelessWidget {
                           color: AppColors.textLight,
                         ),
                       ),
-                      if (report.bloc0Titre != null) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          report.bloc0Titre!,
-                          style: TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
+                      // bloc0Titre hidden - contains numerological references like "MOIS 1 POUR LE COUPLE"
+                      // that we don't want to expose to users
                     ],
                   ),
                 ),
