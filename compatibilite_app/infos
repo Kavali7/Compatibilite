@@ -13,6 +13,11 @@ cd compatibilite_app
 flutter pub get
 flutter run --dart-define-from-file=.env
 
+flutter run -d web-server --web-hostname=0.0.0.0 --web-port=8080 --dart-define-from-file=.env
+http://192.168.137.1:8080
+http://172.26.164.165:8080
+http://localhost:8080/
+
 Déployement
 flutter build web --release
 flutter build apk --release --obfuscate --split-debug-info=build/debug-info
@@ -267,6 +272,56 @@ flutter run --dart-define-from-file=.env
 ```
 
 ---
+
+## 6.1 Configuration Variables Production Web (IMPORTANT)
+
+> [!IMPORTANT]
+> En production web, le fichier `.env` N'EST PAS accessible (erreur 403 Forbidden).
+> Les variables doivent être configurées dans `web/env_config.js` AVANT le déploiement !
+
+### Problème du Callback FedaPay
+
+Quand FedaPay redirige vers `growpeak-agence.com/#/payment-callback`:
+1. L'app Flutter est rechargée depuis zéro
+2. Les variables `--dart-define-from-file` ne sont plus en mémoire
+3. Le fichier `.env` retourne une erreur 403
+4. → Supabase échoue à s'initialiser, la vérification échoue
+
+### Solution : 3 sources de variables (ordre de priorité)
+
+1. **Build-time** : `--dart-define-from-file=.env` (compilées dans l'app)
+2. **Web runtime** : `window.flutterConfig` depuis `web/env_config.js`
+3. **Dotenv** : Pour dev local non-web uniquement
+
+### Fichiers impliqués
+
+| Fichier | Rôle |
+|---------|------|
+| `web/env_config.js` | Définit `window.flutterConfig` avec les vraies valeurs prod |
+| `lib/services/env_config.dart` | Classe centrale qui lit les 3 sources |
+| `lib/services/web_config.dart` | Lecture JavaScript pour web |
+| `lib/services/web_config_stub.dart` | Stub pour plateformes non-web |
+
+### Avant déploiement web
+
+Éditer `web/env_config.js` avec les vraies valeurs :
+
+```javascript
+window.flutterConfig = {
+  SUPABASE_URL: 'https://lqhdvlkfzjbwujfkceis.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbG...',  // La vraie clé
+  KKIAPAY_API_KEY: 'f33fff3dde...',
+  KKIAPAY_SANDBOX: 'false',
+  FEDAPAY_SECRET_KEY: 'sk_live_...',
+  FEDAPAY_PUBLIC_KEY: 'pk_live_...',
+  FEDAPAY_SANDBOX: 'false',
+  FEDAPAY_CALLBACK_URL: 'https://growpeak-agence.com/#/payment-callback'
+};
+```
+
+> [!CAUTION]
+> **NE PAS commiter `env_config.js` avec les vraies valeurs !**
+> Ajouter ce fichier à `.gitignore` après le premier commit template.
 
 ## 7. Résolution de Problèmes
 

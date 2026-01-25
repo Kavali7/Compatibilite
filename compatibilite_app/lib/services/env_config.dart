@@ -1,8 +1,10 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+// Conditional import for web-specific config
+import 'web_config_stub.dart' if (dart.library.html) 'web_config.dart';
 
 /// Centralized environment configuration
-/// Prioritizes build-time variables (--dart-define-from-file) over runtime dotenv
+/// Priority: 1. Build-time variables, 2. window.flutterConfig (web), 3. dotenv (local dev)
 class EnvConfig {
   // Build-time variables (compiled into the app)
   static const String _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
@@ -12,40 +14,49 @@ class EnvConfig {
   static const String _fedapaySecretKey = String.fromEnvironment('FEDAPAY_SECRET_KEY');
   static const String _fedapaySandbox = String.fromEnvironment('FEDAPAY_SANDBOX', defaultValue: 'false');
   static const String _kkiapaySandbox = String.fromEnvironment('KKIAPAY_SANDBOX', defaultValue: 'false');
+  static const String _fedapayCallbackUrl = String.fromEnvironment('FEDAPAY_CALLBACK_URL');
   
-  /// Get environment variable - prioritize build-time, fallback to dotenv
+  /// Get environment variable - prioritize build-time, then web config, fallback to dotenv
   static String get(String key) {
-    // First try build-time variables (always available, even on web)
-    switch (key) {
-      case 'SUPABASE_URL':
-        if (_supabaseUrl.isNotEmpty) return _supabaseUrl;
-        break;
-      case 'SUPABASE_ANON_KEY':
-        if (_supabaseAnonKey.isNotEmpty) return _supabaseAnonKey;
-        break;
-      case 'KKIAPAY_PUBLIC_KEY':
-        if (_kkiapayPublicKey.isNotEmpty) return _kkiapayPublicKey;
-        break;
-      case 'FEDAPAY_PUBLIC_KEY':
-        if (_fedapayPublicKey.isNotEmpty) return _fedapayPublicKey;
-        break;
-      case 'FEDAPAY_SECRET_KEY':
-        if (_fedapaySecretKey.isNotEmpty) return _fedapaySecretKey;
-        break;
-      case 'FEDAPAY_SANDBOX':
-        if (_fedapaySandbox.isNotEmpty) return _fedapaySandbox;
-        break;
-      case 'KKIAPAY_SANDBOX':
-        if (_kkiapaySandbox.isNotEmpty) return _kkiapaySandbox;
-        break;
+    // First try build-time variables (always available when built with --dart-define-from-file)
+    final buildTimeValue = _getBuildTimeValue(key);
+    if (buildTimeValue.isNotEmpty) return buildTimeValue;
+    
+    // On web, try window.flutterConfig (from env_config.js)
+    if (kIsWeb) {
+      final webValue = getWebConfigValue(key);
+      if (webValue.isNotEmpty) return webValue;
     }
     
-    // Fallback to dotenv (for local development on non-web platforms)
+    // Fallback to dotenv (for local development)
     if (!kIsWeb) {
       return dotenv.env[key] ?? '';
     }
     
     return '';
+  }
+  
+  static String _getBuildTimeValue(String key) {
+    switch (key) {
+      case 'SUPABASE_URL':
+        return _supabaseUrl;
+      case 'SUPABASE_ANON_KEY':
+        return _supabaseAnonKey;
+      case 'KKIAPAY_PUBLIC_KEY':
+        return _kkiapayPublicKey;
+      case 'FEDAPAY_PUBLIC_KEY':
+        return _fedapayPublicKey;
+      case 'FEDAPAY_SECRET_KEY':
+        return _fedapaySecretKey;
+      case 'FEDAPAY_SANDBOX':
+        return _fedapaySandbox;
+      case 'KKIAPAY_SANDBOX':
+        return _kkiapaySandbox;
+      case 'FEDAPAY_CALLBACK_URL':
+        return _fedapayCallbackUrl;
+      default:
+        return '';
+    }
   }
   
   // Convenience getters
@@ -56,4 +67,5 @@ class EnvConfig {
   static String get fedapaySecretKey => get('FEDAPAY_SECRET_KEY');
   static bool get fedapaySandbox => get('FEDAPAY_SANDBOX').toLowerCase() == 'true';
   static bool get kkiapaySandbox => get('KKIAPAY_SANDBOX').toLowerCase() == 'true';
+  static String get fedapayCallbackUrl => get('FEDAPAY_CALLBACK_URL');
 }
