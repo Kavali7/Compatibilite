@@ -254,23 +254,37 @@ class KkiapayService {
     debugPrint('>>> KKIAPAY WEB: Amount=$amount, Sandbox=$isSandbox');
     debugPrint('>>> KKIAPAY WEB: API Key=${_apiKey.substring(0, 10)}...');
 
-    // Use same approach as mobile - Navigator.push with widget
-    // KkiapayFlutterSdkPlatform.instance.pay() doesn't work reliably on web
-    final widget = createPaymentWidget(
+    // Create widget for web - callback goes to pay() method
+    final widget = KKiaPay(
       amount: amount,
+      apikey: _apiKey,
+      sandbox: isSandbox,
+      phone: phone ?? '',
+      name: name ?? '',
+      email: email ?? '',
       reason: reason,
-      callback: callback,
-      phone: phone,
-      email: email,
-      name: name,
+      theme: '#9C27B0',
+      countries: ['BJ', 'CI', 'SN', 'TG', 'BF', 'ML', 'NE'],
+      paymentMethods: ['momo', 'card'],
+      callback: (response, ctx) {
+        debugPrint('>>> KKIAPAY WEB: Widget callback (ignoré pour web)');
+      },
     );
 
-    debugPrint('>>> KKIAPAY WEB: Navigation vers le widget de paiement...');
-    Navigator.push(
+    debugPrint('>>> KKIAPAY WEB: Appel KkiapayFlutterSdkPlatform.instance.pay()...');
+    
+    // Use the platform-specific pay method with callback (original method that worked)
+    KkiapayFlutterSdkPlatform.instance.pay(
+      widget,
       context,
-      MaterialPageRoute(builder: (_) => widget),
+      (response, ctx) {
+        debugPrint('>>> KKIAPAY WEB: PAY() CALLBACK REÇU!');
+        debugPrint('>>> KKIAPAY WEB: Response=$response');
+        _handlePaymentCallback(response, ctx, callback);
+      },
     );
-    debugPrint('>>> KKIAPAY WEB: Navigation effectuée');
+    
+    debugPrint('>>> KKIAPAY WEB: pay() appelé, en attente du callback...');
   }
 
   /// Start payment (auto-detect platform)
