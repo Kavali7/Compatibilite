@@ -45,9 +45,8 @@ void closePaymentPopup() {
       _currentPopup!.close();
       _currentPopup = null;
     }
-    
-    // Focus the main window
-    html.window.focus();
+    // Note: html.window.focus() doesn't exist in Dart's dart:html
+    // The browser will automatically focus the opener window when popup closes
   } catch (e) {
     // Ignore errors - popup might have been closed by user
   }
