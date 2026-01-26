@@ -20,10 +20,6 @@ external void _openKkiapayWidget(JSObject config);
 @JS('addSuccessListener')
 external void _addSuccessListener(JSFunction callback);
 
-/// Remove success listener
-@JS('removeSuccessListener')
-external void _removeSuccessListener(JSFunction callback);
-
 /// Dart-friendly wrapper for Kkiapay JavaScript SDK
 class KkiapayJsInterop {
   KkiapayJsInterop._();
@@ -31,7 +27,6 @@ class KkiapayJsInterop {
   
   /// Current callback for payment result
   void Function(bool success, String? transactionId, String? error)? _currentCallback;
-  JSFunction? _successHandler;
   
   /// Open Kkiapay payment widget
   /// [apiKey] - Your Kkiapay public API key
@@ -52,18 +47,18 @@ class KkiapayJsInterop {
     _currentCallback = callback;
     
     // Create success handler - called only when Kkiapay confirms payment success
-    _successHandler = ((KkiapayResponse response) {
+    final successHandler = ((KkiapayResponse response) {
       final transactionId = response.transactionId;
       if (transactionId != null && transactionId.isNotEmpty) {
         _currentCallback?.call(true, transactionId, null);
       } else {
         _currentCallback?.call(false, null, 'Transaction ID manquant');
       }
-      _cleanup();
+      _currentCallback = null; // Cleanup
     }).toJS;
     
     // Register success listener only (the only reliable event from Kkiapay)
-    _addSuccessListener(_successHandler!);
+    _addSuccessListener(successHandler);
     
     // Build config object
     final config = <String, dynamic>{
@@ -88,13 +83,5 @@ class KkiapayJsInterop {
     // Convert to JSObject and open widget
     _openKkiapayWidget(config.jsify() as JSObject);
   }
-  
-  void _cleanup() {
-    // Clean up listeners
-    if (_successHandler != null) {
-      _removeSuccessListener(_successHandler!);
-      _successHandler = null;
-    }
-    _currentCallback = null;
-  }
 }
+
