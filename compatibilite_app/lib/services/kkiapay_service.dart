@@ -12,6 +12,8 @@ import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
 // Conditional import for web popup
 import 'payment/web_url_launcher_stub.dart' if (dart.library.html) 'payment/web_url_launcher.dart';
+// Conditional import for Kkiapay JavaScript SDK (web only)
+import 'kkiapay_js_interop_stub.dart' if (dart.library.html) 'kkiapay_js_interop.dart';
 
 /// Payment status constants
 class PaymentStatus {
@@ -235,8 +237,8 @@ class KkiapayService {
     );
   }
 
-  /// Start payment flow for web - Uses native Kkiapay SDK for secure verification
-  /// The SDK handles payment verification internally and only calls back on confirmed success
+  /// Start payment flow for web - Uses native JavaScript SDK for secure verification
+  /// The SDK handles payment verification internally and only calls addSuccessListener on confirmed success
   void startPaymentWeb({
     required BuildContext context,
     required int amount,
@@ -254,46 +256,27 @@ class KkiapayService {
       return;
     }
 
-    debugPrint('>>> KKIAPAY WEB: Création du widget...');
+    debugPrint('>>> KKIAPAY WEB: Utilisation du SDK JavaScript natif');
     debugPrint('>>> KKIAPAY WEB: Amount=$amount, Sandbox=$isSandbox');
-    debugPrint('>>> KKIAPAY WEB: API Key=${_apiKey.substring(0, 10)}...');
 
-    // Create widget for web - uses native SDK which verifies payment before callback
-    final widget = KKiaPay(
+    // Use the JavaScript interop to call native Kkiapay SDK
+    // This is secure because addSuccessListener is only called after Kkiapay verifies the payment
+    KkiapayJsInterop.instance.openPaymentWidget(
+      apiKey: _apiKey,
       amount: amount,
-      apikey: _apiKey,
       sandbox: isSandbox,
-      phone: phone ?? '',
-      name: name ?? '',
-      email: email ?? '',
       reason: reason,
-      theme: '#9C27B0',
-      countries: ['BJ', 'CI', 'SN', 'TG', 'BF', 'ML', 'NE'],
-      paymentMethods: ['momo', 'card'],
-      callback: (response, ctx) {
-        debugPrint('>>> KKIAPAY WEB: Widget callback reçu!');
-        debugPrint('>>> KKIAPAY WEB: Response=$response');
-        _handlePaymentCallback(response, ctx, callback);
-      },
-    );
-
-    debugPrint('>>> KKIAPAY WEB: Appel KkiapayFlutterSdkPlatform.instance.pay()...');
-    
-    // Use the platform-specific pay method with callback
-    // This method opens an iframe and handles payment verification securely
-    KkiapayFlutterSdkPlatform.instance.pay(
-      widget,
-      context,
-      (response, ctx) {
-        debugPrint('>>> KKIAPAY WEB: PAY() CALLBACK REÇU!');
-        debugPrint('>>> KKIAPAY WEB: Response=$response');
-        debugPrint('>>> KKIAPAY WEB: Status=${response['status']}');
-        debugPrint('>>> KKIAPAY WEB: TransactionId=${response['transactionId']}');
-        _handlePaymentCallback(response, ctx, callback);
+      phone: phone,
+      email: email,
+      name: name,
+      callback: (success, transactionId, error) {
+        debugPrint('>>> KKIAPAY WEB: JavaScript SDK callback reçu!');
+        debugPrint('>>> KKIAPAY WEB: Success=$success, TransactionId=$transactionId');
+        callback(success, transactionId, error);
       },
     );
     
-    debugPrint('>>> KKIAPAY WEB: pay() appelé, en attente du callback...');
+    debugPrint('>>> KKIAPAY WEB: openPaymentWidget() appelé, en attente du callback...');
   }
 
 

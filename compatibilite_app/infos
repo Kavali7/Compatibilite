@@ -21,6 +21,7 @@ http://localhost:8080/
 Déployement
 flutter build web --release
 flutter build apk --release --obfuscate --split-debug-info=build/debug-info
+
  
  Déployemnt du panneau administration
  cd Admin
