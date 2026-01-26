@@ -19,6 +19,8 @@ import '../services/payment/payment_gateway.dart';
 import '../services/temporal_report_service.dart';
 import '../services/legal_repository.dart'; // Added
 import '../services/app_settings_service.dart'; // Phase 2
+import '../services/menu_config_service.dart';
+import 'dynamic_menu_builder.dart';
 import '../theme/app_theme.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/hamburger_menu_overlay.dart';
@@ -97,6 +99,9 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   String? _reportsError;
   List<LegalPage> _legalPages = []; // Dynamic legal pages
   
+  // Dynamic menu builder
+  late DynamicMenuBuilder _menuBuilder;
+  
   // Email verification state
   bool _isCheckingEmail = false;
   bool _emailExists = false;
@@ -131,6 +136,15 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   @override
   void initState() {
     super.initState();
+    
+    // Initialize menu builder
+    _menuBuilder = DynamicMenuBuilder(
+      context: context,
+      onLoginSuccess: _checkSession,
+      onLogout: () => setState(() => _reset()),
+    );
+    _menuBuilder.loadConfig();
+    
     if (SupabaseManager.isReady) {
       _repository = CompatibilityRepository(SupabaseManager.client);
     }
@@ -736,87 +750,20 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   void _toggleMenu() => setState(() => _isMenuOpen = !_isMenuOpen);
 
   List<MenuEntry> _buildMenuEntries(BuildContext context) {
-    return [
-      // Account / Login
-      if (AuthService.instance.isLoggedIn)
-        MenuEntry(
-          label: 'Mon Compte',
-          onTap: () {
-            // TODO: Show account details modal?
-            _showSnack('Compte: ${AuthService.instance.currentUser?.email}');
-          },
-        )
-      else ...[
-        MenuEntry(
-          label: 'Se connecter',
-          onTap: () async {
-            final result = await Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const LoginPage()),
-            );
-            if (result == true) {
-              _checkSession();
-            }
-          },
-        ),
-        MenuEntry(
-          label: 'Créer un compte',
-          onTap: () async {
-            final result = await Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SimpleSignupScreen()),
-            );
-            if (result == true) {
-              _checkSession();
-            }
-          },
-        ),
-      ],
-        
-      if (AuthService.instance.isLoggedIn)
-         MenuEntry(
-          label: 'Se déconnecter',
-          onTap: () {
-            AuthService.instance.signOut();
-            setState(() {
-               _reset(); // Clear data
-            });
-            _showSnack('Vous êtes déconnecté.');
-          },
-        ),
-
-      // Mes achats - Historique des rapports (Toujours visible pour discoverability)
-      MenuEntry(
-        label: 'Mes achats',
-        onTap: () async {
-          if (AuthService.instance.isLoggedIn) {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const PurchaseHistoryScreen()),
-            );
-          } else {
-            final result = await Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const LoginPage()),
-            );
-            if (result == true) {
-              if (mounted) Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const PurchaseHistoryScreen()),
-              );
-            }
-          }
-        },
-      ),
-
-      // Dynamic Legal Pages
-      ..._legalPages.map((page) => MenuEntry(
+    // Get dynamic menu entries from MenuConfigService
+    final entries = _menuBuilder.buildMenuEntries();
+    
+    // Add dynamic legal pages
+    for (final page in _legalPages) {
+      entries.add(MenuEntry(
         label: page.title,
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => DynamicLegalPage(page: page)),
         ),
-      )),
-
-      MenuEntry(label: 'Contacter Growpeak Agence', onTap: () => _launchUri(_supportEmailUri)),
-      MenuEntry(label: 'WhatsApp Growpeak Agence', onTap: () => _launchWhatsApp()),
-      MenuEntry(label: 'Appeler Growpeak Agence', onTap: () => _launchUri(_supportPhoneUri)),
-      // Admin menu removed as requested
-    ];
+      ));
+    }
+    
+    return entries;
   }
 
   Future<void> _launchWhatsApp() async {

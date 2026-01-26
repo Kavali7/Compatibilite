@@ -19,6 +19,7 @@ import 'purchase_history_screen.dart';
 import 'temporal_report_view_screen.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/hamburger_menu_overlay.dart';
+import 'dynamic_menu_builder.dart';
 
 /// Screen for purchasing temporal predictions (year, month, day)
 class TemporalPurchaseScreen extends StatefulWidget {
@@ -59,10 +60,25 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
   int? _priceDayFcfa;
   int? _priceMonthFcfa;
   int? _priceYearFcfa;
+  
+  // Dynamic menu builder
+  late DynamicMenuBuilder _menuBuilder;
 
   @override
   void initState() {
     super.initState();
+    
+    // Initialize menu builder
+    _menuBuilder = DynamicMenuBuilder(
+      context: context,
+      onLoginSuccess: _checkCoupleProfile,
+      onLogout: () => setState(() {
+        _hasCoupleProfile = false;
+        _showCoupleForm = false;
+      }),
+    );
+    _menuBuilder.loadConfig();
+    
     _loadPricesFromDatabase();
     _checkCoupleProfile();
   }
@@ -1475,74 +1491,8 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
   void _toggleMenu() => setState(() => _isMenuOpen = !_isMenuOpen);
 
   List<MenuEntry> _buildMenuEntries() {
-    // Get cached menu config (sync version for UI building)
-    final menuConfig = MenuConfigService.instance;
-    
-    final entries = <MenuEntry>[];
-    
-    // Mes achats - Historique
-    entries.add(MenuEntry(
-      label: 'Mes achats',
-      onTap: () async {
-        if (AuthService.instance.isLoggedIn) {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const PurchaseHistoryScreen()),
-          );
-        } else {
-          final result = await Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const LoginPage()),
-          );
-          if (result == true) {
-            if (mounted) Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const PurchaseHistoryScreen()),
-            );
-          }
-        }
-      },
-    ));
-    
-    if (!AuthService.instance.isLoggedIn) {
-      entries.add(MenuEntry(
-        label: 'Se connecter',
-        onTap: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const LoginPage()),
-          );
-          if (result == true) _checkCoupleProfile();
-        },
-      ));
-      entries.add(MenuEntry(
-        label: 'Créer un compte',
-        onTap: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const SimpleSignupScreen()),
-          );
-          if (result == true) _checkCoupleProfile();
-        },
-      ));
-    }
-
-    if (AuthService.instance.isLoggedIn) {
-      entries.add(MenuEntry(
-        label: 'Se déconnecter',
-        onTap: () {
-          AuthService.instance.signOut();
-          setState(() {
-            _hasCoupleProfile = false;
-            _showCoupleForm = false;
-          });
-          _showSnack('Vous êtes déconnecté.');
-        },
-      ));
-    }
-
-    entries.add(MenuEntry(label: 'Contacter Growpeak Agence', onTap: () => _launchUri(_supportEmailUri)));
-    entries.add(MenuEntry(label: 'WhatsApp Growpeak Agence', onTap: () => _launchWhatsApp()));
-    entries.add(MenuEntry(label: 'Appeler Growpeak Agence', onTap: () => _launchUri(_supportPhoneUri)));
-    
-    return entries;
+    // Use dynamic menu builder with admin configuration
+    return _menuBuilder.buildMenuEntries();
   }
 
   // Dynamic support links helpers

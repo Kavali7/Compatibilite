@@ -1,0 +1,28 @@
+
+A NE JAMIAS SUPRIMER.
+
+-- ================================================
+-- NETTOYAGE BASE DE DONNÉES - PRODUCTION
+-- Exécutez dans Supabase > SQL Editor
+-- ================================================
+
+-- 1. Supprimer tous les paiements de test
+DELETE FROM payments;
+
+-- 2. Supprimer les profils de couple (données de test)
+DELETE FROM couple_profiles;
+
+-- 3. Supprimer les sessions de compatibilité
+DELETE FROM compatibility_sessions;
+
+-- 4. Supprimer les rapports temporels achetés
+DELETE FROM temporal_reports;
+
+-- 5. Supprimer les utilisateurs de test (OPTIONNEL - gardez votre compte admin !)
+-- DELETE FROM users WHERE email NOT IN ('votre-email-admin@example.com');
+
+-- 6. Réinitialiser les abonnements
+DELETE FROM user_subscriptions;
+
+-- 7. Supprimer les logs de vibrational (si présent)
+DELETE FROM vibrational_logs;
