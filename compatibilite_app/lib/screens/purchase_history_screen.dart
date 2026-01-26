@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 import '../services/supabase_manager.dart';
+import '../services/currency_service.dart';
 import '../widgets/animated_background.dart';
 import 'compatibility_wizard.dart';
 import 'purchased_report_view_screen.dart';
@@ -171,7 +172,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
     final amount = payment['amount_fcfa'] as int? ?? 0;
     final method = payment['payment_method'] as String? ?? 'Paiement';
     
-    return '${date.day}/${date.month}/${date.year} • $amount FCFA • $method';
+    return '${date.day}/${date.month}/${date.year} • ${CurrencyService.instance.formatAmount(amount)} • $method';
   }
 
   void _openReport(Map<String, dynamic> purchase) async {

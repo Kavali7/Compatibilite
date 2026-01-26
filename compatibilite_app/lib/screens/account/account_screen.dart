@@ -11,6 +11,7 @@ import '../../models/purchase_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/payment/payment_manager.dart';
 import '../../services/temporal_report_service.dart';
+import '../../services/currency_service.dart';
 import '../purchase/purchase_screen.dart';
 import '../results/results_screen.dart';
 
@@ -531,7 +532,7 @@ class _AccountScreenState extends State<AccountScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '${purchase.amountFcfa} FCFA',
+                CurrencyService.instance.formatAmount(purchase.amountFcfa),
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.primary,

@@ -121,14 +121,16 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
       final pricingService = PricingService.instance;
       await pricingService.fetchPlans();
       
-      // Look for temporal pricing plans
+      // Look for temporal pricing plans (supports both 'temporal' and 'temporel')
       for (final plan in pricingService.plans) {
         final planType = plan.planType.toLowerCase();
-        if (planType.contains('jour') && planType.contains('temporel')) {
+        final isTemporal = planType.contains('temporal') || planType.contains('temporel');
+        
+        if (isTemporal && planType.contains('jour')) {
           _priceDayFcfa = plan.priceFcfa;
-        } else if (planType.contains('mois') && planType.contains('temporel')) {
+        } else if (isTemporal && planType.contains('mois')) {
           _priceMonthFcfa = plan.priceFcfa;
-        } else if ((planType.contains('annee') || planType.contains('année')) && planType.contains('temporel')) {
+        } else if (isTemporal && (planType.contains('annee') || planType.contains('année') || planType.contains('year'))) {
           _priceYearFcfa = plan.priceFcfa;
         }
       }

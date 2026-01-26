@@ -20,6 +20,7 @@ import '../services/temporal_report_service.dart';
 import '../services/legal_repository.dart'; // Added
 import '../services/app_settings_service.dart'; // Phase 2
 import '../services/menu_config_service.dart';
+import '../services/currency_service.dart';
 import 'dynamic_menu_builder.dart';
 import '../theme/app_theme.dart';
 import '../widgets/animated_background.dart';
@@ -2176,7 +2177,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '${plan.priceFcfa} FCFA',
+                      CurrencyService.instance.formatAmount(plan.priceFcfa),
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -2473,7 +2474,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          '${_selectedPlan?.priceFcfa ?? 0} FCFA',
+                          CurrencyService.instance.formatAmount(_selectedPlan?.priceFcfa ?? 0),
                           style: GoogleFonts.philosopher(
                             fontSize: 32,
                             color: AppColors.primary,

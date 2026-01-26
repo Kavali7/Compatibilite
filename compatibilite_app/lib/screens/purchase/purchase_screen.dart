@@ -11,6 +11,7 @@ import '../../models/purchase_model.dart';
 import '../../services/auth_service.dart';
 import '../../services/payment/payment_manager.dart';
 import '../../services/pricing_service.dart';
+import '../../services/currency_service.dart';
 import 'widgets/product_card.dart';
 import 'widgets/payment_method_card.dart';
 
@@ -359,7 +360,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                 ),
               ),
               Text(
-                '${_selectedProduct!.priceFcfa} FCFA',
+                CurrencyService.instance.formatAmount(_selectedProduct!.priceFcfa),
                 style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -398,7 +399,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
               )
             : Text(
                 _selectedProduct != null
-                    ? 'Payer ${_selectedProduct!.priceFcfa} FCFA'
+                    ? 'Payer ${CurrencyService.instance.formatAmount(_selectedProduct!.priceFcfa)}'
                     : 'Sélectionnez un produit',
                 style: const TextStyle(
                   fontSize: 16,

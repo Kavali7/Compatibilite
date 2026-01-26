@@ -26,3 +26,21 @@ DELETE FROM user_subscriptions;
 
 -- 7. Supprimer les logs de vibrational (si présent)
 DELETE FROM vibrational_logs;
+
+
+
+
+Exemple de requettes
+-- Mise à jour des prix de compatibilité
+UPDATE pricing_plans SET price_fcfa = 1500 WHERE plan_type = 'consultation';
+UPDATE pricing_plans SET price_fcfa = 5000 WHERE plan_type = 'subscription';
+-- Mise à jour des prix temporels (dans app_settings)
+UPDATE app_settings 
+SET value = jsonb_set(value, '{price_day_fcfa}', '500')
+WHERE key = 'temporal_pricing';
+UPDATE app_settings 
+SET value = jsonb_set(value, '{price_month_fcfa}', '1500')
+WHERE key = 'temporal_pricing';
+UPDATE app_settings 
+SET value = jsonb_set(value, '{price_year_fcfa}', '3500')
+WHERE key = 'temporal_pricing';

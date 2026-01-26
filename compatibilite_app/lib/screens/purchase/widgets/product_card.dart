@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants.dart';
 import '../../../models/product_model.dart';
+import '../../../services/currency_service.dart';
 
 /// Card widget for displaying a product option
 class ProductCard extends StatelessWidget {
@@ -139,18 +140,11 @@ class ProductCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '${product.priceFcfa}',
+                  CurrencyService.instance.formatAmount(product.priceFcfa),
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: isSelected ? AppColors.primary : AppColors.textLight,
-                  ),
-                ),
-                const Text(
-                  'FCFA',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textMuted,
                   ),
                 ),
                 const SizedBox(height: 8),
