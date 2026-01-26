@@ -22,6 +22,8 @@ Déployement
 flutter build web --release
 flutter build apk --release --obfuscate --split-debug-info=build/debug-info
 
+Créatio du build 
+flutter build web --release --dart-define-from-file=.env
  
  Déployemnt du panneau administration
  cd Admin

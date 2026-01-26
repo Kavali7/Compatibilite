@@ -20,14 +20,6 @@ external void _openKkiapayWidget(JSObject config);
 @JS('addSuccessListener')
 external void _addSuccessListener(JSFunction callback);
 
-/// Add widget closed listener
-@JS('addWidgetCloseListener')
-external void _addWidgetCloseListener(JSFunction callback);
-
-/// Add failed listener
-@JS('addFailedListener') 
-external void _addFailedListener(JSFunction callback);
-
 /// Remove success listener
 @JS('removeSuccessListener')
 external void _removeSuccessListener(JSFunction callback);
@@ -40,8 +32,6 @@ class KkiapayJsInterop {
   /// Current callback for payment result
   void Function(bool success, String? transactionId, String? error)? _currentCallback;
   JSFunction? _successHandler;
-  JSFunction? _failedHandler;
-  JSFunction? _closeHandler;
   
   /// Open Kkiapay payment widget
   /// [apiKey] - Your Kkiapay public API key
@@ -61,7 +51,7 @@ class KkiapayJsInterop {
   }) {
     _currentCallback = callback;
     
-    // Create success handler
+    // Create success handler - called only when Kkiapay confirms payment success
     _successHandler = ((KkiapayResponse response) {
       final transactionId = response.transactionId;
       if (transactionId != null && transactionId.isNotEmpty) {
@@ -72,22 +62,8 @@ class KkiapayJsInterop {
       _cleanup();
     }).toJS;
     
-    // Create failed handler
-    _failedHandler = (() {
-      _currentCallback?.call(false, null, 'Paiement échoué');
-      _cleanup();
-    }).toJS;
-    
-    // Create close handler (widget closed without payment)
-    _closeHandler = (() {
-      // Only call if no success was received
-      // The success listener might have been called already
-    }).toJS;
-    
-    // Register listeners
+    // Register success listener only (the only reliable event from Kkiapay)
     _addSuccessListener(_successHandler!);
-    _addFailedListener(_failedHandler!);
-    _addWidgetCloseListener(_closeHandler!);
     
     // Build config object
     final config = <String, dynamic>{
@@ -119,8 +95,6 @@ class KkiapayJsInterop {
       _removeSuccessListener(_successHandler!);
       _successHandler = null;
     }
-    _failedHandler = null;
-    _closeHandler = null;
     _currentCallback = null;
   }
 }
