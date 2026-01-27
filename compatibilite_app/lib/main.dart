@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import 'screens/compatibility_wizard.dart';
 import 'screens/temporal_purchase_screen.dart';
@@ -13,6 +14,9 @@ import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize French locale data for DateFormat
+  await initializeDateFormatting('fr_FR', null);
   
   // Custom error widget to avoid red error screen
   ErrorWidget.builder = (FlutterErrorDetails details) {
