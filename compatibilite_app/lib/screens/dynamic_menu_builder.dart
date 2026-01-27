@@ -7,6 +7,7 @@ import 'auth/login_page.dart';
 import 'auth/simple_signup_screen.dart';
 import 'purchase_history_screen.dart';
 import 'temporal_purchase_screen.dart';
+import 'cycles_vie_home_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Helper class to build dynamic menu entries based on admin configuration
@@ -123,6 +124,18 @@ class DynamicMenuBuilder {
         onTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const TemporalPurchaseScreen()),
+          );
+        },
+      ));
+    }
+    
+    // Cycles de Vie (nouveau service)
+    if (isEnabled('cycles_vie')) {
+      entries.add(MenuEntry(
+        label: '🌀 Cycles de Vie',
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const CyclesVieHomeScreen()),
           );
         },
       ));

@@ -1,0 +1,595 @@
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+/// Service principal pour les fonctionnalités Cycles de Vie.
+/// Gère les calculs de cycles, requêtes DB et génération de rapports.
+class CyclesVieService {
+  static final CyclesVieService _instance = CyclesVieService._internal();
+  factory CyclesVieService() => _instance;
+  CyclesVieService._internal();
+
+  final SupabaseClient _client = Supabase.instance.client;
+
+  // ═══════════════════════════════════════════════════════════════
+  // MODÈLES DE DONNÉES
+  // ═══════════════════════════════════════════════════════════════
+
+  // Cache pour les données statiques
+  List<SoulPeriod>? _cachedSoulPeriods;
+  List<DailyPeriod>? _cachedDailyPeriods;
+  List<DecisionType>? _cachedDecisionTypes;
+
+  // ═══════════════════════════════════════════════════════════════
+  // SOUL CYCLE - Période basée sur date de naissance
+  // ═══════════════════════════════════════════════════════════════
+
+  /// Récupère toutes les périodes Soul depuis la base
+  Future<List<SoulPeriod>> getSoulPeriods() async {
+    if (_cachedSoulPeriods != null) return _cachedSoulPeriods!;
+
+    final response = await _client
+        .from('cycle_vie_soul_periods')
+        .select()
+        .eq('is_active', true)
+        .order('period_number')
+        .order('polarity');
+
+    _cachedSoulPeriods =
+        (response as List).map((e) => SoulPeriod.fromJson(e)).toList();
+    return _cachedSoulPeriods!;
+  }
+
+  /// Détermine la période Soul pour une date de naissance
+  Future<SoulPeriod?> getSoulPeriodForBirthdate(DateTime birthdate) async {
+    final periods = await getSoulPeriods();
+
+    final monthDay =
+        '${birthdate.month.toString().padLeft(2, '0')}-${birthdate.day.toString().padLeft(2, '0')}';
+
+    for (final period in periods) {
+      if (_isDateInRange(monthDay, period.dateStart, period.dateEnd)) {
+        // Déterminer la polarité (A ou B) selon l'année
+        // Années paires = A, années impaires = B (simplification)
+        final polarity = (birthdate.year % 2 == 0) ? 'A' : 'B';
+        if (period.polarity == polarity) {
+          return period;
+        }
+      }
+    }
+
+    // Fallback: retourner la première correspondance sans tenir compte de la polarité
+    for (final period in periods) {
+      if (_isDateInRange(monthDay, period.dateStart, period.dateEnd)) {
+        return period;
+      }
+    }
+
+    return null;
+  }
+
+  bool _isDateInRange(String date, String start, String end) {
+    // date, start, end au format "MM-DD"
+    // Gère le cas spécial où la période traverse le nouvel an
+    if (start.compareTo(end) > 0) {
+      // Période qui traverse le 1er janvier (ex: 12-14 à 01-12)
+      return date.compareTo(start) >= 0 || date.compareTo(end) <= 0;
+    }
+    return date.compareTo(start) >= 0 && date.compareTo(end) <= 0;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // DAILY CYCLE - Période de la journée
+  // ═══════════════════════════════════════════════════════════════
+
+  /// Récupère toutes les périodes quotidiennes
+  Future<List<DailyPeriod>> getDailyPeriods() async {
+    if (_cachedDailyPeriods != null) return _cachedDailyPeriods!;
+
+    final response = await _client
+        .from('cycle_vie_daily_periods')
+        .select()
+        .eq('is_active', true)
+        .order('period_letter');
+
+    _cachedDailyPeriods =
+        (response as List).map((e) => DailyPeriod.fromJson(e)).toList();
+    return _cachedDailyPeriods!;
+  }
+
+  /// Calcule la période quotidienne actuelle
+  Future<DailyPeriod?> getCurrentDailyPeriod() async {
+    final periods = await getDailyPeriods();
+    if (periods.isEmpty) return null;
+
+    final now = DateTime.now();
+    final dayOfWeek = now.weekday; // 1 = lundi, 7 = dimanche
+
+    // Chaque jour commence par une lettre différente
+    // Lundi = A, Mardi = B, etc.
+    final startLetterIndex = (dayOfWeek - 1) % 7;
+
+    // Calculer quelle période de ~3h25 nous sommes
+    // 24h / 7 périodes = ~3.43 heures par période
+    final minutesSinceMidnight = now.hour * 60 + now.minute;
+    final periodDurationMinutes = (24 * 60) ~/ 7; // ~205 minutes
+    final currentPeriodIndex =
+        (minutesSinceMidnight ~/ periodDurationMinutes) % 7;
+
+    // La lettre actuelle
+    final currentLetterIndex = (startLetterIndex + currentPeriodIndex) % 7;
+    final letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+    final currentLetter = letters[currentLetterIndex];
+
+    return periods.firstWhere(
+      (p) => p.periodLetter == currentLetter,
+      orElse: () => periods.first,
+    );
+  }
+
+  /// Retourne toutes les périodes du jour avec leurs horaires
+  Future<List<DailyPeriodWithTime>> getDaySchedule([DateTime? date]) async {
+    final periods = await getDailyPeriods();
+    final targetDate = date ?? DateTime.now();
+    final dayOfWeek = targetDate.weekday;
+
+    final startLetterIndex = (dayOfWeek - 1) % 7;
+    final letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+    final periodDurationMinutes = (24 * 60) ~/ 7;
+
+    final List<DailyPeriodWithTime> schedule = [];
+
+    for (var i = 0; i < 7; i++) {
+      final letterIndex = (startLetterIndex + i) % 7;
+      final letter = letters[letterIndex];
+      final period = periods.firstWhere(
+        (p) => p.periodLetter == letter,
+        orElse: () => periods.first,
+      );
+
+      final startMinutes = i * periodDurationMinutes;
+      final endMinutes = (i + 1) * periodDurationMinutes;
+
+      schedule.add(DailyPeriodWithTime(
+        period: period,
+        startTime: _minutesToTime(startMinutes),
+        endTime: _minutesToTime(endMinutes),
+        isCurrentPeriod: false, // À mettre à jour ensuite
+      ));
+    }
+
+    // Marquer la période actuelle
+    final now = DateTime.now();
+    if (targetDate.day == now.day &&
+        targetDate.month == now.month &&
+        targetDate.year == now.year) {
+      final minutesSinceMidnight = now.hour * 60 + now.minute;
+      final currentIndex = (minutesSinceMidnight ~/ periodDurationMinutes) % 7;
+      if (currentIndex < schedule.length) {
+        schedule[currentIndex] = DailyPeriodWithTime(
+          period: schedule[currentIndex].period,
+          startTime: schedule[currentIndex].startTime,
+          endTime: schedule[currentIndex].endTime,
+          isCurrentPeriod: true,
+        );
+      }
+    }
+
+    return schedule;
+  }
+
+  String _minutesToTime(int minutes) {
+    final h = (minutes ~/ 60) % 24;
+    final m = minutes % 60;
+    return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // DECISION TYPES
+  // ═══════════════════════════════════════════════════════════════
+
+  /// Récupère tous les types de décision actifs
+  Future<List<DecisionType>> getDecisionTypes() async {
+    if (_cachedDecisionTypes != null) return _cachedDecisionTypes!;
+
+    final response = await _client
+        .from('cycle_vie_decision_types')
+        .select()
+        .eq('is_active', true)
+        .order('display_order');
+
+    _cachedDecisionTypes =
+        (response as List).map((e) => DecisionType.fromJson(e)).toList();
+    return _cachedDecisionTypes!;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // DECISION ADVICE
+  // ═══════════════════════════════════════════════════════════════
+
+  /// Récupère le conseil pour un type de décision et une période spécifique
+  Future<DecisionAdvice?> getAdvice({
+    required String decisionTypeId,
+    required String cycleType,
+    required int periodNumber,
+  }) async {
+    final response = await _client
+        .from('cycle_vie_decision_advice')
+        .select()
+        .eq('decision_type_id', decisionTypeId)
+        .eq('cycle_type', cycleType)
+        .eq('period_number', periodNumber)
+        .eq('is_active', true)
+        .maybeSingle();
+
+    if (response == null) return null;
+    return DecisionAdvice.fromJson(response);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // PURCHASES
+  // ═══════════════════════════════════════════════════════════════
+
+  /// Vérifie si l'utilisateur a un achat valide pour un service
+  Future<CyclePurchase?> getValidPurchase(String serviceType) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return null;
+
+    final response = await _client.rpc('fn_get_cycle_vie_purchase', params: {
+      'p_user_id': userId,
+      'p_service_type': serviceType,
+    });
+
+    if (response == null || (response is List && response.isEmpty)) {
+      return null;
+    }
+
+    final data = response is List ? response.first : response;
+    return CyclePurchase.fromJson(data);
+  }
+
+  /// Crée un nouvel achat après paiement réussi
+  Future<String?> createPurchase({
+    required String serviceType,
+    required String birthdate,
+    String? firstname,
+    String? consultationDate,
+    String? decisionTypeId,
+    String? decisionDetail,
+    String? paymentId,
+  }) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) throw Exception('Utilisateur non connecté');
+
+    final response = await _client.rpc('fn_create_cycle_vie_purchase', params: {
+      'p_user_id': userId,
+      'p_service_type': serviceType,
+      'p_user_birthdate': birthdate,
+      'p_user_firstname': firstname,
+      'p_consultation_date': consultationDate,
+      'p_decision_type_id': decisionTypeId,
+      'p_decision_detail': decisionDetail,
+      'p_payment_id': paymentId,
+    });
+
+    return response as String?;
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // GÉNÉRATION DE RAPPORT EXPRESS
+  // ═══════════════════════════════════════════════════════════════
+
+  /// Génère un rapport Express pour la date donnée
+  Future<ExpressReport> generateExpressReport({
+    required DateTime birthdate,
+    required DateTime targetDate,
+  }) async {
+    // 1. Soul Period
+    final soulPeriod = await getSoulPeriodForBirthdate(birthdate);
+
+    // 2. Schedule du jour
+    final daySchedule = await getDaySchedule(targetDate);
+
+    // 3. Période actuelle si c'est aujourd'hui
+    final currentPeriod = await getCurrentDailyPeriod();
+
+    return ExpressReport(
+      soulPeriod: soulPeriod,
+      daySchedule: daySchedule,
+      currentPeriod: currentPeriod,
+      targetDate: targetDate,
+      birthdate: birthdate,
+    );
+  }
+
+  /// Vide le cache (utile après un changement de données)
+  void clearCache() {
+    _cachedSoulPeriods = null;
+    _cachedDailyPeriods = null;
+    _cachedDecisionTypes = null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MODÈLES DE DONNÉES
+// ═══════════════════════════════════════════════════════════════════════════
+
+class SoulPeriod {
+  final String id;
+  final int periodNumber;
+  final String polarity;
+  final String dateStart;
+  final String dateEnd;
+  final String periodName;
+  final String periodTitle;
+  final String descriptionGeneral;
+  final String? traitsPositifs;
+  final String? traitsVigilance;
+  final String? professionsFavorables;
+  final String? santeVigilance;
+  final String? paysAffinites;
+
+  SoulPeriod({
+    required this.id,
+    required this.periodNumber,
+    required this.polarity,
+    required this.dateStart,
+    required this.dateEnd,
+    required this.periodName,
+    required this.periodTitle,
+    required this.descriptionGeneral,
+    this.traitsPositifs,
+    this.traitsVigilance,
+    this.professionsFavorables,
+    this.santeVigilance,
+    this.paysAffinites,
+  });
+
+  factory SoulPeriod.fromJson(Map<String, dynamic> json) {
+    return SoulPeriod(
+      id: json['id'] ?? '',
+      periodNumber: json['period_number'] ?? 0,
+      polarity: json['polarity'] ?? 'A',
+      dateStart: json['date_start'] ?? '',
+      dateEnd: json['date_end'] ?? '',
+      periodName: json['period_name'] ?? '',
+      periodTitle: json['period_title'] ?? '',
+      descriptionGeneral: json['description_general'] ?? '',
+      traitsPositifs: json['traits_positifs'],
+      traitsVigilance: json['traits_vigilance'],
+      professionsFavorables: json['professions_favorables'],
+      santeVigilance: json['sante_vigilance'],
+      paysAffinites: json['pays_affinites'],
+    );
+  }
+}
+
+class DailyPeriod {
+  final String id;
+  final String periodLetter;
+  final int? weekdayNumber;
+  final String periodName;
+  final String keyword;
+  final String description;
+  final String? activitesFavorables;
+  final String? activitesEviter;
+  final String? colorCode;
+  final String? energyLevel;
+
+  DailyPeriod({
+    required this.id,
+    required this.periodLetter,
+    this.weekdayNumber,
+    required this.periodName,
+    required this.keyword,
+    required this.description,
+    this.activitesFavorables,
+    this.activitesEviter,
+    this.colorCode,
+    this.energyLevel,
+  });
+
+  factory DailyPeriod.fromJson(Map<String, dynamic> json) {
+    return DailyPeriod(
+      id: json['id'] ?? '',
+      periodLetter: json['period_letter'] ?? 'A',
+      weekdayNumber: json['weekday_number'],
+      periodName: json['period_name'] ?? '',
+      keyword: json['keyword'] ?? '',
+      description: json['description'] ?? '',
+      activitesFavorables: json['activities_favorables'],
+      activitesEviter: json['activities_eviter'],
+      colorCode: json['color_code'],
+      energyLevel: json['energy_level'],
+    );
+  }
+
+  Color get color {
+    if (colorCode != null && colorCode!.startsWith('#')) {
+      try {
+        return Color(int.parse('FF${colorCode!.substring(1)}', radix: 16));
+      } catch (_) {}
+    }
+    return Colors.indigo;
+  }
+}
+
+class DailyPeriodWithTime {
+  final DailyPeriod period;
+  final String startTime;
+  final String endTime;
+  final bool isCurrentPeriod;
+
+  DailyPeriodWithTime({
+    required this.period,
+    required this.startTime,
+    required this.endTime,
+    required this.isCurrentPeriod,
+  });
+}
+
+class DecisionType {
+  final String id;
+  final String code;
+  final String label;
+  final String? category;
+  final String? iconName;
+  final String? description;
+  final int displayOrder;
+
+  DecisionType({
+    required this.id,
+    required this.code,
+    required this.label,
+    this.category,
+    this.iconName,
+    this.description,
+    required this.displayOrder,
+  });
+
+  factory DecisionType.fromJson(Map<String, dynamic> json) {
+    return DecisionType(
+      id: json['id'] ?? '',
+      code: json['code'] ?? '',
+      label: json['label'] ?? '',
+      category: json['category'],
+      iconName: json['icon_name'],
+      description: json['description'],
+      displayOrder: json['display_order'] ?? 0,
+    );
+  }
+
+  IconData get icon {
+    switch (category) {
+      case 'immobilier':
+        return Icons.home;
+      case 'finance':
+        return Icons.attach_money;
+      case 'juridique':
+        return Icons.gavel;
+      case 'business':
+        return Icons.business;
+      case 'carriere':
+        return Icons.work;
+      case 'personnel':
+        return Icons.favorite;
+      case 'sante':
+        return Icons.local_hospital;
+      default:
+        return Icons.help_outline;
+    }
+  }
+}
+
+class DecisionAdvice {
+  final String id;
+  final String decisionTypeId;
+  final String cycleType;
+  final int periodNumber;
+  final int? favorabilityScore;
+  final String adviceText;
+  final String? warnings;
+  final String? alternativesSuggestion;
+
+  DecisionAdvice({
+    required this.id,
+    required this.decisionTypeId,
+    required this.cycleType,
+    required this.periodNumber,
+    this.favorabilityScore,
+    required this.adviceText,
+    this.warnings,
+    this.alternativesSuggestion,
+  });
+
+  factory DecisionAdvice.fromJson(Map<String, dynamic> json) {
+    return DecisionAdvice(
+      id: json['id'] ?? '',
+      decisionTypeId: json['decision_type_id'] ?? '',
+      cycleType: json['cycle_type'] ?? '',
+      periodNumber: json['period_number'] ?? 0,
+      favorabilityScore: json['favorability_score'],
+      adviceText: json['advice_text'] ?? '',
+      warnings: json['warnings'],
+      alternativesSuggestion: json['alternatives_suggestion'],
+    );
+  }
+
+  Color get favorabilityColor {
+    if (favorabilityScore == null) return Colors.grey;
+    if (favorabilityScore! >= 70) return Colors.green;
+    if (favorabilityScore! >= 40) return Colors.orange;
+    return Colors.red;
+  }
+
+  String get favorabilityLabel {
+    if (favorabilityScore == null) return 'Non évalué';
+    if (favorabilityScore! >= 70) return 'Très favorable';
+    if (favorabilityScore! >= 40) return 'Moyennement favorable';
+    return 'Déconseillé';
+  }
+}
+
+class CyclePurchase {
+  final String id;
+  final String userId;
+  final String serviceType;
+  final String userBirthdate;
+  final String? userFirstname;
+  final String? consultationDate;
+  final String? decisionTypeId;
+  final String status;
+  final DateTime createdAt;
+  final DateTime? expiresAt;
+
+  CyclePurchase({
+    required this.id,
+    required this.userId,
+    required this.serviceType,
+    required this.userBirthdate,
+    this.userFirstname,
+    this.consultationDate,
+    this.decisionTypeId,
+    required this.status,
+    required this.createdAt,
+    this.expiresAt,
+  });
+
+  factory CyclePurchase.fromJson(Map<String, dynamic> json) {
+    return CyclePurchase(
+      id: json['id'] ?? '',
+      userId: json['user_id'] ?? '',
+      serviceType: json['service_type'] ?? '',
+      userBirthdate: json['user_birthdate'] ?? '',
+      userFirstname: json['user_firstname'],
+      consultationDate: json['consultation_date'],
+      decisionTypeId: json['decision_type_id'],
+      status: json['status'] ?? 'pending',
+      createdAt: DateTime.parse(
+          json['created_at'] ?? DateTime.now().toIso8601String()),
+      expiresAt:
+          json['expires_at'] != null ? DateTime.parse(json['expires_at']) : null,
+    );
+  }
+
+  bool get isValid {
+    if (status != 'completed') return false;
+    if (expiresAt != null && expiresAt!.isBefore(DateTime.now())) return false;
+    return true;
+  }
+}
+
+class ExpressReport {
+  final SoulPeriod? soulPeriod;
+  final List<DailyPeriodWithTime> daySchedule;
+  final DailyPeriod? currentPeriod;
+  final DateTime targetDate;
+  final DateTime birthdate;
+
+  ExpressReport({
+    this.soulPeriod,
+    required this.daySchedule,
+    this.currentPeriod,
+    required this.targetDate,
+    required this.birthdate,
+  });
+}

@@ -26,6 +26,16 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             ]
         },
         {
+            title: '🌀 Cycles de Vie',
+            items: [
+                { to: '/cycles/soul-periods', icon: '🌟', label: 'Périodes Soul' },
+                { to: '/cycles/daily-periods', icon: '⏰', label: 'Périodes Quotidiennes' },
+                { to: '/cycles/decision-types', icon: '🎯', label: 'Types Décisions' },
+                { to: '/cycles/decision-advice', icon: '💡', label: 'Conseils' },
+                { to: '/cycles/purchases', icon: '📊', label: 'Achats Cycles' },
+            ]
+        },
+        {
             title: 'Business',
             items: [
                 { to: '/payments', icon: '💰', label: 'Paiements (Global)' },

@@ -17,6 +17,14 @@ import ReportSections from './pages/compatibilite/ReportSections';
 import TextTypeSettings from './pages/compatibilite/TextTypeSettings';
 import Prospects from './pages/compatibilite/Prospects';
 
+// Cycles de Vie imports
+import CyclesIndex from './pages/cycles';
+import SoulPeriods from './pages/cycles/SoulPeriods';
+import DailyPeriods from './pages/cycles/DailyPeriods';
+import DecisionTypes from './pages/cycles/DecisionTypes';
+import DecisionAdvice from './pages/cycles/DecisionAdvice';
+import CyclesPurchases from './pages/cycles/CyclesPurchases';
+
 const router = createBrowserRouter([
   {
     path: '/',
@@ -43,6 +51,18 @@ const router = createBrowserRouter([
           { path: 'prospects', element: <Prospects /> },
         ],
       },
+      {
+        path: 'cycles',
+        element: <CyclesIndex />,
+        children: [
+          { index: true, element: <Navigate to="soul-periods" replace /> },
+          { path: 'soul-periods', element: <SoulPeriods /> },
+          { path: 'daily-periods', element: <DailyPeriods /> },
+          { path: 'decision-types', element: <DecisionTypes /> },
+          { path: 'decision-advice', element: <DecisionAdvice /> },
+          { path: 'purchases', element: <CyclesPurchases /> },
+        ],
+      },
       { path: '*', element: <Navigate to="/" replace /> },
     ],
   },
@@ -51,3 +71,4 @@ const router = createBrowserRouter([
 export default function AppRouter() {
   return <RouterProvider router={router} />;
 }
+
