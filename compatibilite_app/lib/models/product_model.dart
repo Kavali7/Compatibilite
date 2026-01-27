@@ -9,6 +9,7 @@ enum ProductType {
   dayPrediction,
   fullBundle,
   subscription30,
+  cyclesVie,
 }
 
 /// Extension to get human-readable info from ProductType
@@ -27,6 +28,8 @@ extension ProductTypeExtension on ProductType {
         return 'Pack Complet';
       case ProductType.subscription30:
         return 'Abonnement 30 Jours';
+      case ProductType.cyclesVie:
+        return 'Cycles de Vie';
     }
   }
   
@@ -44,6 +47,8 @@ extension ProductTypeExtension on ProductType {
         return '✨';
       case ProductType.subscription30:
         return '⭐';
+      case ProductType.cyclesVie:
+        return '🌀';
     }
   }
   
@@ -61,6 +66,8 @@ extension ProductTypeExtension on ProductType {
         return 'bundle';
       case ProductType.subscription30:
         return 'subscription';
+      case ProductType.cyclesVie:
+        return 'cycles_vie';
     }
   }
   
@@ -148,6 +155,13 @@ class Product {
       case 'subscription_30':
       case 'subscription':
         return ProductType.subscription30;
+      case 'cycle_vie':
+      case 'cycles_vie':
+      case 'cycle_vie_express':
+      case 'cycle_vie_strategique':
+      case 'cycle_vie_consultation':
+      case 'cycle_vie_abonnement':
+        return ProductType.cyclesVie;
       default:
         return ProductType.basicReport;
     }

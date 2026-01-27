@@ -4,9 +4,21 @@
 -- Exécuter après migration_cycles_vie.sql
 -- ================================================
 
--- Insérer les 4 plans tarifaires pour les services Cycles de Vie
--- Prix initiaux à 5 FCFA pour les tests, modifiables depuis le panneau admin
+-- 1. Ajouter une colonne description si elle n'existe pas
+ALTER TABLE pricing_plans 
+ADD COLUMN IF NOT EXISTS description TEXT;
 
+-- 2. Supprimer TOUS les CHECK constraints sur plan_type
+ALTER TABLE pricing_plans 
+DROP CONSTRAINT IF EXISTS pricing_plans_plan_type_check;
+
+ALTER TABLE pricing_plans 
+DROP CONSTRAINT IF EXISTS "vérification_type_de_plan_de_tarification";
+
+-- 3. Supprimer les anciens plans cycles_vie s'ils existent (pour éviter les doublons)
+DELETE FROM pricing_plans WHERE plan_type LIKE 'cycle_vie_%';
+
+-- 4. Insérer les 4 nouveaux plans tarifaires
 INSERT INTO pricing_plans (plan_type, name, description, price_fcfa, is_active, duration_days)
 VALUES 
     (
@@ -40,14 +52,7 @@ VALUES
         5, 
         true, 
         30
-    )
-ON CONFLICT (plan_type) 
-DO UPDATE SET 
-    name = EXCLUDED.name,
-    description = EXCLUDED.description,
-    price_fcfa = EXCLUDED.price_fcfa,
-    duration_days = EXCLUDED.duration_days,
-    is_active = EXCLUDED.is_active;
+    );
 
 -- ================================================
 -- Vérification
