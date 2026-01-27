@@ -736,10 +736,6 @@ class _CyclesViePurchaseScreenState extends State<CyclesViePurchaseScreen> {
         priceFcfa: widget.plan.priceFcfa,
       );
 
-      // Format de date ISO pour l'API
-      final birthdateStr = _birthdate!.toIso8601String().split('T')[0];
-      final consultationDateStr = _consultationDate!.toIso8601String().split('T')[0];
-
       // Lancer le paiement via PaymentManager
       PaymentManager.instance.processPurchaseWithCallback(
         context: context,
@@ -748,41 +744,32 @@ class _CyclesViePurchaseScreenState extends State<CyclesViePurchaseScreen> {
         provider: _selectedProvider,
         customerEmail: user.email ?? '',
         customerName: _firstNameController.text,
-        callback: (success, purchase, error) async {
+        callback: (success, purchase, error) {
+          debugPrint('>>> Cycles de Vie payment callback: success=$success, error=$error');
+          
+          if (!mounted) return;
+          
+          setState(() => _isProcessing = false);
+          
           if (success) {
-            // Créer l'achat dans la table cycle_vie_purchases avec les bons paramètres
-            await _cyclesService.createPurchase(
-              serviceType: widget.planType,
-              birthdate: birthdateStr,
-              firstname: _firstNameController.text,
-              consultationDate: consultationDateStr,
-              decisionTypeId: _selectedDecisionType,
-              paymentId: purchase?.transactionId,
-            );
-            
-            if (mounted) {
-              // Naviguer vers le rapport
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(
-                  builder: (_) => CyclesVieReportScreen(
-                    serviceType: widget.planType,
-                    birthdate: _birthdate,
-                    targetDate: _consultationDate!,
-                  ),
+            debugPrint('>>> Payment success, navigating to report...');
+            // Naviguer directement vers le rapport (sans créer de purchase séparé)
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(
+                builder: (_) => CyclesVieReportScreen(
+                  serviceType: widget.planType,
+                  birthdate: _birthdate,
+                  targetDate: _consultationDate!,
                 ),
-              );
-            }
+              ),
+            );
           } else {
-            if (mounted) {
-              setState(() {
-                _error = error ?? 'Paiement échoué';
-                _isProcessing = false;
-              });
-            }
+            setState(() => _error = error ?? 'Paiement échoué');
           }
         },
       );
     } catch (e) {
+      debugPrint('>>> Payment error: $e');
       if (mounted) {
         setState(() {
           _error = 'Erreur: $e';
