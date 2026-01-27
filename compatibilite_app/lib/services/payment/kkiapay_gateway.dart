@@ -1,13 +1,21 @@
 /// Kkiapay implementation of PaymentGateway
+/// Uses JavaScript SDK on web, Flutter SDK on mobile
 library;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:kkiapay_flutter_sdk/kkiapay_flutter_sdk.dart';
 
 import '../env_config.dart';
+import '../kkiapay_js_interop.dart' if (dart.library.io) '../kkiapay_js_interop_stub.dart';
 import 'payment_gateway.dart';
 
+// Conditionally import the Flutter SDK (only on mobile)
+import 'package:kkiapay_flutter_sdk/kkiapay_flutter_sdk.dart'
+    if (dart.library.html) 'kkiapay_gateway_stub.dart';
+
 /// Kkiapay payment gateway implementation
+/// - On Web: Uses JavaScript SDK (via kkiapay_js_interop.dart)
+/// - On Mobile: Uses Flutter SDK (kkiapay_flutter_sdk)
 class KkiapayGateway implements PaymentGateway {
   KkiapayGateway._();
   static final KkiapayGateway instance = KkiapayGateway._();
@@ -48,10 +56,81 @@ class KkiapayGateway implements PaymentGateway {
     }
     
     debugPrint('=== KKIAPAY GATEWAY ===');
+    debugPrint('Platform: ${kIsWeb ? "WEB" : "MOBILE"}');
     debugPrint('Amount: $amountFcfa FCFA');
     debugPrint('Reason: $reason');
     debugPrint('Email: $customerEmail');
     debugPrint('Sandbox: $isSandbox');
+    
+    if (kIsWeb) {
+      // Use JavaScript SDK on web
+      _initiateWebPayment(
+        amountFcfa: amountFcfa,
+        reason: reason,
+        customerEmail: customerEmail,
+        customerPhone: customerPhone,
+        customerName: customerName,
+        callback: callback,
+      );
+    } else {
+      // Use Flutter SDK on mobile
+      _initiateMobilePayment(
+        context: context,
+        amountFcfa: amountFcfa,
+        reason: reason,
+        customerEmail: customerEmail,
+        customerPhone: customerPhone,
+        customerName: customerName,
+        callback: callback,
+      );
+    }
+  }
+  
+  /// Web payment using JavaScript SDK
+  void _initiateWebPayment({
+    required int amountFcfa,
+    required String reason,
+    required String customerEmail,
+    String? customerPhone,
+    String? customerName,
+    required PaymentCallback callback,
+  }) {
+    debugPrint('>>> Using Kkiapay JavaScript SDK for web');
+    
+    KkiapayJsInterop.instance.openPaymentWidget(
+      apiKey: _publicKey,
+      amount: amountFcfa,
+      sandbox: isSandbox,
+      reason: reason,
+      phone: customerPhone,
+      email: customerEmail,
+      name: customerName,
+      callback: (success, transactionId, error) {
+        debugPrint('>>> Kkiapay JS callback: success=$success, txId=$transactionId, error=$error');
+        
+        if (success && transactionId != null) {
+          callback(PaymentResult.success(transactionId, {
+            'transactionId': transactionId,
+            'status': 'SUCCESS',
+          }));
+        } else {
+          callback(PaymentResult.failure(error ?? 'Paiement échoué'));
+        }
+      },
+    );
+  }
+  
+  /// Mobile payment using Flutter SDK
+  void _initiateMobilePayment({
+    required BuildContext context,
+    required int amountFcfa,
+    required String reason,
+    required String customerEmail,
+    String? customerPhone,
+    String? customerName,
+    required PaymentCallback callback,
+  }) {
+    debugPrint('>>> Using Kkiapay Flutter SDK for mobile');
     
     final widget = KKiaPay(
       amount: amountFcfa,
@@ -63,7 +142,7 @@ class KkiapayGateway implements PaymentGateway {
       sandbox: isSandbox,
       apikey: _publicKey,
       callback: (response, _) {
-        _handleCallback(response, context, callback);
+        _handleMobileCallback(response, context, callback);
       },
       theme: '#14D5C2', // Primary color
       paymentMethods: const ['momo', 'card'],
@@ -78,12 +157,12 @@ class KkiapayGateway implements PaymentGateway {
     }
   }
   
-  void _handleCallback(
+  void _handleMobileCallback(
     Map<String, dynamic> response,
     BuildContext context,
     PaymentCallback callback,
   ) {
-    debugPrint('=== KKIAPAY CALLBACK ===');
+    debugPrint('=== KKIAPAY MOBILE CALLBACK ===');
     debugPrint('Response: $response');
     
     final status = response['status'] as String?;

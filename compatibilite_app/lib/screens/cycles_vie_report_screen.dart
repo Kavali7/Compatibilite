@@ -44,6 +44,10 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
     setState(() => _isLoading = true);
 
     try {
+      debugPrint('📊 Génération du rapport express...');
+      debugPrint('📅 Birthdate: ${widget.birthdate}');
+      debugPrint('📅 TargetDate: ${widget.targetDate}');
+      
       // Timeout pour éviter chargement infini
       _report = await _cyclesService.generateExpressReport(
         birthdate: widget.birthdate ?? DateTime.now(),
@@ -51,11 +55,15 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
       ).timeout(
         const Duration(seconds: 8),
         onTimeout: () {
-          debugPrint('Timeout: génération rapport');
+          debugPrint('⏱️ Timeout: génération rapport');
           throw Exception('Délai dépassé');
         },
       );
-    } catch (e) {
+      
+      debugPrint('✅ Rapport généré avec succès');
+    } catch (e, stackTrace) {
+      debugPrint('❌ Erreur génération rapport: $e');
+      debugPrint('📚 Stack: $stackTrace');
       _error = 'Impossible de charger le rapport. Vérifiez votre connexion.';
     }
 

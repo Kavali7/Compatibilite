@@ -40,7 +40,10 @@ class _CyclesVieHomeScreenState extends State<CyclesVieHomeScreen> {
       // Timeout pour éviter chargement infini
       await PricingService.instance.fetchPlans().timeout(
         const Duration(seconds: 5),
-        onTimeout: () => debugPrint('Timeout: utilisation des plans par défaut'),
+        onTimeout: () {
+          debugPrint('Timeout: utilisation des plans par défaut');
+          return <PricingPlan>[];
+        },
       );
       _plans = PricingService.instance.plans
           .where((p) => p.planType.toLowerCase().contains('cycles'))
