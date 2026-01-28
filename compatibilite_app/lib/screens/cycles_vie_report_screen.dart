@@ -329,120 +329,118 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
           ),
         ],
         // === SECTIONS DETAILLEES (consultation/abonnement uniquement) ===
-        if (_isDetailedReport) ...[
-          // Traits de Vigilance
-          if (sp.traitsVigilance != null && sp.traitsVigilance!.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Text(
-              '⚠️ Points de Vigilance',
-              style: GoogleFonts.philosopher(
-                color: AppColors.warning,
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
+        // Traits de Vigilance
+        if (sp.traitsVigilance != null && sp.traitsVigilance!.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(
+            '⚠️ Points de Vigilance',
+            style: GoogleFonts.philosopher(
+              color: AppColors.warning,
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.warning.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+            ),
+            child: Text(
+              sp.traitsVigilance!,
+              style: TextStyle(
+                color: AppColors.textLight,
+                fontSize: 14,
+                height: 1.5,
               ),
             ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.warning.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
-              ),
-              child: Text(
-                sp.traitsVigilance!,
-                style: TextStyle(
-                  color: AppColors.textLight,
-                  fontSize: 14,
-                  height: 1.5,
-                ),
+          ),
+        ],
+        // Professions Favorables
+        if (sp.professionsFavorables != null && sp.professionsFavorables!.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(
+            '💼 Professions Favorables',
+            style: GoogleFonts.philosopher(
+              color: AppColors.secondary,
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.secondary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              sp.professionsFavorables!,
+              style: TextStyle(
+                color: AppColors.textLight,
+                fontSize: 14,
+                height: 1.5,
               ),
             ),
-          ],
-          // Professions Favorables
-          if (sp.professionsFavorables != null && sp.professionsFavorables!.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Text(
-              '💼 Professions Favorables',
-              style: GoogleFonts.philosopher(
-                color: AppColors.secondary,
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
+          ),
+        ],
+        // Santé Vigilance
+        if (sp.santeVigilance != null && sp.santeVigilance!.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(
+            '🏥 Vigilance Santé',
+            style: GoogleFonts.philosopher(
+              color: const Color(0xFF10B981),
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF10B981).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              sp.santeVigilance!,
+              style: TextStyle(
+                color: AppColors.textLight,
+                fontSize: 14,
+                height: 1.5,
               ),
             ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.secondary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                sp.professionsFavorables!,
-                style: TextStyle(
-                  color: AppColors.textLight,
-                  fontSize: 14,
-                  height: 1.5,
-                ),
+          ),
+        ],
+        // Pays Affinités
+        if (sp.paysAffinites != null && sp.paysAffinites!.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(
+            '🌍 Pays d\'Affinités',
+            style: GoogleFonts.philosopher(
+              color: const Color(0xFF3B82F6),
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              sp.paysAffinites!,
+              style: TextStyle(
+                color: AppColors.textLight,
+                fontSize: 14,
+                height: 1.5,
               ),
             ),
-          ],
-          // Santé Vigilance
-          if (sp.santeVigilance != null && sp.santeVigilance!.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Text(
-              '🏥 Vigilance Santé',
-              style: GoogleFonts.philosopher(
-                color: const Color(0xFF10B981),
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                sp.santeVigilance!,
-                style: TextStyle(
-                  color: AppColors.textLight,
-                  fontSize: 14,
-                  height: 1.5,
-                ),
-              ),
-            ),
-          ],
-          // Pays Affinités
-          if (sp.paysAffinites != null && sp.paysAffinites!.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Text(
-              '🌍 Pays d\'Affinités',
-              style: GoogleFonts.philosopher(
-                color: const Color(0xFF3B82F6),
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                sp.paysAffinites!,
-                style: TextStyle(
-                  color: AppColors.textLight,
-                  fontSize: 14,
-                  height: 1.5,
-                ),
-              ),
-            ),
-          ],
+          ),
         ],
       ],
     );
