@@ -415,6 +415,34 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
               ),
             ),
           ],
+          // Pays Affinités
+          if (sp.paysAffinites != null && sp.paysAffinites!.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              '🌍 Pays d\'Affinités',
+              style: GoogleFonts.philosopher(
+                color: const Color(0xFF3B82F6),
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                sp.paysAffinites!,
+                style: TextStyle(
+                  color: AppColors.textLight,
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+              ),
+            ),
+          ],
         ],
       ],
     );
@@ -429,36 +457,49 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
       title: 'Planning du Jour',
       subtitle: '${schedule.length} périodes',
       children: [
-        ...schedule.map((item) => Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: item.isCurrentPeriod 
-                  ? AppColors.primary.withValues(alpha: 0.15)
-                  : AppColors.background,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: item.isCurrentPeriod 
-                    ? AppColors.primary 
-                    : AppColors.block,
-                width: item.isCurrentPeriod ? 2 : 1,
-              ),
-            ),
-            child: Row(
+        ...schedule.map((item) => _buildDayPeriodItem(item)),
+      ],
+    );
+  }
+
+  /// Construit un élément de période avec tout le contenu
+  Widget _buildDayPeriodItem(DailyPeriodWithTime item) {
+    final period = item.period;
+    
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: item.isCurrentPeriod 
+              ? AppColors.primary.withValues(alpha: 0.15)
+              : AppColors.background,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: item.isCurrentPeriod 
+                ? AppColors.primary 
+                : period.color.withValues(alpha: 0.5),
+            width: item.isCurrentPeriod ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header: Lettre + Nom + Horaires + Badge Actuel
+            Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: item.period.color.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8),
+                    color: period.color.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
-                    item.period.periodLetter,
+                    period.periodLetter,
                     style: TextStyle(
-                      color: item.period.color,
+                      color: period.color,
                       fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                      fontSize: 18,
                     ),
                   ),
                 ),
@@ -467,26 +508,53 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        item.period.periodName,
-                        style: TextStyle(
-                          color: AppColors.textLight,
-                          fontWeight: FontWeight.w600,
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            period.periodName,
+                            style: GoogleFonts.philosopher(
+                              color: AppColors.textLight,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          if (period.keyword.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            Text(
+                              '• ${period.keyword}',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 14,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                      Text(
-                        '${item.startTime} - ${item.endTime}',
-                        style: TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: 12,
-                        ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.access_time, size: 14, color: AppColors.textMuted),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${item.startTime} - ${item.endTime}',
+                            style: TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 13,
+                            ),
+                          ),
+                          if (period.energyLevel != null) ...[
+                            const SizedBox(width: 12),
+                            _buildEnergyBadge(period.energyLevel!),
+                          ],
+                        ],
                       ),
                     ],
                   ),
                 ),
                 if (item.isCurrentPeriod)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                       color: AppColors.primary,
                       borderRadius: BorderRadius.circular(12),
@@ -495,18 +563,128 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
                       'Actuel',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 10,
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
               ],
             ),
-          ),
-        )),
-      ],
+            
+            // Description
+            if (period.description.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                period.description,
+                style: TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+              ),
+            ],
+            
+            // Activités favorables
+            if (period.activitesFavorables != null && period.activitesFavorables!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('✅', style: TextStyle(fontSize: 14)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        period.activitesFavorables!,
+                        style: TextStyle(
+                          color: const Color(0xFF10B981),
+                          fontSize: 13,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            
+            // Activités à éviter
+            if (period.activitesEviter != null && period.activitesEviter!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('⚠️', style: TextStyle(fontSize: 14)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        period.activitesEviter!,
+                        style: TextStyle(
+                          color: AppColors.error,
+                          fontSize: 13,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
+
+  /// Badge niveau d'énergie
+  Widget _buildEnergyBadge(String level) {
+    String emoji;
+    Color color;
+    
+    switch (level.toLowerCase()) {
+      case 'high':
+        emoji = '🔥';
+        color = const Color(0xFFEF4444);
+        break;
+      case 'medium':
+        emoji = '⚡';
+        color = const Color(0xFFF59E0B);
+        break;
+      case 'low':
+        emoji = '🧘';
+        color = const Color(0xFF8B5CF6);
+        break;
+      default:
+        emoji = '➖';
+        color = AppColors.textMuted;
+    }
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        emoji,
+        style: const TextStyle(fontSize: 12),
+      ),
+    );
+  }
+
 
   Widget _buildCurrentPeriodCard() {
     final cp = _report!.currentPeriod!;
@@ -517,6 +695,7 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
       title: 'Cycle Actuel',
       subtitle: '${cp.periodLetter} - ${cp.periodName}',
       children: [
+        // Mot-clé
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
@@ -540,6 +719,80 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
             ],
           ),
         ),
+        
+        // Description complète
+        if (cp.description.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(
+            cp.description,
+            style: TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 14,
+              height: 1.6,
+            ),
+          ),
+        ],
+        
+        // Activités favorables
+        if (cp.activitesFavorables != null && cp.activitesFavorables!.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(
+            '✅ Activités Favorables',
+            style: GoogleFonts.philosopher(
+              color: const Color(0xFF10B981),
+              fontWeight: FontWeight.w600,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF10B981).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              cp.activitesFavorables!,
+              style: TextStyle(
+                color: AppColors.textLight,
+                fontSize: 14,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
+        
+        // Activités à éviter
+        if (cp.activitesEviter != null && cp.activitesEviter!.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(
+            '⚠️ À Éviter',
+            style: GoogleFonts.philosopher(
+              color: AppColors.warning,
+              fontWeight: FontWeight.w600,
+              fontSize: 15,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.warning.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+            ),
+            child: Text(
+              cp.activitesEviter!,
+              style: TextStyle(
+                color: AppColors.textLight,
+                fontSize: 14,
+                height: 1.5,
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }
