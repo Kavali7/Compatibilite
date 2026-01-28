@@ -25,8 +25,12 @@ class CyclesVieService {
 
   /// Récupère toutes les périodes Soul depuis la base
   Future<List<SoulPeriod>> getSoulPeriods() async {
-    if (_cachedSoulPeriods != null) return _cachedSoulPeriods!;
+    if (_cachedSoulPeriods != null) {
+      debugPrint('🌟 getSoulPeriods: Returning ${_cachedSoulPeriods!.length} cached periods');
+      return _cachedSoulPeriods!;
+    }
 
+    debugPrint('🌟 getSoulPeriods: Fetching from database...');
     final response = await _client
         .from('cycle_vie_soul_periods')
         .select()
@@ -34,8 +38,14 @@ class CyclesVieService {
         .order('period_number')
         .order('polarity');
 
+    debugPrint('🌟 getSoulPeriods: Raw response has ${(response as List).length} items');
+    if (response.isNotEmpty) {
+      debugPrint('🌟 getSoulPeriods: First item: ${response.first}');
+    }
+    
     _cachedSoulPeriods =
-        (response as List).map((e) => SoulPeriod.fromJson(e)).toList();
+        response.map((e) => SoulPeriod.fromJson(e)).toList();
+    debugPrint('🌟 getSoulPeriods: Parsed ${_cachedSoulPeriods!.length} SoulPeriod objects');
     return _cachedSoulPeriods!;
   }
 
@@ -83,16 +93,26 @@ class CyclesVieService {
 
   /// Récupère toutes les périodes quotidiennes
   Future<List<DailyPeriod>> getDailyPeriods() async {
-    if (_cachedDailyPeriods != null) return _cachedDailyPeriods!;
+    if (_cachedDailyPeriods != null) {
+      debugPrint('⏰ getDailyPeriods: Returning ${_cachedDailyPeriods!.length} cached periods');
+      return _cachedDailyPeriods!;
+    }
 
+    debugPrint('⏰ getDailyPeriods: Fetching from database...');
     final response = await _client
         .from('cycle_vie_daily_periods')
         .select()
         .eq('is_active', true)
         .order('period_letter');
 
+    debugPrint('⏰ getDailyPeriods: Raw response has ${(response as List).length} items');
+    if (response.isNotEmpty) {
+      debugPrint('⏰ getDailyPeriods: First item: ${response.first}');
+    }
+    
     _cachedDailyPeriods =
-        (response as List).map((e) => DailyPeriod.fromJson(e)).toList();
+        response.map((e) => DailyPeriod.fromJson(e)).toList();
+    debugPrint('⏰ getDailyPeriods: Parsed ${_cachedDailyPeriods!.length} DailyPeriod objects');
     return _cachedDailyPeriods!;
   }
 
@@ -230,12 +250,13 @@ class CyclesVieService {
   // ═══════════════════════════════════════════════════════════════
 
   /// Vérifie si l'utilisateur a un achat valide pour un service
-  Future<CyclePurchase?> getValidPurchase(String serviceType) async {
-    final userId = _client.auth.currentUser?.id;
-    if (userId == null) return null;
+  /// userId parameter supports custom auth systems
+  Future<CyclePurchase?> getValidPurchase(String serviceType, {String? userId}) async {
+    final effectiveUserId = userId ?? _client.auth.currentUser?.id;
+    if (effectiveUserId == null) return null;
 
     final response = await _client.rpc('fn_get_cycle_vie_purchase', params: {
-      'p_user_id': userId,
+      'p_user_id': effectiveUserId,
       'p_service_type': serviceType,
     });
 
@@ -248,6 +269,7 @@ class CyclesVieService {
   }
 
   /// Crée un nouvel achat après paiement réussi
+  /// userId parameter supports custom auth systems
   Future<String?> createPurchase({
     required String serviceType,
     required String birthdate,
@@ -256,12 +278,13 @@ class CyclesVieService {
     String? decisionTypeId,
     String? decisionDetail,
     String? paymentId,
+    String? userId, // Optional: pass for custom auth systems
   }) async {
-    final userId = _client.auth.currentUser?.id;
-    if (userId == null) throw Exception('Utilisateur non connecté');
+    final effectiveUserId = userId ?? _client.auth.currentUser?.id;
+    if (effectiveUserId == null) throw Exception('Utilisateur non connecté');
 
     final response = await _client.rpc('fn_create_cycle_vie_purchase', params: {
-      'p_user_id': userId,
+      'p_user_id': effectiveUserId,
       'p_service_type': serviceType,
       'p_user_birthdate': birthdate,
       'p_user_firstname': firstname,
@@ -283,14 +306,27 @@ class CyclesVieService {
     required DateTime birthdate,
     required DateTime targetDate,
   }) async {
+    debugPrint('📊 generateExpressReport: Starting...');
+    debugPrint('📊 generateExpressReport: birthdate=$birthdate, targetDate=$targetDate');
+
     // 1. Soul Period
     final soulPeriod = await getSoulPeriodForBirthdate(birthdate);
+    debugPrint('📊 generateExpressReport: soulPeriod=${soulPeriod?.periodName ?? "NULL"}');
+    if (soulPeriod != null) {
+      debugPrint('📊 soulPeriod.periodTitle: ${soulPeriod.periodTitle}');
+      debugPrint('📊 soulPeriod.descriptionGeneral: ${soulPeriod.descriptionGeneral.substring(0, soulPeriod.descriptionGeneral.length.clamp(0, 100))}...');
+    }
 
     // 2. Schedule du jour
     final daySchedule = await getDaySchedule(targetDate);
+    debugPrint('📊 generateExpressReport: daySchedule has ${daySchedule.length} items');
+    if (daySchedule.isNotEmpty) {
+      debugPrint('📊 First schedule item: ${daySchedule.first.period.periodName} (${daySchedule.first.startTime}-${daySchedule.first.endTime})');
+    }
 
     // 3. Période actuelle si c'est aujourd'hui
     final currentPeriod = await getCurrentDailyPeriod();
+    debugPrint('📊 generateExpressReport: currentPeriod=${currentPeriod?.periodName ?? "NULL"}');
 
     return ExpressReport(
       soulPeriod: soulPeriod,

@@ -3,11 +3,11 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../models/product_model.dart';
 import '../../models/purchase_model.dart';
 import '../supabase_manager.dart';
+import '../decision_credit_service.dart';
 import 'payment_gateway.dart';
 import 'kkiapay_gateway.dart';
 import 'fedapay_gateway.dart';
@@ -149,8 +149,28 @@ class PaymentManager {
     }
     
     try {
+      final client = Supabase.instance.client;
+      
+      // Use RPC function which has SECURITY DEFINER to bypass RLS
+      final response = await client.rpc('fn_record_purchase', params: {
+        'p_user_id': userId,
+        'p_product_type': product.type.periodType,
+        'p_period_date': periodDate?.toIso8601String().split('T').first ?? 
+                         (product.type.isTemporal ? DateTime.now().toIso8601String().split('T').first : null),
+        'p_payment_provider': provider.value,
+        'p_transaction_id': transactionId,
+        'p_amount_fcfa': product.priceFcfa,
+        'p_metadata': {},
+      });
+      
+      final purchaseId = response as String?;
+      if (purchaseId == null) {
+        debugPrint('PaymentManager: RPC returned null purchase ID');
+        return null;
+      }
+      
       final purchase = Purchase(
-        id: const Uuid().v4(),
+        id: purchaseId,
         userId: userId,
         productType: product.type,
         periodDate: periodDate ?? (product.type.isTemporal ? DateTime.now() : null),
@@ -161,12 +181,22 @@ class PaymentManager {
         createdAt: DateTime.now(),
       );
       
-      final client = Supabase.instance.client;
-      await client
-          .from('purchases')
-          .insert(purchase.toInsertJson());
+      // Attribuer les crédits de décision si c'est un achat Cycles de Vie
+      if (product.type.periodType.startsWith('cycle_vie_')) {
+        try {
+          await DecisionCreditService.instance.grantCreditsForPurchase(
+            userId: userId,
+            purchaseId: purchaseId,
+            planType: product.type.periodType,
+          );
+          debugPrint('PaymentManager: Crédits attribués pour $purchaseId');
+        } catch (e) {
+          debugPrint('PaymentManager: Erreur attribution crédits: $e');
+          // On continue même si l'attribution échoue
+        }
+      }
       
-      debugPrint('PaymentManager: Purchase recorded: ${purchase.id}');
+      debugPrint('PaymentManager: Purchase recorded via RPC: $purchaseId');
       return purchase;
     } catch (e) {
       debugPrint('PaymentManager: Error recording purchase: $e');

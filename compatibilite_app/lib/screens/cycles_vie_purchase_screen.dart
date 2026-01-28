@@ -760,6 +760,7 @@ class _CyclesViePurchaseScreenState extends State<CyclesViePurchaseScreen> {
                   serviceType: widget.planType,
                   birthdate: _birthdate,
                   targetDate: _consultationDate!,
+                  decisionTypeId: _selectedDecisionType,
                 ),
               ),
             );

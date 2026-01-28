@@ -7,6 +7,9 @@ export default function CyclesIndex() {
         { path: 'decision-types', label: '🎯 Types de Décisions', description: 'Catégories de décisions consultables' },
         { path: 'decision-advice', label: '💡 Conseils Décisions', description: 'Conseils par type × période' },
         { path: 'purchases', label: '📊 Achats Cycles', description: 'Historique des achats' },
+        { path: 'pricing', label: '💰 Tarifs Cycles', description: 'Plans et crédits inclus' },
+        { path: 'credit-packs', label: '🎁 Packs Crédits', description: 'Vente à la carte' },
+        { path: 'user-credits', label: '👤 Crédits Users', description: 'Soldes et historique' },
     ];
 
     return (

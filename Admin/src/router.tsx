@@ -24,6 +24,9 @@ import DailyPeriods from './pages/cycles/DailyPeriods';
 import DecisionTypes from './pages/cycles/DecisionTypes';
 import DecisionAdvice from './pages/cycles/DecisionAdvice';
 import CyclesPurchases from './pages/cycles/CyclesPurchases';
+import CyclesPricing from './pages/cycles/CyclesPricing';
+import CreditPacks from './pages/cycles/CreditPacks';
+import UserCredits from './pages/cycles/UserCredits';
 
 const router = createBrowserRouter([
   {
@@ -61,6 +64,9 @@ const router = createBrowserRouter([
           { path: 'decision-types', element: <DecisionTypes /> },
           { path: 'decision-advice', element: <DecisionAdvice /> },
           { path: 'purchases', element: <CyclesPurchases /> },
+          { path: 'pricing', element: <CyclesPricing /> },
+          { path: 'credit-packs', element: <CreditPacks /> },
+          { path: 'user-credits', element: <UserCredits /> },
         ],
       },
       { path: '*', element: <Navigate to="/" replace /> },

@@ -17,11 +17,12 @@ class CurrencyService {
   Currency get currency => _currency;
   
   // Conversion rates (1 FCFA = X other currency)
-  // These are approximate rates - FCFA is XOF
+  // EUR: Fixed peg rate (1 EUR = 655.957 FCFA officially)
+  // USD: Approximate market rate (1 USD ≈ 615 FCFA as of 2026)
   static const Map<Currency, double> _ratesFromFcfa = {
     Currency.FCFA: 1.0,
-    Currency.EUR: 0.00152,  // 1 FCFA ≈ 0.00152 EUR (1 EUR ≈ 656 FCFA)
-    Currency.USD: 0.00165,  // 1 FCFA ≈ 0.00165 USD (1 USD ≈ 606 FCFA)
+    Currency.EUR: 0.001524,  // 1 FCFA = 1/655.957 EUR (official fixed rate)
+    Currency.USD: 0.001626,  // 1 FCFA ≈ 1/615 USD (market rate ~2026)
   };
   
   // Currency symbols

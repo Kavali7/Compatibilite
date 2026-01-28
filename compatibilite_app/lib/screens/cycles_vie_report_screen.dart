@@ -9,18 +9,21 @@ import 'package:intl/intl.dart';
 import '../core/constants.dart';
 import '../services/cycles_vie_service.dart';
 import '../widgets/animated_background.dart';
+import 'decision_advice_screen.dart';
 
 /// Écran de visualisation du rapport Cycles de Vie
 class CyclesVieReportScreen extends StatefulWidget {
   final String serviceType;
   final DateTime? birthdate;
   final DateTime targetDate;
+  final String? decisionTypeId;
 
   const CyclesVieReportScreen({
     super.key,
     required this.serviceType,
     this.birthdate,
     required this.targetDate,
+    this.decisionTypeId,
   });
 
   @override
@@ -33,6 +36,40 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
   ExpressReport? _report;
   bool _isLoading = true;
   String? _error;
+
+  /// Vérifie si c'est un rapport détaillé (tous sauf 'express')
+  /// Un rapport est détaillé s'il n'est PAS express
+  bool get _isDetailedReport {
+    final type = widget.serviceType.toLowerCase();
+    // Seul 'express' est un rapport simple, tous les autres sont détaillés
+    return type != 'express' && type != 'cycles_vie_express';
+  }
+
+  /// Titre du rapport selon le type
+  String get _reportTitle {
+    final type = widget.serviceType.toLowerCase();
+    
+    // Rapports Express
+    if (type == 'express' || type == 'cycles_vie_express') {
+      return 'Rapport Express';
+    }
+    
+    // Rapports Consultation/Stratégique
+    if (type == 'consultation' || type == 'strategique' || 
+        type == 'cycles_vie_consultation') {
+      return 'Consultation Complète';
+    }
+    
+    // Rapports Abonnement
+    if (type == 'abonnement' || type == 'subscription' || 
+        type == 'cycles_vie_abonnement') {
+      return 'Rapport Abonné';
+    }
+    
+    // Par défaut - rapport complet
+    return 'Votre Rapport Complet';
+  }
+
 
   @override
   void initState() {
@@ -84,7 +121,7 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Votre Rapport',
+          _reportTitle,
           style: GoogleFonts.philosopher(
             color: AppColors.textLight,
             fontWeight: FontWeight.w600,
@@ -171,6 +208,10 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
             _buildCurrentPeriodCard(),
             const SizedBox(height: 20),
           ],
+
+          // Decision Advice Button
+          _buildDecisionAdviceButton(),
+          const SizedBox(height: 20),
 
           // Cross-promotion
           _buildCrossPromotionCard(),
@@ -286,6 +327,94 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
               ),
             ),
           ),
+        ],
+        // === SECTIONS DETAILLEES (consultation/abonnement uniquement) ===
+        if (_isDetailedReport) ...[
+          // Traits de Vigilance
+          if (sp.traitsVigilance != null && sp.traitsVigilance!.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              '⚠️ Points de Vigilance',
+              style: GoogleFonts.philosopher(
+                color: AppColors.warning,
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+              ),
+              child: Text(
+                sp.traitsVigilance!,
+                style: TextStyle(
+                  color: AppColors.textLight,
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+              ),
+            ),
+          ],
+          // Professions Favorables
+          if (sp.professionsFavorables != null && sp.professionsFavorables!.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              '💼 Professions Favorables',
+              style: GoogleFonts.philosopher(
+                color: AppColors.secondary,
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.secondary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                sp.professionsFavorables!,
+                style: TextStyle(
+                  color: AppColors.textLight,
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+              ),
+            ),
+          ],
+          // Santé Vigilance
+          if (sp.santeVigilance != null && sp.santeVigilance!.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              '🏥 Vigilance Santé',
+              style: GoogleFonts.philosopher(
+                color: const Color(0xFF10B981),
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                sp.santeVigilance!,
+                style: TextStyle(
+                  color: AppColors.textLight,
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+              ),
+            ),
+          ],
         ],
       ],
     );
@@ -471,6 +600,103 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
           ),
           const Divider(color: AppColors.textMuted, height: 32),
           ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDecisionAdviceButton() {
+    // Déterminer le numéro de période actuelle
+    int currentPeriodNumber = 1;
+    if (_report?.soulPeriod != null) {
+      currentPeriodNumber = _report!.soulPeriod!.periodNumber;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primary.withValues(alpha: 0.15),
+            Colors.purple.withValues(alpha: 0.1),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.primary.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.purple.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.psychology, color: Colors.purple, size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Analyse de Décision',
+                      style: GoogleFonts.philosopher(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textLight,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Obtenez des conseils mystiques personnalisés',
+                      style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DecisionAdviceScreen(
+                      birthdate: widget.birthdate ?? DateTime.now(),
+                      targetDate: widget.targetDate,
+                      initialDecisionTypeId: widget.decisionTypeId,
+                      currentPeriodNumber: currentPeriodNumber,
+                      cycleType: 'personal',
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.auto_awesome, size: 20),
+              label: const Text('Analyser une Décision'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.purple,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
