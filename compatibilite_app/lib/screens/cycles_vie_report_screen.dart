@@ -34,8 +34,16 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
   final CyclesVieService _cyclesService = CyclesVieService();
   
   ExpressReport? _report;
+  DecisionAdvice? _decisionAdvice; // Conseil de décision auto-chargé
   bool _isLoading = true;
+  bool _isLoadingAdvice = false;
   String? _error;
+
+  /// Vérifie si c'est un service Consultation (nécessite decision advice)
+  bool get _isConsultationService {
+    final type = widget.serviceType.toLowerCase();
+    return type.contains('consultation') || type.contains('strategique');
+  }
 
   /// Vérifie si c'est un rapport détaillé (tous sauf 'express')
   /// Un rapport est détaillé s'il n'est PAS express
@@ -98,6 +106,11 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
       );
       
       debugPrint('✅ Rapport généré avec succès');
+      
+      // Charger automatiquement le conseil de décision pour Consultation
+      if (_isConsultationService && widget.decisionTypeId != null && _report?.soulPeriod != null) {
+        await _loadDecisionAdvice();
+      }
     } catch (e, stackTrace) {
       debugPrint('❌ Erreur génération rapport: $e');
       debugPrint('📚 Stack: $stackTrace');
@@ -106,6 +119,37 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
 
     if (mounted) {
       setState(() => _isLoading = false);
+    }
+  }
+
+  /// Charge le conseil de décision automatiquement
+  Future<void> _loadDecisionAdvice() async {
+    if (widget.decisionTypeId == null || _report?.soulPeriod == null) return;
+    
+    setState(() => _isLoadingAdvice = true);
+    
+    try {
+      debugPrint('🔮 Chargement conseil de décision...');
+      _decisionAdvice = await _cyclesService.getAdvice(
+        decisionTypeId: widget.decisionTypeId!,
+        cycleType: 'personal',
+        periodNumber: _report!.soulPeriod!.periodNumber,
+      ).timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          debugPrint('⏱️ Timeout: chargement conseil');
+          return null;
+        },
+      );
+      if (_decisionAdvice != null) {
+        debugPrint('✅ Conseil chargé');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Erreur chargement conseil: $e');
+    }
+    
+    if (mounted) {
+      setState(() => _isLoadingAdvice = false);
     }
   }
 
@@ -209,8 +253,11 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
             const SizedBox(height: 20),
           ],
 
-          // Decision Advice Button
-          _buildDecisionAdviceButton(),
+          // Decision Advice - Inline pour Consultation, Button pour autres
+          if (_isConsultationService && widget.decisionTypeId != null)
+            _buildInlineDecisionAdviceCard()
+          else
+            _buildDecisionAdviceButton(),
           const SizedBox(height: 20),
 
           // Cross-promotion
@@ -948,6 +995,123 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// Carte inline pour afficher le conseil de décision automatiquement
+  Widget _buildInlineDecisionAdviceCard() {
+    if (_isLoadingAdvice) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: AppColors.block,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.purple.withValues(alpha: 0.3)),
+        ),
+        child: const Center(
+          child: Column(
+            children: [
+              CircularProgressIndicator(color: Colors.purple),
+              SizedBox(height: 12),
+              Text('Analyse de votre décision...', style: TextStyle(color: AppColors.textMuted)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_decisionAdvice == null) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.block,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          children: [
+            const Icon(Icons.info_outline, color: AppColors.textMuted, size: 40),
+            const SizedBox(height: 12),
+            Text('Conseil non disponible', style: GoogleFonts.philosopher(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textLight)),
+            const SizedBox(height: 8),
+            const Text('Le conseil pour ce type de décision n\'est pas encore configuré.', style: TextStyle(color: AppColors.textMuted, fontSize: 14), textAlign: TextAlign.center),
+          ],
+        ),
+      );
+    }
+
+    final advice = _decisionAdvice!;
+    final score = advice.favorabilityScore ?? 50;
+    final scoreColor = score >= 70 ? Colors.green : (score >= 40 ? Colors.orange : Colors.red);
+    final scoreLabel = score >= 70 ? 'Favorable' : (score >= 40 ? 'Modéré' : 'Défavorable');
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [Colors.purple.withValues(alpha: 0.15), AppColors.primary.withValues(alpha: 0.1)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.purple.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: Colors.purple.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10)),
+                child: const Icon(Icons.psychology, color: Colors.purple, size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text('Votre Conseil Mystique', style: GoogleFonts.philosopher(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textLight)),
+                  const SizedBox(height: 2),
+                  Text('Basé sur votre cycle et la date choisie', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                ]),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(color: scoreColor.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(20), border: Border.all(color: scoreColor.withValues(alpha: 0.5))),
+                child: Column(children: [
+                  Text('$score%', style: TextStyle(color: scoreColor, fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text(scoreLabel, style: TextStyle(color: scoreColor, fontSize: 10)),
+                ]),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(12)),
+            child: Text(advice.adviceText, style: GoogleFonts.philosopher(fontSize: 15, height: 1.6, color: AppColors.textLight)),
+          ),
+          if (advice.warnings != null && advice.warnings!.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.orange.withValues(alpha: 0.3))),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Icon(Icons.warning_amber, color: Colors.orange, size: 20),
+                const SizedBox(width: 10),
+                Expanded(child: Text(advice.warnings!, style: const TextStyle(color: AppColors.textLight, fontSize: 13, height: 1.4))),
+              ]),
+            ),
+          ],
+          if (advice.alternativesSuggestion != null && advice.alternativesSuggestion!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: Colors.teal.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.teal.withValues(alpha: 0.3))),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Icon(Icons.lightbulb_outline, color: Colors.teal, size: 20),
+                const SizedBox(width: 10),
+                Expanded(child: Text(advice.alternativesSuggestion!, style: const TextStyle(color: AppColors.textLight, fontSize: 13, height: 1.4))),
+              ]),
+            ),
+          ],
         ],
       ),
     );
