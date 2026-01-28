@@ -61,6 +61,11 @@ class _CyclesViePurchaseScreenState extends State<CyclesViePurchaseScreen> {
   // Payment provider
   PaymentProvider _selectedProvider = PaymentProvider.kkiapay;
 
+  /// Vérifie si le type de décision est requis pour ce plan
+  bool get _requiresDecisionType =>
+      widget.planType == 'cycle_vie_strategique' ||
+      widget.planType == 'cycle_vie_consultation';
+
   @override
   void initState() {
     super.initState();
@@ -356,10 +361,11 @@ class _CyclesViePurchaseScreenState extends State<CyclesViePurchaseScreen> {
             _updateConsultDate();
           }),
         ),
-        const SizedBox(height: 16),
-
-        // Type de décision
-        _buildDecisionTypeDropdown(),
+        // Type de décision (conditionnel selon le service)
+        if (_requiresDecisionType) ...[
+          const SizedBox(height: 16),
+          _buildDecisionTypeDropdown(),
+        ],
       ],
     );
   }
@@ -540,7 +546,9 @@ class _CyclesViePurchaseScreenState extends State<CyclesViePurchaseScreen> {
           );
         }).toList(),
         onChanged: (v) => setState(() => _selectedDecisionType = v),
-        validator: (v) => v == null ? 'Veuillez sélectionner un type' : null,
+        validator: _requiresDecisionType
+            ? (v) => v == null ? 'Veuillez sélectionner un type' : null
+            : null,
       ),
     );
   }
