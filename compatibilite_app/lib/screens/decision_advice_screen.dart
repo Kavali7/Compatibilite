@@ -101,7 +101,7 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
     } catch (e) {
       debugPrint('Erreur chargement crédits: $e');
       // En cas d'erreur, permettre l'accès (grace mode)
-      _creditBalance = CreditBalance(totalCredits: -1, expiringCredits: 0, expiresAt: null);
+      _creditBalance = CreditBalance.unlimited();
     }
   }
 
@@ -170,16 +170,24 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
 
       // Consommer un crédit si c'est un nouveau type
       if (_currentAdvice != null && !_unlockedTypeIds.contains(_selectedDecisionTypeId!)) {
-        final result = await _creditService.consumeCredit(
-          decisionTypeId: _selectedDecisionTypeId!,
-          cycleType: widget.cycleType,
-          targetDate: widget.targetDate,
-          purchaseId: widget.purchaseId,
-        );
-        
-        if (result.success) {
+        final userId = AuthService.instance.currentUser?.id;
+        if (userId != null) {
+          final result = await _creditService.consumeCredit(
+            userId: userId,
+            purchaseId: widget.purchaseId ?? '',
+            decisionTypeId: _selectedDecisionTypeId!,
+            cycleType: widget.cycleType,
+            periodNumber: widget.currentPeriodNumber,
+            targetDate: widget.targetDate,
+          );
+          
+          if (result.success) {
+            _unlockedTypeIds.add(_selectedDecisionTypeId!);
+            _creditBalance = result.balance;
+          }
+        } else {
+          // Pas connecté, débloquer quand même (grace mode)
           _unlockedTypeIds.add(_selectedDecisionTypeId!);
-          _creditBalance = result.balance;
         }
       }
 
@@ -252,7 +260,7 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: _loadDecisionTypes,
+              onPressed: _loadInitialData,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
               ),

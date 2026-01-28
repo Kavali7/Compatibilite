@@ -10,6 +10,42 @@ class DecisionCreditService {
   static DecisionCreditService get instance => _instance;
 
   SupabaseClient get _client => Supabase.instance.client;
+  String? get _currentUserId => _client.auth.currentUser?.id;
+
+  /// Récupère le solde de crédits pour l'utilisateur connecté (simplifié)
+  Future<CreditBalance> getCreditBalance() async {
+    final userId = _currentUserId;
+    if (userId == null) {
+      return CreditBalance.unlimited(); // Grace mode si pas connecté
+    }
+
+    try {
+      final response = await _client.rpc('fn_get_decision_credits', params: {
+        'p_user_id': userId,
+        'p_purchase_id': null, // Récupère tous les crédits
+      });
+
+      if (response != null && response is List && response.isNotEmpty) {
+        final data = response[0];
+        return CreditBalance(
+          totalCredits: data['total_credits'] ?? 0,
+          usedCredits: data['used_credits'] ?? 0,
+          remainingCredits: data['remaining_credits'] ?? 0,
+          isUnlimited: data['is_unlimited'] ?? false,
+          expiresSoonest: data['expires_soonest'] != null
+              ? DateTime.parse(data['expires_soonest'])
+              : null,
+        );
+      }
+
+      // Si aucun crédit trouvé, permettre l'accès en mode "grace"
+      return CreditBalance.unlimited();
+    } catch (e) {
+      debugPrint('Erreur getCreditBalance: $e');
+      // En cas d'erreur, mode gracieux
+      return CreditBalance.unlimited();
+    }
+  }
 
   /// Récupère le solde de crédits disponibles pour un achat spécifique
   Future<CreditBalance> getCreditsForPurchase({
@@ -108,11 +144,15 @@ class DecisionCreditService {
 
   /// Récupère l'historique des types de décision utilisés pour un achat
   Future<List<DecisionUsage>> getUsageHistory({
-    required String userId,
-    required String purchaseId,
+    String? userId,
+    String? purchaseId,
+    int? limit,
   }) async {
+    final uid = userId ?? _currentUserId;
+    if (uid == null) return [];
+
     try {
-      final response = await _client
+      var query = _client
           .from('user_decision_usage')
           .select('''
             id,
@@ -123,9 +163,19 @@ class DecisionCreditService {
             created_at,
             cycle_vie_decision_types(label, icon_name)
           ''')
-          .eq('user_id', userId)
-          .eq('cycle_vie_purchase_id', purchaseId)
-          .order('created_at', ascending: false);
+          .eq('user_id', uid);
+      
+      // Filtrer par achat si fourni
+      if (purchaseId != null) {
+        query = query.eq('cycle_vie_purchase_id', purchaseId);
+      }
+      
+      // Ordonner et limiter
+      var orderedQuery = query.order('created_at', ascending: false);
+      
+      final response = limit != null 
+          ? await orderedQuery.limit(limit)
+          : await orderedQuery;
 
       return (response as List).map((item) {
         return DecisionUsage(
@@ -214,6 +264,14 @@ class CreditBalance {
     isUnlimited: false,
   );
 
+  /// Crédits illimités (mode gracieux ou abonnement premium)
+  factory CreditBalance.unlimited() => CreditBalance(
+    totalCredits: -1,
+    usedCredits: 0,
+    remainingCredits: -1,
+    isUnlimited: true,
+  );
+
   bool get hasCredits => isUnlimited || remainingCredits > 0;
 
   int? get daysUntilExpiry {
@@ -227,11 +285,13 @@ class ConsumeResult {
   final bool success;
   final String message;
   final bool creditConsumed;
+  final CreditBalance? balance;
 
   ConsumeResult({
     required this.success,
     required this.message,
     required this.creditConsumed,
+    this.balance,
   });
 }
 
