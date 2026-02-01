@@ -1,12 +1,12 @@
-/// Health Cycle Purchase Screen (Service 04)
-/// Écran d'achat du service Cycle Santé
+/// Daily Guide Purchase Screen
+/// Écran d'achat du service Guide Horaire (Service 05)
 library;
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../core/constants.dart';
-import '../services/health_cycle_service.dart';
+import '../services/daily_guide_service.dart';
 import '../services/pricing_service.dart';
 import '../services/payment/payment_manager.dart';
 import '../models/product_model.dart';
@@ -14,30 +14,29 @@ import '../models/purchase_model.dart';
 import '../services/auth_service.dart';
 import '../services/currency_service.dart';
 import '../widgets/animated_background.dart';
-import 'health_cycle_report_screen.dart';
+import 'daily_guide_report_screen.dart';
 
-/// Écran d'achat du Cycle Santé
-class HealthCyclePurchaseScreen extends StatefulWidget {
+/// Écran d'achat du Guide Horaire
+class DailyGuidePurchaseScreen extends StatefulWidget {
   final PricingPlan plan;
 
-  const HealthCyclePurchaseScreen({
+  const DailyGuidePurchaseScreen({
     super.key,
     required this.plan,
   });
 
   @override
-  State<HealthCyclePurchaseScreen> createState() => _HealthCyclePurchaseScreenState();
+  State<DailyGuidePurchaseScreen> createState() => _DailyGuidePurchaseScreenState();
 }
 
-class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _firstNameController = TextEditingController();
+class _DailyGuidePurchaseScreenState extends State<DailyGuidePurchaseScreen> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   
-  // Date de naissance - dropdowns séparés (style Compatibilité)
-  int? _birthYear;
-  int? _birthMonth;
-  int? _birthDay;
-  DateTime? _birthdate;
+  // Date cible - composants séparés (style Compatibilité)
+  int? _targetYear;
+  int? _targetMonth;
+  int? _targetDay;
+  DateTime? _targetDate;
   
   bool _isProcessing = false;
   String? _error;
@@ -48,37 +47,12 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
   @override
   void initState() {
     super.initState();
-    // Valeurs par défaut
+    // Initialiser avec aujourd'hui
     final now = DateTime.now();
-    _birthYear = now.year - 25;
-    _birthMonth = now.month;
-    _birthDay = now.day;
-    _updateBirthdate();
-  }
-
-  @override
-  void dispose() {
-    _firstNameController.dispose();
-    super.dispose();
-  }
-
-  void _updateBirthdate() {
-    if (_birthYear != null && _birthMonth != null && _birthDay != null) {
-      final maxDay = _daysInMonth(_birthYear, _birthMonth);
-      if (_birthDay! > maxDay) {
-        _birthDay = maxDay;
-      }
-      _birthdate = DateTime(_birthYear!, _birthMonth!, _birthDay!);
-    } else {
-      _birthdate = null;
-    }
-  }
-
-  int _daysInMonth(int? year, int? month) {
-    if (year == null || month == null) return 31;
-    final beginningNextMonth = (month < 12) ? DateTime(year, month + 1, 1) : DateTime(year + 1, 1, 1);
-    final lastDayCurrentMonth = beginningNextMonth.subtract(const Duration(days: 1)).day;
-    return lastDayCurrentMonth;
+    _targetYear = now.year;
+    _targetMonth = now.month;
+    _targetDay = now.day;
+    _targetDate = now;
   }
 
   @override
@@ -93,7 +67,7 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Cycle Santé',
+          'Guide Horaire',
           style: GoogleFonts.philosopher(
             color: AppColors.textLight,
             fontWeight: FontWeight.w600,
@@ -117,11 +91,11 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Introduction
+            // Introduction mystique
             _buildIntroCard(),
             const SizedBox(height: 28),
 
-            // Caractéristiques
+            // Ce que vous obtenez
             _buildFeaturesCard(),
             const SizedBox(height: 28),
 
@@ -129,12 +103,8 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
             _buildPlanSummary(),
             const SizedBox(height: 28),
 
-            // Formulaire
+            // Formulaire - Date cible
             _buildFormSection(),
-            const SizedBox(height: 28),
-            
-            // Avertissement médical
-            _buildMedicalDisclaimer(),
             const SizedBox(height: 28),
             
             // Payment method selection
@@ -166,7 +136,7 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
               ),
 
             // Bouton de paiement
-            _buildPayButton(),
+            _buildPaymentButton(),
             
             const SizedBox(height: 16),
             
@@ -214,10 +184,10 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
       ),
       child: Column(
         children: [
-          const Icon(Icons.favorite, color: AppColors.primary, size: 48),
+          const Icon(Icons.schedule, color: AppColors.primary, size: 48),
           const SizedBox(height: 16),
           Text(
-            'Votre Guide Bien-Être Annuel',
+            'Votre Guide Horaire Quotidien',
             style: GoogleFonts.philosopher(
               fontSize: 22,
               fontWeight: FontWeight.bold,
@@ -227,8 +197,7 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Découvrez vos 7 périodes de bien-être personnalisées basées sur les cycles ancestraux. '
-            'Optimisez votre alimentation, vos activités et votre repos selon les rythmes naturels de votre corps.',
+            'Optimisez chaque moment de votre journée avec les 7 créneaux énergétiques personnalisés.',
             style: TextStyle(
               color: AppColors.textMuted,
               fontSize: 15,
@@ -256,7 +225,7 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
               Icon(Icons.star, color: AppColors.primary, size: 22),
               const SizedBox(width: 10),
               Text(
-                'Ce que vous obtenez',
+                'Les 7 créneaux de votre journée',
                 style: GoogleFonts.philosopher(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -266,18 +235,19 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          _buildFeatureRow(Icons.calendar_month, '7 périodes de bien-être personnalisées'),
-          _buildFeatureRow(Icons.restaurant, 'Conseils alimentation par période'),
-          _buildFeatureRow(Icons.fitness_center, 'Activités physiques recommandées'),
-          _buildFeatureRow(Icons.bed, 'Optimisation du repos et sommeil'),
-          _buildFeatureRow(Icons.lightbulb, 'Conseils pratiques quotidiens'),
-          _buildFeatureRow(Icons.self_improvement, 'Affirmations de bien-être'),
+          _buildFeatureItem(Icons.wb_twilight, 'Aube (5h-8h) — Initiation'),
+          _buildFeatureItem(Icons.wb_sunny, 'Matin (8h-11h) — Concentration'),
+          _buildFeatureItem(Icons.restaurant, 'Midi (11h-14h) — Transition'),
+          _buildFeatureItem(Icons.groups, 'Après-midi 1 (14h-16h) — Collaboration'),
+          _buildFeatureItem(Icons.edit_note, 'Après-midi 2 (16h-18h) — Exécution'),
+          _buildFeatureItem(Icons.nightlight, 'Soir (18h-21h) — Personnel'),
+          _buildFeatureItem(Icons.bedtime, 'Nuit (21h-23h) — Clôture'),
         ],
       ),
     );
   }
 
-  Widget _buildFeatureRow(IconData icon, String text) {
+  Widget _buildFeatureItem(IconData icon, String text) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -299,8 +269,6 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
   }
 
   Widget _buildPlanSummary() {
-    final price = CurrencyService.instance.formatAmount(widget.plan.priceFcfa);
-    
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -341,30 +309,54 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
               Expanded(
                 child: Text(
                   widget.plan.name,
-                  style: TextStyle(color: AppColors.textLight, fontSize: 15),
+                  style: const TextStyle(
+                    color: AppColors.textLight,
+                    fontSize: 16,
+                  ),
                 ),
               ),
               Text(
-                price,
+                CurrencyService.instance.formatAmount(widget.plan.priceFcfa),
                 style: GoogleFonts.philosopher(
-                  fontSize: 20,
                   fontWeight: FontWeight.bold,
+                  fontSize: 20,
                   color: AppColors.primary,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Accès pendant 365 jours',
-            style: TextStyle(
-              color: AppColors.textMuted,
-              fontSize: 12,
+          if (_targetDate != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(Icons.event_available, color: AppColors.textMuted, size: 16),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Guide pour : ${_formatDate(_targetDate!)}',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
+          ],
         ],
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    final jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+    final mois = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 
+                  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+    
+    final jour = jours[date.weekday - 1];
+    final moisNom = mois[date.month - 1];
+    
+    return '$jour ${date.day} $moisNom ${date.year}';
   }
 
   Widget _buildFormSection() {
@@ -372,60 +364,22 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '📝 Vos informations',
+          '📅 Date du guide',
           style: GoogleFonts.philosopher(
             fontSize: 20,
             fontWeight: FontWeight.bold,
             color: AppColors.textLight,
           ),
         ),
-        const SizedBox(height: 16),
-        
-        // Prénom
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.block,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
-          ),
-          child: TextFormField(
-            controller: _firstNameController,
-            style: TextStyle(color: AppColors.textLight),
-            decoration: InputDecoration(
-              labelText: 'Votre prénom',
-              labelStyle: TextStyle(color: AppColors.textMuted),
-              prefixIcon: const Icon(Icons.person, color: AppColors.primary),
-              border: InputBorder.none,
-            ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Veuillez entrer votre prénom';
-              }
-              return null;
-            },
-          ),
-        ),
-        const SizedBox(height: 20),
-        
-        // Date de naissance
-        Text(
-          '🎂 Date de naissance',
-          style: GoogleFonts.philosopher(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textLight,
-          ),
-        ),
         const SizedBox(height: 8),
         Text(
-          'Important pour calculer vos périodes de santé personnalisées',
+          'Sélectionnez la date pour laquelle vous souhaitez consulter votre guide horaire.',
           style: TextStyle(
             color: AppColors.textMuted,
-            fontSize: 13,
+            fontSize: 14,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         _buildDateDropdowns(),
       ],
     );
@@ -434,12 +388,12 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
   /// Dropdowns de date style Compatibilité
   Widget _buildDateDropdowns() {
     final now = DateTime.now();
-    final years = List<int>.generate(now.year - 1919, (i) => 1920 + i).reversed.toList();
-    const months = [
+    final years = [now.year, now.year + 1]; // Année courante et suivante
+    final months = const [
       'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
       'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
     ];
-    final maxDay = _daysInMonth(_birthYear, _birthMonth);
+    final maxDay = _daysInMonth(_targetYear, _targetMonth);
     final days = List<int>.generate(maxDay, (i) => i + 1);
 
     return Container(
@@ -457,7 +411,7 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
               Expanded(
                 child: DropdownButtonFormField<int>(
                   decoration: const InputDecoration(labelText: 'Année'),
-                  value: _birthYear,
+                  value: _targetYear,
                   items: years
                       .map((y) => DropdownMenuItem<int>(
                             value: y,
@@ -466,8 +420,8 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
                       .toList(),
                   onChanged: (val) {
                     setState(() {
-                      _birthYear = val;
-                      _updateBirthdate();
+                      _targetYear = val;
+                      _updateTargetDate();
                     });
                   },
                 ),
@@ -480,7 +434,7 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
               Expanded(
                 child: DropdownButtonFormField<int>(
                   decoration: const InputDecoration(labelText: 'Mois'),
-                  value: _birthMonth,
+                  value: _targetMonth,
                   items: List.generate(
                     months.length,
                     (index) => DropdownMenuItem<int>(
@@ -490,8 +444,8 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
                   ),
                   onChanged: (val) {
                     setState(() {
-                      _birthMonth = val;
-                      _updateBirthdate();
+                      _targetMonth = val;
+                      _updateTargetDate();
                     });
                   },
                 ),
@@ -504,7 +458,7 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
               Expanded(
                 child: DropdownButtonFormField<int>(
                   decoration: const InputDecoration(labelText: 'Jour'),
-                  value: _birthDay != null && _birthDay! <= maxDay ? _birthDay : null,
+                  value: _targetDay != null && _targetDay! <= maxDay ? _targetDay : null,
                   items: days
                       .map((d) => DropdownMenuItem<int>(
                             value: d,
@@ -513,8 +467,8 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
                       .toList(),
                   onChanged: (val) {
                     setState(() {
-                      _birthDay = val;
-                      _updateBirthdate();
+                      _targetDay = val;
+                      _updateTargetDate();
                     });
                   },
                 ),
@@ -526,47 +480,25 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
     );
   }
 
-  Widget _buildMedicalDisclaimer() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.error.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.info_outline, color: AppColors.error, size: 22),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Avertissement',
-                  style: TextStyle(
-                    color: AppColors.error,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Ces conseils sont basés sur des cycles ancestraux et ne remplacent pas un avis médical. '
-                  'Consultez un professionnel de santé pour toute préoccupation médicale.',
-                  style: TextStyle(
-                    color: AppColors.textLight.withValues(alpha: 0.85),
-                    fontSize: 12,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+  int _daysInMonth(int? year, int? month) {
+    if (year == null || month == null) return 31;
+    final beginningNextMonth = (month < 12) ? DateTime(year, month + 1, 1) : DateTime(year + 1, 1, 1);
+    final lastDayCurrentMonth = beginningNextMonth.subtract(const Duration(days: 1)).day;
+    return lastDayCurrentMonth;
+  }
+
+  void _updateTargetDate() {
+    if (_targetYear != null && _targetMonth != null && _targetDay != null) {
+      final maxDay = _daysInMonth(_targetYear, _targetMonth);
+      if (_targetDay! > maxDay) {
+        _targetDay = null;
+        _targetDate = null;
+        return;
+      }
+      _targetDate = DateTime(_targetYear!, _targetMonth!, _targetDay!);
+    } else {
+      _targetDate = null;
+    }
   }
 
   Widget _buildPaymentMethodSection() {
@@ -661,8 +593,8 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
     );
   }
 
-  Widget _buildPayButton() {
-    final canPay = _birthdate != null && _firstNameController.text.isNotEmpty;
+  Widget _buildPaymentButton() {
+    final canPay = _targetDate != null;
     
     return SizedBox(
       width: double.infinity,
@@ -694,7 +626,7 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
                   Text(
                     canPay 
                       ? 'Payer ${CurrencyService.instance.formatAmount(widget.plan.priceFcfa)}'
-                      : 'Remplissez le formulaire',
+                      : 'Sélectionnez une date',
                     style: GoogleFonts.poppins(
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
@@ -707,10 +639,8 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
   }
 
   Future<void> _processPayment() async {
-    if (!_formKey.currentState!.validate()) return;
-    
-    if (_birthdate == null) {
-      setState(() => _error = 'Veuillez sélectionner votre date de naissance.');
+    if (_targetDate == null) {
+      setState(() => _error = 'Veuillez sélectionner une date.');
       return;
     }
 
@@ -731,7 +661,7 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
         id: widget.plan.id,
         type: ProductType.cyclesVie,
         name: widget.plan.name,
-        description: widget.plan.description ?? 'Cycle Santé Annuel',
+        description: widget.plan.description ?? 'Guide Horaire Quotidien',
         priceFcfa: widget.plan.priceFcfa,
       );
 
@@ -743,20 +673,18 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
         provider: _selectedProvider,
         customerEmail: user.email,
         callback: (success, purchase, error) async {
-          debugPrint('>>> Health Cycle payment callback: success=$success, error=$error');
+          debugPrint('>>> Daily Guide payment callback: success=$success, error=$error');
           
           if (!mounted) return;
           
           if (success && purchase != null) {
-            debugPrint('>>> Payment success, creating health cycle subscription...');
+            debugPrint('>>> Payment success, creating daily guide purchase...');
             
             try {
-              // Créer l'abonnement
-              await HealthCycleService.instance.createSubscription(
-                userId: user.id,
-                userName: _firstNameController.text.trim(),
-                birthDate: _birthdate!,
+              // Créer l'achat du guide
+              await DailyGuideService.instance.createPurchase(
                 paymentId: purchase.id,
+                targetDate: _targetDate!,
               );
               
               if (!mounted) return;
@@ -764,21 +692,19 @@ class _HealthCyclePurchaseScreenState extends State<HealthCyclePurchaseScreen> {
               // Naviguer vers l'écran de rapport
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(
-                  builder: (_) => HealthCycleReportScreen(
-                    userName: _firstNameController.text.trim(),
-                    birthDate: _birthdate!,
+                  builder: (_) => DailyGuideReportScreen(
+                    targetDate: _targetDate!,
                   ),
                 ),
               );
             } catch (e) {
-              debugPrint('>>> Error creating subscription: $e');
+              debugPrint('>>> Error creating purchase record: $e');
               if (mounted) {
-                // Même en cas d'erreur, naviguer vers le rapport
+                // Même en cas d'erreur d'enregistrement, naviguer vers le rapport
                 Navigator.of(context).pushReplacement(
                   MaterialPageRoute(
-                    builder: (_) => HealthCycleReportScreen(
-                      userName: _firstNameController.text.trim(),
-                      birthDate: _birthdate!,
+                    builder: (_) => DailyGuideReportScreen(
+                      targetDate: _targetDate!,
                     ),
                   ),
                 );

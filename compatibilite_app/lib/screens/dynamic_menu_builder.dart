@@ -13,6 +13,7 @@ import 'portrait_ame_purchase_screen.dart';
 import 'personal_cycle_purchase_screen.dart';
 import 'business_cycle_purchase_screen.dart';
 import 'health_cycle_purchase_screen.dart';
+import 'daily_guide_purchase_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Helper class to build dynamic menu entries based on admin configuration
@@ -207,6 +208,23 @@ class DynamicMenuBuilder {
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => HealthCyclePurchaseScreen(plan: healthPlan),
+              ),
+            );
+          },
+        ));
+      }
+    }
+    
+    // Guide Horaire (Service 05)
+    if (isEnabled('guide_horaire')) {
+      final dailyPlan = PricingService.instance.getPlanByType('daily_guide_day');
+      if (dailyPlan != null) {
+        entries.add(MenuEntry(
+          label: '⏰ Guide Horaire',
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => DailyGuidePurchaseScreen(plan: dailyPlan),
               ),
             );
           },
