@@ -14,6 +14,7 @@ import 'personal_cycle_purchase_screen.dart';
 import 'business_cycle_purchase_screen.dart';
 import 'health_cycle_purchase_screen.dart';
 import 'daily_guide_purchase_screen.dart';
+import 'life_phase_purchase_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Helper class to build dynamic menu entries based on admin configuration
@@ -225,6 +226,23 @@ class DynamicMenuBuilder {
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => DailyGuidePurchaseScreen(plan: dailyPlan),
+              ),
+            );
+          },
+        ));
+      }
+    }
+    
+    // Phases de Vie (Service 07)
+    if (isEnabled('phases_vie')) {
+      final phasePlan = PricingService.instance.getPlanByType('life_phase_report');
+      if (phasePlan != null) {
+        entries.add(MenuEntry(
+          label: '🔄 Phases de Vie',
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => LifePhasePurchaseScreen(plan: phasePlan),
               ),
             );
           },
