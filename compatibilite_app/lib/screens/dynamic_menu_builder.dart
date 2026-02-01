@@ -11,6 +11,7 @@ import 'temporal_purchase_screen.dart';
 import 'cycles_vie_home_screen.dart';
 import 'portrait_ame_purchase_screen.dart';
 import 'personal_cycle_purchase_screen.dart';
+import 'business_cycle_purchase_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Helper class to build dynamic menu entries based on admin configuration
@@ -171,6 +172,23 @@ class DynamicMenuBuilder {
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => PersonalCyclePurchaseScreen(plan: cyclePlan),
+              ),
+            );
+          },
+        ));
+      }
+    }
+    
+    // Cycle Business (Service 03)
+    if (isEnabled('cycle_business')) {
+      final businessPlan = PricingService.instance.getPlanByType('business_cycle_annual');
+      if (businessPlan != null) {
+        entries.add(MenuEntry(
+          label: '💼 Cycle Business',
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => BusinessCyclePurchaseScreen(plan: businessPlan),
               ),
             );
           },

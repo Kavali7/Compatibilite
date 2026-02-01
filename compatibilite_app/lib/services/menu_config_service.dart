@@ -47,6 +47,7 @@ class MenuConfigService {
     'cycles_vie': {'label': 'Cycles de Vie', 'enabled': true, 'order': 10},
     'portrait_ame': {'label': 'Portrait de l\'Âme', 'enabled': true, 'order': 11},
     'cycle_personnel': {'label': 'Cycle Personnel', 'enabled': true, 'order': 12},
+    'cycle_business': {'label': 'Cycle Business', 'enabled': true, 'order': 13},
   };
 
   /// Load menu configuration from app_settings
