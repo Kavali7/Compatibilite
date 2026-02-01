@@ -44,6 +44,8 @@ class MenuConfigService {
     'appeler': {'label': 'Appeler Growpeak Agence', 'enabled': true, 'order': 7},
     'previsions_temporelles': {'label': 'Prévisions Temporelles', 'enabled': true, 'order': 8},
     'compatibilite': {'label': 'Test de Compatibilité', 'enabled': true, 'order': 9},
+    'cycles_vie': {'label': 'Cycles de Vie', 'enabled': true, 'order': 10},
+    'portrait_ame': {'label': 'Portrait de l\'Âme', 'enabled': true, 'order': 11},
   };
 
   /// Load menu configuration from app_settings

@@ -363,6 +363,8 @@ class SoulPeriod {
   final String? professionsFavorables;
   final String? santeVigilance;
   final String? paysAffinites;
+  final String? conseils;           // ✨ NOUVEAU
+  final String? messageCosmique;    // ✨ NOUVEAU
 
   SoulPeriod({
     required this.id,
@@ -378,6 +380,8 @@ class SoulPeriod {
     this.professionsFavorables,
     this.santeVigilance,
     this.paysAffinites,
+    this.conseils,
+    this.messageCosmique,
   });
 
   factory SoulPeriod.fromJson(Map<String, dynamic> json) {
@@ -395,6 +399,8 @@ class SoulPeriod {
       professionsFavorables: json['professions_favorables'],
       santeVigilance: json['sante_vigilance'],
       paysAffinites: json['pays_affinites'],
+      conseils: json['conseils'],
+      messageCosmique: json['message_cosmique'],
     );
   }
 }

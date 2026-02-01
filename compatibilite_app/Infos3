@@ -1,0 +1,113 @@
+"| table_name                | column_count | category                     |
+| ------------------------- | ------------ | ---------------------------- |
+| app_settings              | 4            | ⚙️ INFRASTRUCTURE            |
+| payments                  | 9            | ⚙️ INFRASTRUCTURE            |
+| pricing_plans             | 14           | ⚙️ INFRASTRUCTURE            |
+| purchases                 | 11           | ⚙️ INFRASTRUCTURE            |
+| decision_credit_packs     | 10           | 🎯 DÉCISION (à reconstruire) |
+| user_decision_credits     | 12           | 👤 UTILISATEUR               |
+| user_decision_usage       | 9            | 👤 UTILISATEUR               |
+| user_reports              | 4            | 👤 UTILISATEUR               |
+| users                     | 6            | 👤 UTILISATEUR               |
+| couple_profiles           | 12           | 💕 COMPATIBILITÉ             |
+| report_sections           | 6            | 💕 COMPATIBILITÉ             |
+| admins                    | 4            | 📦 AUTRE                     |
+| analytics_events          | 6            | 📦 AUTRE                     |
+| app_config                | 4            | 📦 AUTRE                     |
+| brick_usage               | 5            | 📦 AUTRE                     |
+| canonical_predictions     | 12           | 📦 AUTRE                     |
+| content_bricks            | 20           | 📦 AUTRE                     |
+| generated_reports         | 20           | 📦 AUTRE                     |
+| marketing_prospects       | 8            | 📦 AUTRE                     |
+| numerology_texts          | 8            | 📦 AUTRE                     |
+| profils                   | 5            | 📦 AUTRE                     |
+| rapports_partenaires      | 13           | 📦 AUTRE                     |
+| security_rate_limits      | 4            | 📦 AUTRE                     |
+| sessions_compatibilite    | 25           | 📦 AUTRE                     |
+| subscriptions             | 7            | 📦 AUTRE                     |
+| temporal_purchases        | 12           | 📦 AUTRE                     |
+| text_type_settings        | 7            | 📦 AUTRE                     |
+| webhook_logs              | 6            | 📦 AUTRE                     |
+| cycle_vie_daily_periods   | 14           | 🔄 CYCLES DE VIE             |
+| cycle_vie_decision_advice | 11           | 🔄 CYCLES DE VIE             |
+| cycle_vie_decision_types  | 10           | 🔄 CYCLES DE VIE             |
+| cycle_vie_purchases       | 13           | 🔄 CYCLES DE VIE             |
+| cycle_vie_soul_periods    | 16           | 🔄 CYCLES DE VIE             |";"| column_name            | data_type                | is_nullable | column_default    |
+| ---------------------- | ------------------------ | ----------- | ----------------- |
+| id                     | uuid                     | NO          | gen_random_uuid() |
+| period_number          | integer                  | NO          | null              |
+| polarity               | character                | NO          | null              |
+| date_start             | character varying        | NO          | null              |
+| date_end               | character varying        | NO          | null              |
+| period_name            | text                     | NO          | null              |
+| period_title           | text                     | NO          | null              |
+| description_general    | text                     | NO          | null              |
+| traits_positifs        | text                     | YES         | null              |
+| traits_vigilance       | text                     | YES         | null              |
+| professions_favorables | text                     | YES         | null              |
+| sante_vigilance        | text                     | YES         | null              |
+| pays_affinites         | text                     | YES         | null              |
+| is_active              | boolean                  | YES         | true              |
+| created_at             | timestamp with time zone | YES         | now()             |
+| updated_at             | timestamp with time zone | YES         | now()             |";"| column_name           | data_type                | is_nullable | column_default    |
+| --------------------- | ------------------------ | ----------- | ----------------- |
+| id                    | uuid                     | NO          | gen_random_uuid() |
+| period_letter         | character                | NO          | null              |
+| weekday_number        | integer                  | YES         | null              |
+| period_name           | text                     | NO          | null              |
+| keyword               | text                     | NO          | null              |
+| description           | text                     | NO          | null              |
+| activities_favorables | text                     | YES         | null              |
+| activities_eviter     | text                     | YES         | null              |
+| color_code            | character varying        | YES         | null              |
+| icon_name             | character varying        | YES         | null              |
+| energy_level          | character varying        | YES         | null              |
+| is_active             | boolean                  | YES         | true              |
+| created_at            | timestamp with time zone | YES         | now()             |
+| updated_at            | timestamp with time zone | YES         | now()             |";"| column_name   | data_type                | is_nullable | column_default    |
+| ------------- | ------------------------ | ----------- | ----------------- |
+| id            | uuid                     | NO          | gen_random_uuid() |
+| code          | character varying        | NO          | null              |
+| label         | text                     | NO          | null              |
+| icon_name     | character varying        | YES         | null              |
+| description   | text                     | YES         | null              |
+| category      | character varying        | YES         | null              |
+| display_order | integer                  | YES         | 0                 |
+| is_active     | boolean                  | YES         | true              |
+| created_at    | timestamp with time zone | YES         | now()             |
+| updated_at    | timestamp with time zone | YES         | now()             |";"| column_name             | data_type                | is_nullable | column_default    |
+| ----------------------- | ------------------------ | ----------- | ----------------- |
+| id                      | uuid                     | NO          | gen_random_uuid() |
+| decision_type_id        | uuid                     | NO          | null              |
+| cycle_type              | character varying        | NO          | null              |
+| period_number           | integer                  | NO          | null              |
+| favorability_score      | integer                  | YES         | null              |
+| advice_text             | text                     | NO          | null              |
+| warnings                | text                     | YES         | null              |
+| alternatives_suggestion | text                     | YES         | null              |
+| is_active               | boolean                  | YES         | true              |
+| created_at              | timestamp with time zone | YES         | now()             |
+| updated_at              | timestamp with time zone | YES         | now()             |";"| table_name                | row_count |
+| ------------------------- | --------- |
+| cycle_vie_soul_periods    | 14        |
+| cycle_vie_daily_periods   | 7         |
+| cycle_vie_decision_types  | 20        |
+| cycle_vie_decision_advice | 560       |";"| id                                   | plan_type              | name                          | price_fcfa | is_active |
+| ------------------------------------ | ---------------------- | ----------------------------- | ---------- | --------- |
+| 2d0f22e9-fa53-4333-9e23-7944054fb59d | consultation           | Rapport de base compatibilité | 755        | true      |
+| 42e466a1-1397-4b12-af93-e35cdeffedf2 | cycle_vie_abonnement   | Abonnement Cycles Premium     | 5          | true      |
+| ddc5edb3-f56b-4c48-b998-d3befef20d43 | cycle_vie_consultation | Consultation Date             | 5          | true      |
+| 1b274c4d-13ce-4115-9cfc-6d4664611493 | cycle_vie_express      | Lecture Express Cycles        | 1          | true      |
+| 61a11123-1a52-49ec-810c-80c515e22d51 | cycle_vie_strategique  | Lecture Stratégique Cycles    | 5          | true      |
+| da4dc9de-2185-480f-b8ba-3e9aaf3731f4 | subscription           | Abonnement mensuel            | 15200      | true      |
+| d1373032-520b-4a53-aa88-37ebf12155a3 | temporal_year          | Prévision Année               | 1556       | true      |
+| b6ade8ff-d5e0-435d-9ae1-aa72d0ec6f0b | temporel_jour          | Prévision Jour                | 755        | true      |
+| 9eaea945-9e85-465c-8c2e-7f7d00f9ab16 | temporel_mois          | Prévision Mois                | 1250       | true      |";"| schemaname | tablename                 | policyname                  | permissive | roles                | cmd    |
+| ---------- | ------------------------- | --------------------------- | ---------- | -------------------- | ------ |
+| public     | cycle_vie_daily_periods   | daily_periods_public_read   | PERMISSIVE | {anon,authenticated} | SELECT |
+| public     | cycle_vie_decision_advice | decision_advice_public_read | PERMISSIVE | {anon,authenticated} | SELECT |
+| public     | cycle_vie_decision_types  | decision_types_public_read  | PERMISSIVE | {anon,authenticated} | SELECT |
+| public     | cycle_vie_purchases       | purchases_user_insert       | PERMISSIVE | {authenticated}      | INSERT |
+| public     | cycle_vie_purchases       | purchases_user_read         | PERMISSIVE | {authenticated}      | SELECT |
+| public     | cycle_vie_soul_periods    | soul_periods_public_read    | PERMISSIVE | {anon,authenticated} | SELECT |
+| public     | decision_credit_packs     | decision_credit_packs_read  | PERMISSIVE | {public}             | SELECT |" 

@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import '../services/menu_config_service.dart';
 import '../services/auth_service.dart';
 import '../services/app_settings_service.dart';
+import '../services/pricing_service.dart';
 import '../widgets/hamburger_menu_overlay.dart';
 import 'auth/login_page.dart';
 import 'auth/simple_signup_screen.dart';
 import 'purchase_history_screen.dart';
 import 'temporal_purchase_screen.dart';
 import 'cycles_vie_home_screen.dart';
+import 'portrait_ame_purchase_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Helper class to build dynamic menu entries based on admin configuration
@@ -139,6 +141,23 @@ class DynamicMenuBuilder {
           );
         },
       ));
+    }
+    
+    // Portrait de l'Âme (Service 01)
+    if (isEnabled('portrait_ame')) {
+      final portraitPlan = PricingService.instance.portraitAmePlan;
+      if (portraitPlan != null) {
+        entries.add(MenuEntry(
+          label: '✨ Portrait de l\'Âme',
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => PortraitAmePurchaseScreen(plan: portraitPlan),
+              ),
+            );
+          },
+        ));
+      }
     }
     
     // Contact options

@@ -106,6 +106,22 @@ class PricingService {
   /// Check if plans are loaded
   bool get hasPlans => _cachedPlans.isNotEmpty;
   
+  /// Get plan by type (generic accessor for new services)
+  PricingPlan? getPlanByType(String planType) {
+    if (_cachedPlans.isEmpty) return null;
+    try {
+      return _cachedPlans.firstWhere(
+        (p) => p.planType == planType && p.isActive,
+      );
+    } catch (e) {
+      debugPrint('PricingService: Plan $planType not found');
+      return null;
+    }
+  }
+  
+  /// Get Portrait de l'Âme plan
+  PricingPlan? get portraitAmePlan => getPlanByType('portrait_ame');
+  
   /// Last error message (if any)
   String? _lastError;
   String? get lastError => _lastError;
