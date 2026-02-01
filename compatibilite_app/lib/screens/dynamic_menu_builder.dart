@@ -12,6 +12,7 @@ import 'cycles_vie_home_screen.dart';
 import 'portrait_ame_purchase_screen.dart';
 import 'personal_cycle_purchase_screen.dart';
 import 'business_cycle_purchase_screen.dart';
+import 'health_cycle_purchase_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Helper class to build dynamic menu entries based on admin configuration
@@ -189,6 +190,23 @@ class DynamicMenuBuilder {
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => BusinessCyclePurchaseScreen(plan: businessPlan),
+              ),
+            );
+          },
+        ));
+      }
+    }
+    
+    // Cycle Santé (Service 04)
+    if (isEnabled('cycle_sante')) {
+      final healthPlan = PricingService.instance.getPlanByType('health_cycle_annual');
+      if (healthPlan != null) {
+        entries.add(MenuEntry(
+          label: '🏥 Cycle Santé',
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => HealthCyclePurchaseScreen(plan: healthPlan),
               ),
             );
           },
