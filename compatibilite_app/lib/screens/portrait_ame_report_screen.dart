@@ -160,7 +160,6 @@ class _PortraitAmeReportScreenState extends State<PortraitAmeReportScreen> {
 
   Widget _buildReport() {
     final sp = _soulPeriod!;
-    final dateFormat = DateFormat('dd MMMM yyyy', 'fr_FR');
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -171,108 +170,133 @@ class _PortraitAmeReportScreenState extends State<PortraitAmeReportScreen> {
           _buildUserHeader(),
           const SizedBox(height: 24),
 
-          // Carte principale du portrait
+          // Carte principale du portrait - Identité Cosmique
           _buildMainPortraitCard(sp),
           const SizedBox(height: 20),
 
-          // Description générale - AFFICHAGE INTÉGRAL
-          _buildReportCard(
-            icon: Icons.auto_awesome,
-            iconColor: Colors.purple,
-            title: 'Votre Essence Profonde',
-            children: [
-              Text(
-                sp.descriptionGeneral,
-                style: const TextStyle(
-                  color: AppColors.textLight,
-                  fontSize: 15,
-                  height: 1.7,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
+          // ═══════════════════════════════════════════════════════════
+          // 11 SECTIONS DE CONTENU INTÉGRAL
+          // ═══════════════════════════════════════════════════════════
 
-          // Traits positifs - AFFICHAGE INTÉGRAL
-          if (sp.traitsPositifs != null && sp.traitsPositifs!.isNotEmpty)
+          // 1. Introduction personnalisée
+          if (sp.introduction.isNotEmpty)
+            _buildReportCard(
+              icon: Icons.auto_awesome,
+              iconColor: Colors.purple,
+              title: 'Votre Portrait',
+              children: [
+                _buildFormattedContent(sp.introduction, Colors.purple),
+              ],
+            ),
+          if (sp.introduction.isNotEmpty)
+            const SizedBox(height: 20),
+
+          // 2. Héritage Cosmique
+          if (sp.heritageCosmique.isNotEmpty)
+            _buildReportCard(
+              icon: Icons.history_edu,
+              iconColor: Colors.indigo,
+              title: 'Votre Héritage Cosmique',
+              children: [
+                _buildFormattedContent(sp.heritageCosmique, Colors.indigo),
+              ],
+            ),
+          if (sp.heritageCosmique.isNotEmpty)
+            const SizedBox(height: 20),
+
+          // 3. Cœur de l'Être
+          if (sp.coeurEtre.isNotEmpty)
+            _buildReportCard(
+              icon: Icons.favorite,
+              iconColor: Colors.pink,
+              title: 'Le Cœur de Votre Être',
+              children: [
+                _buildFormattedContent(sp.coeurEtre, Colors.pink),
+              ],
+            ),
+          if (sp.coeurEtre.isNotEmpty)
+            const SizedBox(height: 20),
+
+          // 4. Forces Naturelles
+          if (sp.forcesNaturelles.isNotEmpty)
             _buildReportCard(
               icon: Icons.star,
               iconColor: Colors.amber,
-              title: 'Vos Dons Naturels',
+              title: 'Vos Forces Naturelles',
               children: [
-                _buildFormattedContent(sp.traitsPositifs!, Colors.amber),
+                _buildFormattedContent(sp.forcesNaturelles, Colors.amber),
               ],
             ),
-          if (sp.traitsPositifs != null && sp.traitsPositifs!.isNotEmpty)
+          if (sp.forcesNaturelles.isNotEmpty)
             const SizedBox(height: 20),
 
-          // Traits de vigilance - AFFICHAGE INTÉGRAL
-          if (sp.traitsVigilance != null && sp.traitsVigilance!.isNotEmpty)
+          // 5. Défis à Transcender
+          if (sp.defisTranscender.isNotEmpty)
             _buildReportCard(
               icon: Icons.psychology,
               iconColor: Colors.orange,
-              title: 'Défis Karmiques',
+              title: 'Vos Défis à Transcender',
               children: [
-                _buildFormattedContent(sp.traitsVigilance!, Colors.orange),
+                _buildFormattedContent(sp.defisTranscender, Colors.orange),
               ],
             ),
-          if (sp.traitsVigilance != null && sp.traitsVigilance!.isNotEmpty)
+          if (sp.defisTranscender.isNotEmpty)
             const SizedBox(height: 20),
 
-          // Professions favorables - AFFICHAGE INTÉGRAL
-          if (sp.professionsFavorables != null && sp.professionsFavorables!.isNotEmpty)
+          // 6. Vocations Idéales
+          if (sp.vocationsIdeales.isNotEmpty)
             _buildReportCard(
               icon: Icons.work,
               iconColor: Colors.teal,
-              title: 'Vocations & Carrière',
+              title: 'Vos Vocations Idéales',
               children: [
-                _buildFormattedContent(sp.professionsFavorables!, Colors.teal),
+                _buildFormattedContent(sp.vocationsIdeales, Colors.teal),
               ],
             ),
-          if (sp.professionsFavorables != null && sp.professionsFavorables!.isNotEmpty)
+          if (sp.vocationsIdeales.isNotEmpty)
             const SizedBox(height: 20),
 
-          // Santé vigilance - AFFICHAGE INTÉGRAL
-          if (sp.santeVigilance != null && sp.santeVigilance!.isNotEmpty)
-            _buildReportCard(
-              icon: Icons.favorite,
-              iconColor: Colors.red,
-              title: 'Santé & Bien-être',
-              children: [
-                _buildFormattedContent(sp.santeVigilance!, Colors.red),
-              ],
-            ),
-          if (sp.santeVigilance != null && sp.santeVigilance!.isNotEmpty)
-            const SizedBox(height: 20),
-
-          // Pays affinités - AFFICHAGE INTÉGRAL
-          if (sp.paysAffinites != null && sp.paysAffinites!.isNotEmpty)
+          // 7. Affinités Géographiques
+          if (sp.affinitesGeographiques.isNotEmpty)
             _buildReportCard(
               icon: Icons.public,
               iconColor: Colors.blue,
-              title: 'Affinités Géographiques',
+              title: 'Vos Affinités Géographiques',
               children: [
-                _buildFormattedContent(sp.paysAffinites!, Colors.blue),
+                _buildFormattedContent(sp.affinitesGeographiques, Colors.blue),
               ],
             ),
-          if (sp.paysAffinites != null && sp.paysAffinites!.isNotEmpty)
+          if (sp.affinitesGeographiques.isNotEmpty)
             const SizedBox(height: 20),
 
-          // ✨ NOUVEAU: Conseils pour l'Épanouissement
-          if (sp.conseils != null && sp.conseils!.isNotEmpty)
+          // 8. Points de Vigilance Santé
+          if (sp.vigilanceSante.isNotEmpty)
+            _buildReportCard(
+              icon: Icons.health_and_safety,
+              iconColor: Colors.red,
+              title: 'Points de Vigilance Santé',
+              children: [
+                _buildFormattedContent(sp.vigilanceSante, Colors.red),
+              ],
+            ),
+          if (sp.vigilanceSante.isNotEmpty)
+            const SizedBox(height: 20),
+
+          // 9. Conseils pour l'Épanouissement
+          if (sp.conseilsEpanouissement.isNotEmpty)
             _buildReportCard(
               icon: Icons.lightbulb,
               iconColor: Colors.green,
               title: 'Conseils pour Votre Épanouissement',
               children: [
-                _buildFormattedContent(sp.conseils!, Colors.green),
+                _buildFormattedContent(sp.conseilsEpanouissement, Colors.green),
               ],
             ),
-          if (sp.conseils != null && sp.conseils!.isNotEmpty)
+          if (sp.conseilsEpanouissement.isNotEmpty)
             const SizedBox(height: 20),
 
-          // ✨ NOUVEAU: Message Cosmique
-          if (sp.messageCosmique != null && sp.messageCosmique!.isNotEmpty)
+          // 10. Message Cosmique - Style spécial
+          if (sp.messageCosmique.isNotEmpty)
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
@@ -303,7 +327,7 @@ class _PortraitAmeReportScreenState extends State<PortraitAmeReportScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    sp.messageCosmique!,
+                    sp.messageCosmique,
                     style: GoogleFonts.philosopher(
                       fontSize: 16,
                       fontStyle: FontStyle.italic,
@@ -315,7 +339,7 @@ class _PortraitAmeReportScreenState extends State<PortraitAmeReportScreen> {
                 ],
               ),
             ),
-          if (sp.messageCosmique != null && sp.messageCosmique!.isNotEmpty)
+          if (sp.messageCosmique.isNotEmpty)
             const SizedBox(height: 20),
 
           // Carte de cross-promotion
@@ -425,9 +449,9 @@ class _PortraitAmeReportScreenState extends State<PortraitAmeReportScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Titre de la période
+          // Identité Cosmique - Titre principal
           Text(
-            sp.periodTitle,
+            sp.identiteCosmique,
             style: GoogleFonts.philosopher(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -436,14 +460,25 @@ class _PortraitAmeReportScreenState extends State<PortraitAmeReportScreen> {
           ),
           const SizedBox(height: 8),
           
-          // Nom de la période
-          Text(
-            sp.periodName,
-            style: GoogleFonts.philosopher(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textLight,
-            ),
+          // Période et Polarité
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'Période ${sp.periodNumber}${sp.polarity}',
+                  style: GoogleFonts.philosopher(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           
@@ -458,11 +493,13 @@ class _PortraitAmeReportScreenState extends State<PortraitAmeReportScreen> {
               children: [
                 const Icon(Icons.calendar_today, color: AppColors.textMuted, size: 16),
                 const SizedBox(width: 10),
-                Text(
-                  'Personnes nées du ${sp.dateStart} au ${sp.dateEnd}',
-                  style: const TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 13,
+                Expanded(
+                  child: Text(
+                    'Personnes nées du ${sp.dateStart} au ${sp.dateEnd}',
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               ],

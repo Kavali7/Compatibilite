@@ -10,6 +10,7 @@ import '../services/cycles_vie_service.dart';
 import '../services/pricing_service.dart';
 import '../services/payment/payment_manager.dart';
 import '../models/product_model.dart';
+import '../models/purchase_model.dart';  // Pour PaymentProvider
 import '../services/auth_service.dart';
 import '../services/currency_service.dart';
 import '../widgets/animated_background.dart';

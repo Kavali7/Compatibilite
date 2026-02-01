@@ -355,16 +355,21 @@ class SoulPeriod {
   final String polarity;
   final String dateStart;
   final String dateEnd;
-  final String periodName;
-  final String periodTitle;
-  final String descriptionGeneral;
-  final String? traitsPositifs;
-  final String? traitsVigilance;
-  final String? professionsFavorables;
-  final String? santeVigilance;
-  final String? paysAffinites;
-  final String? conseils;           // ✨ NOUVEAU
-  final String? messageCosmique;    // ✨ NOUVEAU
+  
+  // ═══════════════════════════════════════════════════════════
+  // NOUVELLE STRUCTURE - 11 sections de contenu intégral
+  // ═══════════════════════════════════════════════════════════
+  final String identiteCosmique;         // Titre de l'identité (ex: "L'Âme Souveraine")
+  final String introduction;              // Texte d'introduction personnalisé
+  final String heritageCosmique;          // Section "Votre Héritage Cosmique"
+  final String coeurEtre;                 // Section "Le Cœur de Votre Être"
+  final String forcesNaturelles;          // Section "Vos Forces Naturelles"
+  final String defisTranscender;          // Section "Vos Défis à Transcender"
+  final String vocationsIdeales;          // Section "Vos Vocations Idéales"
+  final String affinitesGeographiques;    // Section "Vos Affinités Géographiques"
+  final String vigilanceSante;            // Section "Points de Vigilance Santé"
+  final String conseilsEpanouissement;    // Section "Conseils pour Votre Épanouissement"
+  final String messageCosmique;           // Section "Votre Message Cosmique"
 
   SoulPeriod({
     required this.id,
@@ -372,16 +377,17 @@ class SoulPeriod {
     required this.polarity,
     required this.dateStart,
     required this.dateEnd,
-    required this.periodName,
-    required this.periodTitle,
-    required this.descriptionGeneral,
-    this.traitsPositifs,
-    this.traitsVigilance,
-    this.professionsFavorables,
-    this.santeVigilance,
-    this.paysAffinites,
-    this.conseils,
-    this.messageCosmique,
+    required this.identiteCosmique,
+    required this.introduction,
+    required this.heritageCosmique,
+    required this.coeurEtre,
+    required this.forcesNaturelles,
+    required this.defisTranscender,
+    required this.vocationsIdeales,
+    required this.affinitesGeographiques,
+    required this.vigilanceSante,
+    required this.conseilsEpanouissement,
+    required this.messageCosmique,
   });
 
   factory SoulPeriod.fromJson(Map<String, dynamic> json) {
@@ -391,16 +397,17 @@ class SoulPeriod {
       polarity: json['polarity'] ?? 'A',
       dateStart: json['date_start'] ?? '',
       dateEnd: json['date_end'] ?? '',
-      periodName: json['period_name'] ?? '',
-      periodTitle: json['period_title'] ?? '',
-      descriptionGeneral: json['description_general'] ?? '',
-      traitsPositifs: json['traits_positifs'],
-      traitsVigilance: json['traits_vigilance'],
-      professionsFavorables: json['professions_favorables'],
-      santeVigilance: json['sante_vigilance'],
-      paysAffinites: json['pays_affinites'],
-      conseils: json['conseils'],
-      messageCosmique: json['message_cosmique'],
+      identiteCosmique: json['identite_cosmique'] ?? '',
+      introduction: json['introduction'] ?? '',
+      heritageCosmique: json['heritage_cosmique'] ?? '',
+      coeurEtre: json['coeur_etre'] ?? '',
+      forcesNaturelles: json['forces_naturelles'] ?? '',
+      defisTranscender: json['defis_transcender'] ?? '',
+      vocationsIdeales: json['vocations_ideales'] ?? '',
+      affinitesGeographiques: json['affinites_geographiques'] ?? '',
+      vigilanceSante: json['vigilance_sante'] ?? '',
+      conseilsEpanouissement: json['conseils_epanouissement'] ?? '',
+      messageCosmique: json['message_cosmique'] ?? '',
     );
   }
 }
