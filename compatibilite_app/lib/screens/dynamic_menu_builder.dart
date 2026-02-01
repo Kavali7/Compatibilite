@@ -10,6 +10,7 @@ import 'purchase_history_screen.dart';
 import 'temporal_purchase_screen.dart';
 import 'cycles_vie_home_screen.dart';
 import 'portrait_ame_purchase_screen.dart';
+import 'personal_cycle_purchase_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Helper class to build dynamic menu entries based on admin configuration
@@ -153,6 +154,23 @@ class DynamicMenuBuilder {
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => PortraitAmePurchaseScreen(plan: portraitPlan),
+              ),
+            );
+          },
+        ));
+      }
+    }
+    
+    // Cycle Personnel (Service 02)
+    if (isEnabled('cycle_personnel')) {
+      final cyclePlan = PricingService.instance.getPlanByType('personal_cycle_annual');
+      if (cyclePlan != null) {
+        entries.add(MenuEntry(
+          label: '🔄 Cycle Personnel',
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => PersonalCyclePurchaseScreen(plan: cyclePlan),
               ),
             );
           },

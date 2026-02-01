@@ -46,6 +46,7 @@ class MenuConfigService {
     'compatibilite': {'label': 'Test de Compatibilité', 'enabled': true, 'order': 9},
     'cycles_vie': {'label': 'Cycles de Vie', 'enabled': true, 'order': 10},
     'portrait_ame': {'label': 'Portrait de l\'Âme', 'enabled': true, 'order': 11},
+    'cycle_personnel': {'label': 'Cycle Personnel', 'enabled': true, 'order': 12},
   };
 
   /// Load menu configuration from app_settings

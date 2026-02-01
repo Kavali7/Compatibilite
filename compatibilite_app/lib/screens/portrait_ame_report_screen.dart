@@ -405,6 +405,7 @@ class _PortraitAmeReportScreenState extends State<PortraitAmeReportScreen> {
             style: TextStyle(
               color: AppColors.textMuted,
               fontSize: 15,
+            ),
           ),
         ],
       ),
