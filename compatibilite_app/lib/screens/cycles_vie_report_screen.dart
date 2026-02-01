@@ -338,20 +338,20 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
       icon: Icons.auto_awesome,
       iconColor: Colors.purple,
       title: 'Période Soul',
-      subtitle: sp.periodTitle,
+      subtitle: sp.identiteCosmique,
       children: [
         Text(
-          sp.descriptionGeneral,
+          sp.introduction,
           style: TextStyle(
             color: AppColors.textMuted,
             fontSize: 15,
             height: 1.5,
           ),
         ),
-        if (sp.traitsPositifs != null && sp.traitsPositifs!.isNotEmpty) ...[
+        if (sp.forcesNaturelles.isNotEmpty) ...[
           const SizedBox(height: 16),
           Text(
-            '✨ Traits Positifs',
+            '✨ Forces Naturelles',
             style: GoogleFonts.philosopher(
               color: AppColors.textLight,
               fontWeight: FontWeight.w600,
@@ -366,7 +366,7 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              sp.traitsPositifs!,
+              sp.forcesNaturelles,
               style: TextStyle(
                 color: AppColors.textLight,
                 fontSize: 14,
@@ -376,11 +376,11 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
           ),
         ],
         // === SECTIONS DETAILLEES (consultation/abonnement uniquement) ===
-        // Traits de Vigilance
-        if (sp.traitsVigilance != null && sp.traitsVigilance!.isNotEmpty) ...[
+        // Défis à Transcender
+        if (sp.defisTranscender.isNotEmpty) ...[
           const SizedBox(height: 16),
           Text(
-            '⚠️ Points de Vigilance',
+            '⚠️ Défis à Transcender',
             style: GoogleFonts.philosopher(
               color: AppColors.warning,
               fontWeight: FontWeight.w600,
@@ -396,7 +396,7 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
               border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
             ),
             child: Text(
-              sp.traitsVigilance!,
+              sp.defisTranscender,
               style: TextStyle(
                 color: AppColors.textLight,
                 fontSize: 14,
@@ -405,11 +405,11 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
             ),
           ),
         ],
-        // Professions Favorables
-        if (sp.professionsFavorables != null && sp.professionsFavorables!.isNotEmpty) ...[
+        // Vocations Idéales
+        if (sp.vocationsIdeales.isNotEmpty) ...[
           const SizedBox(height: 16),
           Text(
-            '💼 Professions Favorables',
+            '💼 Vocations Idéales',
             style: GoogleFonts.philosopher(
               color: AppColors.secondary,
               fontWeight: FontWeight.w600,
@@ -424,7 +424,7 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              sp.professionsFavorables!,
+              sp.vocationsIdeales,
               style: TextStyle(
                 color: AppColors.textLight,
                 fontSize: 14,
@@ -433,8 +433,8 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
             ),
           ),
         ],
-        // Santé Vigilance
-        if (sp.santeVigilance != null && sp.santeVigilance!.isNotEmpty) ...[
+        // Vigilance Santé
+        if (sp.vigilanceSante.isNotEmpty) ...[
           const SizedBox(height: 16),
           Text(
             '🏥 Vigilance Santé',
@@ -452,7 +452,7 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              sp.santeVigilance!,
+              sp.vigilanceSante,
               style: TextStyle(
                 color: AppColors.textLight,
                 fontSize: 14,
@@ -461,11 +461,11 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
             ),
           ),
         ],
-        // Pays Affinités
-        if (sp.paysAffinites != null && sp.paysAffinites!.isNotEmpty) ...[
+        // Affinités Géographiques
+        if (sp.affinitesGeographiques.isNotEmpty) ...[
           const SizedBox(height: 16),
           Text(
-            '🌍 Pays d\'Affinités',
+            '🌍 Affinités Géographiques',
             style: GoogleFonts.philosopher(
               color: const Color(0xFF3B82F6),
               fontWeight: FontWeight.w600,
@@ -480,7 +480,7 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              sp.paysAffinites!,
+              sp.affinitesGeographiques,
               style: TextStyle(
                 color: AppColors.textLight,
                 fontSize: 14,

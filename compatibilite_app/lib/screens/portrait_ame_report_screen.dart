@@ -185,7 +185,7 @@ class _PortraitAmeReportScreenState extends State<PortraitAmeReportScreen> {
               iconColor: Colors.purple,
               title: 'Votre Portrait',
               children: [
-                _buildFormattedContent(sp.introduction, Colors.purple),
+                _buildFormattedContent(_replacePlaceholders(sp.introduction), Colors.purple),
               ],
             ),
           if (sp.introduction.isNotEmpty)
@@ -405,33 +405,6 @@ class _PortraitAmeReportScreenState extends State<PortraitAmeReportScreen> {
             style: TextStyle(
               color: AppColors.textMuted,
               fontSize: 15,
-            ),
-          ),
-          const SizedBox(height: 16),
-          
-          // Badge période Soul
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.auto_awesome, color: AppColors.primary, size: 18),
-                const SizedBox(width: 8),
-                Text(
-                  'Période ${sp.periodNumber}${sp.polarity}',
-                  style: GoogleFonts.philosopher(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
           ),
         ],
       ),
@@ -449,64 +422,45 @@ class _PortraitAmeReportScreenState extends State<PortraitAmeReportScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Identité Cosmique - Titre principal
+          // Identité Cosmique - Titre principal (seul élément visible)
           Text(
             sp.identiteCosmique,
             style: GoogleFonts.philosopher(
-              fontSize: 24,
+              fontSize: 26,
               fontWeight: FontWeight.bold,
               color: AppColors.primary,
             ),
           ),
-          const SizedBox(height: 8),
-          
-          // Période et Polarité
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'Période ${sp.periodNumber}${sp.polarity}',
-                  style: GoogleFonts.philosopher(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-            ],
-          ),
           const SizedBox(height: 12),
           
-          // Dates d'effet
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.calendar_today, color: AppColors.textMuted, size: 16),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Personnes nées du ${sp.dateStart} au ${sp.dateEnd}',
-                    style: const TextStyle(
-                      color: AppColors.textMuted,
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ],
+          // Sous-titre personnalisé avec le prénom
+          Text(
+            'Portrait Cosmique de ${widget.firstName}',
+            style: TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 15,
+              fontStyle: FontStyle.italic,
             ),
           ),
         ],
       ),
+    );
+  }
+
+  /// Formate la date de naissance en français pour l'affichage
+  String _formatBirthdateFrench(DateTime date) {
+    final months = [
+      '', 'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+      'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
+    ];
+    return '${date.day} ${months[date.month]} ${date.year}';
+  }
+
+  /// Remplace les placeholders dans le contenu par les vraies valeurs
+  String _replacePlaceholders(String content) {
+    return content.replaceAll(
+      '[date de naissance]', 
+      _formatBirthdateFrench(widget.birthdate)
     );
   }
 

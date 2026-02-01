@@ -53,11 +53,12 @@ class CyclesVieService {
   Future<SoulPeriod?> getSoulPeriodForBirthdate(DateTime birthdate) async {
     final periods = await getSoulPeriods();
 
-    final monthDay =
-        '${birthdate.month.toString().padLeft(2, '0')}-${birthdate.day.toString().padLeft(2, '0')}';
+    // Convertir la date de naissance en (mois, jour) pour comparaison
+    final birthMonth = birthdate.month;
+    final birthDay = birthdate.day;
 
     for (final period in periods) {
-      if (_isDateInRange(monthDay, period.dateStart, period.dateEnd)) {
+      if (_isDateInRangeFrench(birthMonth, birthDay, period.dateStart, period.dateEnd)) {
         // Déterminer la polarité (A ou B) selon l'année
         // Années paires = A, années impaires = B (simplification)
         final polarity = (birthdate.year % 2 == 0) ? 'A' : 'B';
@@ -69,7 +70,7 @@ class CyclesVieService {
 
     // Fallback: retourner la première correspondance sans tenir compte de la polarité
     for (final period in periods) {
-      if (_isDateInRange(monthDay, period.dateStart, period.dateEnd)) {
+      if (_isDateInRangeFrench(birthMonth, birthDay, period.dateStart, period.dateEnd)) {
         return period;
       }
     }
@@ -77,14 +78,47 @@ class CyclesVieService {
     return null;
   }
 
-  bool _isDateInRange(String date, String start, String end) {
-    // date, start, end au format "MM-DD"
-    // Gère le cas spécial où la période traverse le nouvel an
-    if (start.compareTo(end) > 0) {
-      // Période qui traverse le 1er janvier (ex: 12-14 à 01-12)
-      return date.compareTo(start) >= 0 || date.compareTo(end) <= 0;
+  /// Parse une date au format français "22 mars" en (jour, mois)
+  (int day, int month)? _parseFrenchDate(String frenchDate) {
+    final monthNames = {
+      'janvier': 1, 'février': 2, 'mars': 3, 'avril': 4,
+      'mai': 5, 'juin': 6, 'juillet': 7, 'août': 8,
+      'septembre': 9, 'octobre': 10, 'novembre': 11, 'décembre': 12,
+      // Variantes sans accents
+      'fevrier': 2, 'aout': 8, 'decembre': 12,
+    };
+
+    final parts = frenchDate.trim().toLowerCase().split(' ');
+    if (parts.length != 2) return null;
+
+    final day = int.tryParse(parts[0]);
+    final month = monthNames[parts[1]];
+
+    if (day == null || month == null) return null;
+    return (day, month);
+  }
+
+  /// Vérifie si une date (mois, jour) est dans la plage [start, end] (format français)
+  bool _isDateInRangeFrench(int month, int day, String startFr, String endFr) {
+    final start = _parseFrenchDate(startFr);
+    final end = _parseFrenchDate(endFr);
+
+    if (start == null || end == null) {
+      debugPrint('⚠️ Erreur parsing dates: start=$startFr, end=$endFr');
+      return false;
     }
-    return date.compareTo(start) >= 0 && date.compareTo(end) <= 0;
+
+    // Convertir en valeur comparable (mois * 100 + jour)
+    final dateVal = month * 100 + day;
+    final startVal = start.$2 * 100 + start.$1;
+    final endVal = end.$2 * 100 + end.$1;
+
+    // Gère le cas spécial où la période traverse le nouvel an
+    if (startVal > endVal) {
+      // Période qui traverse le 1er janvier (ex: 14 déc → 12 janv)
+      return dateVal >= startVal || dateVal <= endVal;
+    }
+    return dateVal >= startVal && dateVal <= endVal;
   }
 
   // ═══════════════════════════════════════════════════════════════
@@ -311,10 +345,10 @@ class CyclesVieService {
 
     // 1. Soul Period
     final soulPeriod = await getSoulPeriodForBirthdate(birthdate);
-    debugPrint('📊 generateExpressReport: soulPeriod=${soulPeriod?.periodName ?? "NULL"}');
+    debugPrint('📊 generateExpressReport: soulPeriod=${soulPeriod?.identiteCosmique ?? "NULL"}');
     if (soulPeriod != null) {
-      debugPrint('📊 soulPeriod.periodTitle: ${soulPeriod.periodTitle}');
-      debugPrint('📊 soulPeriod.descriptionGeneral: ${soulPeriod.descriptionGeneral.substring(0, soulPeriod.descriptionGeneral.length.clamp(0, 100))}...');
+      debugPrint('📊 soulPeriod.identiteCosmique: ${soulPeriod.identiteCosmique}');
+      debugPrint('📊 soulPeriod.introduction: ${soulPeriod.introduction.substring(0, soulPeriod.introduction.length.clamp(0, 100))}...');
     }
 
     // 2. Schedule du jour
