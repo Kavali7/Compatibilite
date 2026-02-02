@@ -12,11 +12,36 @@ type User = {
     payment_status: string | null;
 };
 
+// All available services for Grant Access
+const GRANT_SERVICES = [
+    { id: 'consultation', label: '💑 Compatibilité (Rapport)', type: 'one-time' },
+    { id: 'portrait_ame', label: '✨ Portrait de l\'Âme', type: 'one-time' },
+    { id: 'life_phase_report', label: '🔄 Phases de Vie', type: 'one-time' },
+    { id: 'personal_cycle_annual', label: '🔄 Cycle Personnel (Annuel)', type: 'subscription' },
+    { id: 'business_cycle_annual', label: '💼 Cycle Business (Annuel)', type: 'subscription' },
+    { id: 'health_cycle_annual', label: '🏥 Cycle Santé (Annuel)', type: 'subscription' },
+    { id: 'lunar_timing_monthly', label: '🌙 Timing Lunaire (Mensuel)', type: 'subscription' },
+    { id: 'daily_guide_day', label: '⏰ Guide Horaire (Jour)', type: 'duration' },
+    { id: 'decision_credits', label: '💡 Crédits Décision', type: 'credits' },
+    { id: 'annee', label: '📆 Prévision Annuelle', type: 'one-time' },
+    { id: 'mois', label: '📅 Prévision Mensuelle', type: 'one-time' },
+    { id: 'jour', label: '📌 Prévision Journalière', type: 'one-time' },
+] as const;
+
+type GrantModalState = {
+    userId: string;
+    userName: string;
+    service: string;
+    duration: number; // days for subscription, count for credits
+};
+
 export default function Users() {
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<'all' | 'paid' | 'unpaid'>('all');
     const [searchTerm, setSearchTerm] = useState('');
+    const [grantModal, setGrantModal] = useState<GrantModalState | null>(null);
+    const [granting, setGranting] = useState(false);
 
     useEffect(() => {
         loadUsers();
@@ -72,29 +97,61 @@ export default function Users() {
         setLoading(false);
     }
 
-    async function grantAccess(userId: string) {
-        if (!confirm('Donner accès manuellement à cet utilisateur ? (Créer un paiement "success")')) return;
+    function openGrantModal(user: User) {
+        setGrantModal({
+            userId: user.id,
+            userName: user.name || user.email,
+            service: 'consultation',
+            duration: 365, // default 1 year
+        });
+    }
+
+    async function executeGrantAccess() {
+        if (!grantModal) return;
+        setGranting(true);
 
         try {
-            // Create a manual payment record
-            const { error } = await supabase
-                .from('payments')
-                .insert({
-                    user_id: userId,
-                    transaction_id: `MANUAL_${Date.now()}`,
-                    amount_fcfa: 0,
-                    payment_method: 'manual',
-                    status: 'success',
-                    plan_type: 'consultation',
-                });
+            const serviceInfo = GRANT_SERVICES.find(s => s.id === grantModal.service);
 
-            if (error) throw error;
-            alert('✅ Accès accordé avec succès !');
+            if (grantModal.service === 'decision_credits') {
+                // Insert into user_decision_credits table
+                const expiresAt = new Date();
+                expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+
+                const { error } = await supabase
+                    .from('user_decision_credits')
+                    .insert({
+                        user_id: grantModal.userId,
+                        credits_initial: grantModal.duration,
+                        credits_remaining: grantModal.duration,
+                        source_type: 'manual_grant',
+                        expires_at: expiresAt.toISOString(),
+                    });
+                if (error) throw error;
+            } else {
+                // Create a payment record for all other services
+                const { error } = await supabase
+                    .from('payments')
+                    .insert({
+                        user_id: grantModal.userId,
+                        transaction_id: `MANUAL_${Date.now()}`,
+                        amount_fcfa: 0,
+                        payment_method: 'manual',
+                        status: 'success',
+                        plan_type: grantModal.service,
+                        notes: `Accès manuel accordé (${serviceInfo?.label || grantModal.service})`,
+                    });
+                if (error) throw error;
+            }
+
+            alert(`✅ Accès accordé: ${serviceInfo?.label}`);
+            setGrantModal(null);
             loadUsers();
         } catch (e: any) {
             console.error('Grant access error:', e);
             alert(`❌ Erreur: ${e.message}`);
         }
+        setGranting(false);
     }
 
     const filteredUsers = users.filter((u) => {
@@ -202,15 +259,13 @@ export default function Users() {
                                 </div>
                             </div>
                             <div className="user-actions">
-                                {!user.has_paid && (
-                                    <button
-                                        className="btn-grant"
-                                        onClick={() => grantAccess(user.id)}
-                                        title="Donner accès manuellement"
-                                    >
-                                        🔓 Donner accès
-                                    </button>
-                                )}
+                                <button
+                                    className="btn-grant"
+                                    onClick={() => openGrantModal(user)}
+                                    title="Donner accès manuellement à un service"
+                                >
+                                    🔓 Donner accès
+                                </button>
                                 <a
                                     href={`mailto:${user.email}`}
                                     className="btn-contact"
@@ -223,6 +278,66 @@ export default function Users() {
                     ))
                 )}
             </div>
+
+            {/* Grant Access Modal */}
+            {grantModal && (
+                <div className="modal-overlay" onClick={() => setGrantModal(null)}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <h3>🔓 Accorder l'accès</h3>
+                        <p className="modal-user">Pour: <strong>{grantModal.userName}</strong></p>
+
+                        <div className="modal-field">
+                            <label htmlFor="service-select">Service</label>
+                            <select
+                                id="service-select"
+                                value={grantModal.service}
+                                onChange={e => setGrantModal({ ...grantModal, service: e.target.value })}
+                                className="modal-select"
+                            >
+                                {GRANT_SERVICES.map(s => (
+                                    <option key={s.id} value={s.id}>{s.label}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {grantModal.service === 'decision_credits' && (
+                            <div className="modal-field">
+                                <label htmlFor="credits-input">Nombre de crédits</label>
+                                <input
+                                    id="credits-input"
+                                    type="number"
+                                    value={grantModal.duration}
+                                    onChange={e => setGrantModal({ ...grantModal, duration: parseInt(e.target.value) || 5 })}
+                                    min="1"
+                                    max="100"
+                                    className="modal-input"
+                                />
+                            </div>
+                        )}
+
+                        <div className="modal-info">
+                            <p>ℹ️ Cette action créera un enregistrement de paiement manuel avec montant 0 FCFA.</p>
+                        </div>
+
+                        <div className="modal-actions">
+                            <button
+                                className="btn-cancel"
+                                onClick={() => setGrantModal(null)}
+                                disabled={granting}
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                className="btn-confirm"
+                                onClick={executeGrantAccess}
+                                disabled={granting}
+                            >
+                                {granting ? 'En cours...' : '✅ Confirmer'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <style>{`
                 .users-summary {
@@ -364,6 +479,92 @@ export default function Users() {
                     padding: 40px;
                     text-align: center;
                     color: #666;
+                }
+                .modal-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0,0,0,0.7);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 1000;
+                }
+                .modal-content {
+                    background: #1a1a2e;
+                    border-radius: 16px;
+                    padding: 24px;
+                    width: 90%;
+                    max-width: 400px;
+                    border: 1px solid rgba(255,255,255,0.1);
+                }
+                .modal-content h3 {
+                    margin: 0 0 8px 0;
+                    font-size: 20px;
+                }
+                .modal-user {
+                    color: #888;
+                    margin: 0 0 20px 0;
+                }
+                .modal-field {
+                    margin-bottom: 16px;
+                }
+                .modal-field label {
+                    display: block;
+                    margin-bottom: 6px;
+                    color: #aaa;
+                    font-size: 14px;
+                }
+                .modal-select, .modal-input {
+                    width: 100%;
+                    padding: 12px;
+                    background: rgba(255,255,255,0.1);
+                    border: 1px solid rgba(255,255,255,0.2);
+                    border-radius: 8px;
+                    color: white;
+                    font-size: 14px;
+                }
+                .modal-info {
+                    background: rgba(102,126,234,0.1);
+                    border: 1px solid rgba(102,126,234,0.3);
+                    border-radius: 8px;
+                    padding: 12px;
+                    margin: 16px 0;
+                }
+                .modal-info p {
+                    margin: 0;
+                    font-size: 13px;
+                    color: #888;
+                }
+                .modal-actions {
+                    display: flex;
+                    gap: 12px;
+                    margin-top: 20px;
+                }
+                .btn-cancel {
+                    flex: 1;
+                    padding: 12px;
+                    background: rgba(255,255,255,0.1);
+                    border: none;
+                    border-radius: 8px;
+                    color: white;
+                    cursor: pointer;
+                }
+                .btn-confirm {
+                    flex: 1;
+                    padding: 12px;
+                    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+                    border: none;
+                    border-radius: 8px;
+                    color: white;
+                    cursor: pointer;
+                    font-weight: 600;
+                }
+                .btn-confirm:disabled, .btn-cancel:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
                 }
             `}</style>
         </div>

@@ -23,23 +23,66 @@ type MenuConfigSettings = {
     [key: string]: MenuItemConfig;
 };
 
+// Menu item categories for organization
+const MENU_CATEGORIES = {
+    actions: ['mes_achats', 'se_connecter', 'creer_compte', 'se_deconnecter'],
+    services: ['previsions_temporelles', 'compatibilite', 'cycles_vie', 'portrait_ame',
+        'cycle_personnel', 'cycle_business', 'cycle_sante', 'guide_horaire',
+        'eclairage_decision', 'phases_vie', 'timing_lunaire'],
+    contact: ['contacter', 'whatsapp', 'appeler'],
+};
+
 const DEFAULT_MENU_CONFIG: MenuConfigSettings = {
+    // User Actions
     mes_achats: { label: 'Mes achats', enabled: true, order: 1 },
     se_connecter: { label: 'Se connecter', enabled: true, order: 2 },
     creer_compte: { label: 'Créer un compte', enabled: true, order: 3 },
     se_deconnecter: { label: 'Se déconnecter', enabled: true, order: 4 },
+    // Services
+    previsions_temporelles: { label: '✨ Prévisions Temporelles', enabled: true, order: 8 },
+    compatibilite: { label: '💑 Test de Compatibilité', enabled: true, order: 9 },
+    cycles_vie: { label: '🌀 Cycles de Vie', enabled: true, order: 10 },
+    portrait_ame: { label: '✨ Portrait de l\'Âme', enabled: true, order: 11 },
+    cycle_personnel: { label: '🔄 Cycle Personnel', enabled: true, order: 12 },
+    cycle_business: { label: '💼 Cycle Business', enabled: true, order: 13 },
+    cycle_sante: { label: '🏥 Cycle Santé', enabled: true, order: 14 },
+    guide_horaire: { label: '⏰ Guide Horaire', enabled: true, order: 15 },
+    eclairage_decision: { label: '💡 Éclairage Décision', enabled: true, order: 16 },
+    phases_vie: { label: '🔄 Phases de Vie', enabled: true, order: 17 },
+    timing_lunaire: { label: '🌙 Timing Lunaire', enabled: true, order: 18 },
+    // Contact
     contacter: { label: 'Contacter Growpeak Agence', enabled: true, order: 5 },
     whatsapp: { label: 'WhatsApp Growpeak Agence', enabled: true, order: 6 },
     appeler: { label: 'Appeler Growpeak Agence', enabled: true, order: 7 },
 };
 
-type PrimaryServiceOption = 'compatibilite' | 'prevision_jour' | 'prevision_mois' | 'prevision_annee';
+type PrimaryServiceOption =
+    | 'compatibilite'
+    | 'prevision_jour'
+    | 'prevision_mois'
+    | 'prevision_annee'
+    | 'portrait_ame'
+    | 'cycle_personnel'
+    | 'cycle_business'
+    | 'cycle_sante'
+    | 'guide_horaire'
+    | 'eclairage_decision'
+    | 'phases_vie'
+    | 'timing_lunaire';
 
 const SERVICE_LABELS: Record<PrimaryServiceOption, string> = {
     compatibilite: '💑 Rapport de Compatibilité',
     prevision_jour: '📌 Prévision du Jour',
     prevision_mois: '📅 Prévision du Mois',
     prevision_annee: '📆 Prévision de l\'Année',
+    portrait_ame: '✨ Portrait de l\'Âme',
+    cycle_personnel: '🔄 Cycle Personnel',
+    cycle_business: '💼 Cycle Business',
+    cycle_sante: '🏥 Cycle Santé',
+    guide_horaire: '⏰ Guide Horaire',
+    eclairage_decision: '💡 Éclairage Décision',
+    phases_vie: '🔄 Phases de Vie',
+    timing_lunaire: '🌙 Timing Lunaire',
 };
 
 export default function Settings() {
@@ -495,26 +538,92 @@ export default function Settings() {
                     Activez ou désactivez les éléments du menu hamburger dans l'application mobile.
                 </p>
 
-                <div className="menu-config-settings">
-                    {Object.entries(menuConfig)
-                        .sort((a, b) => a[1].order - b[1].order)
-                        .map(([menuId, config]) => (
-                            <div key={menuId} className="settings-toggle-row">
-                                <label className="toggle-label">
-                                    <span className="toggle-icon">📌</span>
-                                    <div>
-                                        <strong>{config.label}</strong>
-                                        <p className="muted small">ID: {menuId}</p>
+                {/* User Actions */}
+                <div className="menu-category">
+                    <h4 className="category-header">👤 Actions Utilisateur</h4>
+                    <div className="menu-config-settings">
+                        {MENU_CATEGORIES.actions
+                            .filter(menuId => menuConfig[menuId])
+                            .map(menuId => {
+                                const config = menuConfig[menuId];
+                                return (
+                                    <div key={menuId} className="settings-toggle-row">
+                                        <label className="toggle-label">
+                                            <span className="toggle-icon">📌</span>
+                                            <div>
+                                                <strong>{config.label}</strong>
+                                                <p className="muted small">ID: {menuId}</p>
+                                            </div>
+                                        </label>
+                                        <button
+                                            className={`toggle-btn ${config.enabled ? 'active' : ''}`}
+                                            onClick={() => toggleMenuEnabled(menuId)}
+                                        >
+                                            {config.enabled ? 'Visible' : 'Masqué'}
+                                        </button>
                                     </div>
-                                </label>
-                                <button
-                                    className={`toggle-btn ${config.enabled ? 'active' : ''}`}
-                                    onClick={() => toggleMenuEnabled(menuId)}
-                                >
-                                    {config.enabled ? 'Visible' : 'Masqué'}
-                                </button>
-                            </div>
-                        ))}
+                                );
+                            })}
+                    </div>
+                </div>
+
+                {/* Services */}
+                <div className="menu-category">
+                    <h4 className="category-header">🚀 Services (Payants)</h4>
+                    <p className="muted small">Masquez un service pour le rendre temporairement indisponible.</p>
+                    <div className="menu-config-settings">
+                        {MENU_CATEGORIES.services
+                            .filter(menuId => menuConfig[menuId])
+                            .map(menuId => {
+                                const config = menuConfig[menuId];
+                                return (
+                                    <div key={menuId} className="settings-toggle-row service-row">
+                                        <label className="toggle-label">
+                                            <span className="toggle-icon">⭐</span>
+                                            <div>
+                                                <strong>{config.label}</strong>
+                                                <p className="muted small">ID: {menuId}</p>
+                                            </div>
+                                        </label>
+                                        <button
+                                            className={`toggle-btn ${config.enabled ? 'active' : ''}`}
+                                            onClick={() => toggleMenuEnabled(menuId)}
+                                        >
+                                            {config.enabled ? 'Visible' : 'Masqué'}
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                    </div>
+                </div>
+
+                {/* Contact */}
+                <div className="menu-category">
+                    <h4 className="category-header">📞 Contact</h4>
+                    <div className="menu-config-settings">
+                        {MENU_CATEGORIES.contact
+                            .filter(menuId => menuConfig[menuId])
+                            .map(menuId => {
+                                const config = menuConfig[menuId];
+                                return (
+                                    <div key={menuId} className="settings-toggle-row">
+                                        <label className="toggle-label">
+                                            <span className="toggle-icon">📌</span>
+                                            <div>
+                                                <strong>{config.label}</strong>
+                                                <p className="muted small">ID: {menuId}</p>
+                                            </div>
+                                        </label>
+                                        <button
+                                            className={`toggle-btn ${config.enabled ? 'active' : ''}`}
+                                            onClick={() => toggleMenuEnabled(menuId)}
+                                        >
+                                            {config.enabled ? 'Visible' : 'Masqué'}
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                    </div>
                 </div>
             </div>
 
@@ -647,6 +756,28 @@ export default function Settings() {
                     background: linear-gradient(135deg, rgba(102,126,234,0.2) 0%, rgba(159,122,234,0.2) 100%);
                     border-color: #667eea;
                     color: white;
+                }
+                .menu-category {
+                    margin-top: 24px;
+                    padding: 16px;
+                    background: rgba(255,255,255,0.02);
+                    border-radius: 16px;
+                    border: 1px solid rgba(255,255,255,0.08);
+                }
+                .menu-category:first-of-type {
+                    margin-top: 16px;
+                }
+                .category-header {
+                    margin: 0 0 12px 0;
+                    font-size: 16px;
+                    color: #9f7aea;
+                }
+                .service-row {
+                    background: linear-gradient(135deg, rgba(102,126,234,0.05) 0%, rgba(159,122,234,0.05) 100%);
+                    border: 1px solid rgba(159,122,234,0.2);
+                }
+                .service-row:hover {
+                    border-color: rgba(159,122,234,0.4);
                 }
             `}</style>
         </div>

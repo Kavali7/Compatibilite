@@ -4,9 +4,11 @@ import { useProjet } from '../hooks/useProjet';
 type SidebarProps = {
     collapsed: boolean;
     onToggle: () => void;
+    mobileOpen?: boolean;
+    onMobileClose?: () => void;
 };
 
-export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: SidebarProps) {
     const { currentProjet } = useProjet();
 
     const sections = [
@@ -39,7 +41,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             title: 'Business',
             items: [
                 { to: '/payments', icon: '💰', label: 'Paiements (Global)' },
-                { to: '/compatibilite/pricing', icon: '🏷️', label: 'Plans & Tarifs' },
+                { to: '/pricing', icon: '🏷️', label: 'Tarifs Unifiés' },
+                { to: '/subscriptions', icon: '📋', label: 'Abonnements' },
                 { to: '/compatibilite/promos', icon: '🎁', label: 'Codes Promo' },
             ]
         },
@@ -56,13 +59,22 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             title: 'Système',
             items: [
                 { to: '/settings', icon: '⚙️', label: 'Paramètres' },
+                { to: '/reports', icon: '📝', label: 'Config Rapports' },
                 { to: '/legal', icon: '📜', label: 'Pages Légales' },
             ]
         }
     ];
 
     return (
-        <aside className={`sidebar ${collapsed ? 'sidebar-collapsed' : ''}`}>
+        <aside
+            className={`sidebar ${collapsed ? 'sidebar-collapsed' : ''} ${mobileOpen ? 'open' : ''}`}
+            onClick={(e) => {
+                // Close mobile menu when clicking a link
+                if ((e.target as HTMLElement).closest('a')) {
+                    onMobileClose?.();
+                }
+            }}
+        >
             <div className="sidebar-header">
                 <div className="sidebar-logo">
                     {!collapsed && <span className="logo-text">🔷 GROWPEAK</span>}

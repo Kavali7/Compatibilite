@@ -4,6 +4,9 @@ import Dashboard from './pages/Dashboard';
 import Payments from './pages/Payments';
 import Users from './pages/Users';
 import Settings from './pages/Settings';
+import UnifiedPricing from './pages/UnifiedPricing';
+import Subscriptions from './pages/Subscriptions';
+import ReportsConfig from './pages/ReportsConfig';
 import LegalIndex from './pages/legal';
 import CompatibiliteIndex from './pages/compatibilite';
 import Interpretations from './pages/compatibilite/Interpretations';
@@ -37,6 +40,9 @@ const router = createBrowserRouter([
       { path: 'payments', element: <Payments /> },
       { path: 'users', element: <Users /> },
       { path: 'settings', element: <Settings /> },
+      { path: 'pricing', element: <UnifiedPricing /> },
+      { path: 'subscriptions', element: <Subscriptions /> },
+      { path: 'reports', element: <ReportsConfig /> },
       { path: 'legal', element: <LegalIndex /> },
       {
         path: 'compatibilite',

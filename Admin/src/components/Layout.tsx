@@ -9,6 +9,7 @@ import { ProjetProvider } from '../hooks/useProjet';
 function LayoutContent() {
     const { isAuthenticated } = useAuth();
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     if (!isAuthenticated) {
         return <LoginScreen />;
@@ -16,7 +17,27 @@ function LayoutContent() {
 
     return (
         <div className="layout">
-            <Sidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+            {/* Mobile menu toggle */}
+            <button
+                className="mobile-menu-toggle"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                aria-label="Toggle menu"
+            >
+                {mobileMenuOpen ? '✕' : '☰'}
+            </button>
+
+            {/* Overlay for mobile */}
+            <div
+                className={`sidebar-overlay ${mobileMenuOpen ? 'visible' : ''}`}
+                onClick={() => setMobileMenuOpen(false)}
+            />
+
+            <Sidebar
+                collapsed={sidebarCollapsed}
+                onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+                mobileOpen={mobileMenuOpen}
+                onMobileClose={() => setMobileMenuOpen(false)}
+            />
             <div className="layout-main">
                 <Header />
                 <main className="layout-content">

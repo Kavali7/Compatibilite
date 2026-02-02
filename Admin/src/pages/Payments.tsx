@@ -12,6 +12,9 @@ type Payment = {
     status: 'pending' | 'success' | 'failed' | 'cancelled';
     plan_type: string;
     created_at: string;
+    // User info from join
+    user_email?: string;
+    user_name?: string;
 };
 
 export default function Payments() {
@@ -27,14 +30,29 @@ export default function Payments() {
     async function loadPayments() {
         setLoading(true);
         try {
+            // Query payments with user info via join
             const { data, error } = await supabase
                 .from('payments')
-                .select('*')
+                .select(`
+                    *,
+                    users:user_id (
+                        email,
+                        display_name
+                    )
+                `)
                 .order('created_at', { ascending: false })
                 .limit(200);
 
             if (error) throw error;
-            setPayments((data as Payment[]) || []);
+
+            // Transform data to flatten user info
+            const paymentsWithUserInfo = (data || []).map((p: any) => ({
+                ...p,
+                user_email: p.users?.email || null,
+                user_name: p.users?.display_name || null,
+            }));
+
+            setPayments(paymentsWithUserInfo as Payment[]);
         } catch (e) {
             console.error('Payments load error:', e);
             setPayments([]);
@@ -194,6 +212,14 @@ export default function Payments() {
                     filteredPayments.map((payment) => (
                         <div key={payment.id} className="payment-card">
                             <div className="payment-info">
+                                <div className="payment-user">
+                                    {payment.user_email ? (
+                                        <span className="user-email">📧 {payment.user_email}</span>
+                                    ) : (
+                                        <span className="user-anonymous muted">👤 Anonyme (session)</span>
+                                    )}
+                                    {payment.user_name && <span className="user-name"> • {payment.user_name}</span>}
+                                </div>
                                 <div className="payment-names">
                                     <code>{payment.transaction_id}</code>
                                 </div>
