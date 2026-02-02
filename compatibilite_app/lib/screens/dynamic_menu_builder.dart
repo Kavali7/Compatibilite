@@ -15,6 +15,7 @@ import 'business_cycle_purchase_screen.dart';
 import 'health_cycle_purchase_screen.dart';
 import 'daily_guide_purchase_screen.dart';
 import 'life_phase_purchase_screen.dart';
+import 'lunar_timing_purchase_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Helper class to build dynamic menu entries based on admin configuration
@@ -243,6 +244,23 @@ class DynamicMenuBuilder {
             Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => LifePhasePurchaseScreen(plan: phasePlan),
+              ),
+            );
+          },
+        ));
+      }
+    }
+    
+    // Timing Lunaire (Service 08)
+    if (isEnabled('timing_lunaire')) {
+      final lunarPlan = PricingService.instance.getPlanByType('lunar_timing_monthly');
+      if (lunarPlan != null) {
+        entries.add(MenuEntry(
+          label: '🌙 Timing Lunaire',
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => LunarTimingPurchaseScreen(plan: lunarPlan),
               ),
             );
           },
