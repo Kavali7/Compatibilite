@@ -401,12 +401,15 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
             children: [
               Icon(Icons.help_outline, color: AppColors.primary, size: 20),
               const SizedBox(width: 8),
-              Text(
-                'Quelle décision souhaitez-vous analyser ?',
-                style: GoogleFonts.philosopher(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textLight,
+              Flexible(
+                child: Text(
+                  'Quelle décision analyser ?',
+                  style: GoogleFonts.philosopher(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textLight,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -442,6 +445,7 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
               return DropdownMenuItem<String>(
                 value: dt.id,
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       _getIconForDecisionType(dt.code),
@@ -449,7 +453,7 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
                       size: 20,
                     ),
                     const SizedBox(width: 12),
-                    Expanded(
+                    Flexible(
                       child: Text(
                         dt.label,
                         style: const TextStyle(color: AppColors.textLight),
@@ -521,14 +525,40 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
         _buildFavorabilityGauge(),
         const SizedBox(height: 24),
 
+        // Contexte cosmique si présent
+        if (_currentAdvice!.cosmicContext != null &&
+            _currentAdvice!.cosmicContext!.isNotEmpty)
+          _buildCosmicContextCard(),
+
         // Conseil principal
         _buildAdviceCard(),
         const SizedBox(height: 16),
 
+        // Actions recommandées si présentes
+        if (_currentAdvice!.recommendedActions != null &&
+            _currentAdvice!.recommendedActions!.isNotEmpty)
+          _buildActionsCard(),
+
+        // Timing optimal si présent
+        if (_currentAdvice!.optimalTiming != null &&
+            _currentAdvice!.optimalTiming!.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _buildTimingCard(),
+        ],
+
         // Warnings si présents
         if (_currentAdvice!.warnings != null &&
-            _currentAdvice!.warnings!.isNotEmpty)
+            _currentAdvice!.warnings!.isNotEmpty) ...[
+          const SizedBox(height: 16),
           _buildWarningCard(),
+        ],
+
+        // Pièges à éviter si présents
+        if (_currentAdvice!.pitfallsToAvoid != null &&
+            _currentAdvice!.pitfallsToAvoid!.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _buildPitfallsCard(),
+        ],
 
         // Alternatives si présentes
         if (_currentAdvice!.alternativesSuggestion != null &&
@@ -536,7 +566,230 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
           const SizedBox(height: 16),
           _buildAlternativesCard(),
         ],
+
+        // Message de conclusion si présent
+        if (_currentAdvice!.closingMessage != null &&
+            _currentAdvice!.closingMessage!.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          _buildClosingMessageCard(),
+        ],
       ],
+    );
+  }
+
+  Widget _buildCosmicContextCard() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.purple.withValues(alpha: 0.15),
+            Colors.indigo.withValues(alpha: 0.1),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.purple.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.stars, color: Colors.purple, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Contexte Cosmique',
+                  style: GoogleFonts.philosopher(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.purple,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _currentAdvice!.cosmicContext!,
+                  style: GoogleFonts.philosopher(
+                    color: AppColors.textLight,
+                    fontSize: 14,
+                    height: 1.5,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionsCard() {
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.green.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.green.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.check_circle_outline, color: Colors.green, size: 24),
+              const SizedBox(width: 12),
+              Text(
+                'Actions Recommandées',
+                style: GoogleFonts.philosopher(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _currentAdvice!.recommendedActions!,
+            style: const TextStyle(
+              color: AppColors.textLight,
+              fontSize: 14,
+              height: 1.6,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimingCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blue.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.blue.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.schedule, color: Colors.blue, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Timing Optimal',
+                  style: GoogleFonts.philosopher(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _currentAdvice!.optimalTiming!,
+                  style: const TextStyle(
+                    color: AppColors.textLight,
+                    fontSize: 14,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPitfallsCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.red.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.red.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.dangerous_outlined, color: Colors.red, size: 24),
+              const SizedBox(width: 12),
+              Text(
+                'Pièges à Éviter',
+                style: GoogleFonts.philosopher(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _currentAdvice!.pitfallsToAvoid!,
+            style: const TextStyle(
+              color: AppColors.textLight,
+              fontSize: 14,
+              height: 1.6,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildClosingMessageCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.secondary.withValues(alpha: 0.15),
+            Colors.amber.withValues(alpha: 0.1),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.amber.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.auto_awesome, color: Colors.amber, size: 32),
+          const SizedBox(height: 12),
+          Text(
+            _currentAdvice!.closingMessage!,
+            style: GoogleFonts.philosopher(
+              fontSize: 16,
+              height: 1.5,
+              color: AppColors.textLight,
+              fontStyle: FontStyle.italic,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 
@@ -544,6 +797,8 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
     final score = _currentAdvice?.favorabilityScore ?? 0;
     final color = _getFavorabilityColor(score);
     final label = _getFavorabilityLabel(score);
+    // Convertir score 1-5 en pourcentage pour l'animation (1=20%, 5=100%)
+    final percentage = score / 5.0;
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -574,7 +829,7 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
                     width: 160,
                     height: 160,
                     child: CircularProgressIndicator(
-                      value: _gaugeAnimation.value,
+                      value: _gaugeAnimation.value * percentage,
                       strokeWidth: 12,
                       backgroundColor: Colors.grey.withValues(alpha: 0.2),
                       valueColor: AlwaysStoppedAnimation<Color>(color),
@@ -585,9 +840,9 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '${(_gaugeAnimation.value * 100).round()}%',
+                        '$score/5',
                         style: GoogleFonts.philosopher(
-                          fontSize: 40,
+                          fontSize: 48,
                           fontWeight: FontWeight.bold,
                           color: color,
                         ),
@@ -621,19 +876,25 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
   }
 
   Color _getFavorabilityColor(int score) {
-    if (score >= 80) return Colors.green;
-    if (score >= 60) return Colors.teal;
-    if (score >= 40) return Colors.orange;
-    if (score >= 20) return Colors.deepOrange;
-    return Colors.red;
+    switch (score) {
+      case 5: return Colors.green;
+      case 4: return Colors.lightGreen;
+      case 3: return Colors.orange;
+      case 2: return Colors.deepOrange;
+      case 1: return Colors.red;
+      default: return Colors.grey;
+    }
   }
 
   String _getFavorabilityLabel(int score) {
-    if (score >= 80) return 'Très Favorable';
-    if (score >= 60) return 'Favorable';
-    if (score >= 40) return 'Modéré';
-    if (score >= 20) return 'Défavorable';
-    return 'À Éviter';
+    switch (score) {
+      case 5: return 'Très Favorable';
+      case 4: return 'Favorable';
+      case 3: return 'Neutre';
+      case 2: return 'Défavorable';
+      case 1: return 'À Éviter';
+      default: return 'Non évalué';
+    }
   }
 
   Widget _buildAdviceCard() {

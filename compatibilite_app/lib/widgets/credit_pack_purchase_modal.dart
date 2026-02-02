@@ -168,9 +168,16 @@ class _CreditPackPurchaseModalState extends State<CreditPackPurchaseModal> {
                       ],
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: AppColors.textMuted),
-                    onPressed: () => Navigator.pop(context),
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.textMuted.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Icon(Icons.close, color: AppColors.textMuted, size: 24),
+                    ),
                   ),
                 ],
               ),
@@ -291,7 +298,7 @@ class _CreditPackPurchaseModalState extends State<CreditPackPurchaseModal> {
                 const SizedBox(width: 14),
                 
                 // Infos
-                Expanded(
+                Flexible(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -302,6 +309,7 @@ class _CreditPackPurchaseModalState extends State<CreditPackPurchaseModal> {
                           fontSize: 16,
                           color: AppColors.textLight,
                         ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 2),
                       Text(
@@ -314,6 +322,8 @@ class _CreditPackPurchaseModalState extends State<CreditPackPurchaseModal> {
                     ],
                   ),
                 ),
+                
+                const SizedBox(width: 8),
                 
                 // Bouton achat
                 ElevatedButton(

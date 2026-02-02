@@ -569,9 +569,16 @@ class DecisionAdvice {
   final String cycleType;
   final int periodNumber;
   final int? favorabilityScore;
+  
+  // 8 champs de contenu enrichi
+  final String? cosmicContext;
   final String adviceText;
+  final String? recommendedActions;
   final String? warnings;
+  final String? pitfallsToAvoid;
+  final String? optimalTiming;
   final String? alternativesSuggestion;
+  final String? closingMessage;
 
   DecisionAdvice({
     required this.id,
@@ -579,9 +586,14 @@ class DecisionAdvice {
     required this.cycleType,
     required this.periodNumber,
     this.favorabilityScore,
+    this.cosmicContext,
     required this.adviceText,
+    this.recommendedActions,
     this.warnings,
+    this.pitfallsToAvoid,
+    this.optimalTiming,
     this.alternativesSuggestion,
+    this.closingMessage,
   });
 
   factory DecisionAdvice.fromJson(Map<String, dynamic> json) {
@@ -591,25 +603,48 @@ class DecisionAdvice {
       cycleType: json['cycle_type'] ?? '',
       periodNumber: json['period_number'] ?? 0,
       favorabilityScore: json['favorability_score'],
+      cosmicContext: json['cosmic_context'],
       adviceText: json['advice_text'] ?? '',
+      recommendedActions: json['recommended_actions'],
       warnings: json['warnings'],
+      pitfallsToAvoid: json['pitfalls_to_avoid'],
+      optimalTiming: json['optimal_timing'],
       alternativesSuggestion: json['alternatives_suggestion'],
+      closingMessage: json['closing_message'],
     );
   }
 
   Color get favorabilityColor {
     if (favorabilityScore == null) return Colors.grey;
-    if (favorabilityScore! >= 70) return Colors.green;
-    if (favorabilityScore! >= 40) return Colors.orange;
-    return Colors.red;
+    switch (favorabilityScore!) {
+      case 5: return Colors.green;
+      case 4: return Colors.lightGreen;
+      case 3: return Colors.orange;
+      case 2: return Colors.deepOrange;
+      case 1: return Colors.red;
+      default: return Colors.grey;
+    }
   }
 
   String get favorabilityLabel {
     if (favorabilityScore == null) return 'Non évalué';
-    if (favorabilityScore! >= 70) return 'Très favorable';
-    if (favorabilityScore! >= 40) return 'Moyennement favorable';
-    return 'Déconseillé';
+    switch (favorabilityScore!) {
+      case 5: return 'Très favorable';
+      case 4: return 'Favorable';
+      case 3: return 'Neutre';
+      case 2: return 'Défavorable';
+      case 1: return 'Déconseillé';
+      default: return 'Non évalué';
+    }
   }
+  
+  /// Vérifie si le conseil a du contenu enrichi
+  bool get hasEnrichedContent => 
+    cosmicContext != null || 
+    recommendedActions != null || 
+    pitfallsToAvoid != null ||
+    optimalTiming != null ||
+    closingMessage != null;
 }
 
 class CyclePurchase {
