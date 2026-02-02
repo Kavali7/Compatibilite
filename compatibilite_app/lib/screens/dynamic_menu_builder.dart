@@ -16,6 +16,7 @@ import 'health_cycle_purchase_screen.dart';
 import 'daily_guide_purchase_screen.dart';
 import 'life_phase_purchase_screen.dart';
 import 'lunar_timing_purchase_screen.dart';
+import 'decision_advice_entry_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Helper class to build dynamic menu entries based on admin configuration
@@ -232,6 +233,20 @@ class DynamicMenuBuilder {
           },
         ));
       }
+    }
+    
+    // Éclairage Décision (Service 06)
+    if (isEnabled('eclairage_decision')) {
+      entries.add(MenuEntry(
+        label: '💡 Éclairage Décision',
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const DecisionAdviceEntryScreen(),
+            ),
+          );
+        },
+      ));
     }
     
     // Phases de Vie (Service 07)

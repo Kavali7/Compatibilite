@@ -50,8 +50,9 @@ class MenuConfigService {
     'cycle_business': {'label': 'Cycle Business', 'enabled': true, 'order': 13},
     'sante': {'label': 'Cycle Santé', 'enabled': true, 'order': 14},
     'guide_horaire': {'label': 'Guide Horaire', 'enabled': true, 'order': 15},
-    'phases_vie': {'label': 'Phases de Vie', 'enabled': true, 'order': 16},
-    'timing_lunaire': {'label': 'Timing Lunaire', 'enabled': true, 'order': 17},
+    'eclairage_decision': {'label': 'Éclairage Décision', 'enabled': true, 'order': 16},
+    'phases_vie': {'label': 'Phases de Vie', 'enabled': true, 'order': 17},
+    'timing_lunaire': {'label': 'Timing Lunaire', 'enabled': true, 'order': 18},
   };
 
   /// Load menu configuration from app_settings
