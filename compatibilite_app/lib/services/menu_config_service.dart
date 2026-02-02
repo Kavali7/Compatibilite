@@ -48,6 +48,10 @@ class MenuConfigService {
     'portrait_ame': {'label': 'Portrait de l\'Âme', 'enabled': true, 'order': 11},
     'cycle_personnel': {'label': 'Cycle Personnel', 'enabled': true, 'order': 12},
     'cycle_business': {'label': 'Cycle Business', 'enabled': true, 'order': 13},
+    'sante': {'label': 'Cycle Santé', 'enabled': true, 'order': 14},
+    'guide_horaire': {'label': 'Guide Horaire', 'enabled': true, 'order': 15},
+    'phases_vie': {'label': 'Phases de Vie', 'enabled': true, 'order': 16},
+    'timing_lunaire': {'label': 'Timing Lunaire', 'enabled': true, 'order': 17},
   };
 
   /// Load menu configuration from app_settings

@@ -9,6 +9,7 @@ flutter run -d 192.168.100.80:5555 2>&1
 flutter run -d 10.61.165.102:5555 --dart-define-from-file=.env
 adb connect 10.61.165.102
 cd compatibilite_app
+git add -A; git commit -m "feat(service-08): Implémentation Timing Lunaire - 8 phases lunaires avec calcul automatique"
 
 flutter pub get
 flutter run --dart-define-from-file=.env
