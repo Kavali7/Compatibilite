@@ -81,15 +81,34 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
     
     // Charger le conseil après que crédits et types soient prêts
     if (_decisionTypes.isNotEmpty) {
-      if (_selectedDecisionTypeId == null) {
+      // Si initialDecisionTypeId est un code (pas un UUID), le résoudre
+      if (_selectedDecisionTypeId != null && !_isUuid(_selectedDecisionTypeId!)) {
+        final typeByCode = _decisionTypes.firstWhere(
+          (t) => t.code == _selectedDecisionTypeId,
+          orElse: () => _decisionTypes.first,
+        );
+        _selectedDecisionTypeId = typeByCode.id;
+      } else if (_selectedDecisionTypeId == null) {
         _selectedDecisionTypeId = _decisionTypes.first.id;
       }
       await _loadAdvice();
+    } else {
+      // Aucun type chargé - utiliser des types par défaut en mode gracieux
+      debugPrint('>>> Aucun type de décision chargé - mode gracieux');
+      _error = 'Les types de décision ne sont pas disponibles. Veuillez réessayer.';
     }
     
     if (mounted) {
       setState(() => _isLoading = false);
     }
+  }
+  
+  /// Vérifie si une chaîne est un UUID valide
+  bool _isUuid(String value) {
+    final uuidRegex = RegExp(
+      r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+    );
+    return uuidRegex.hasMatch(value);
   }
 
   Future<void> _loadCreditBalance() async {

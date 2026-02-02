@@ -61,6 +61,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                 { to: '/settings', icon: '⚙️', label: 'Paramètres' },
                 { to: '/reports', icon: '📝', label: 'Config Rapports' },
                 { to: '/legal', icon: '📜', label: 'Pages Légales' },
+                { to: '/admin-users', icon: '👥', label: 'Gestion Admins' },
             ]
         }
     ];

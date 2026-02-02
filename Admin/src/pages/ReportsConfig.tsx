@@ -19,7 +19,12 @@ const REPORT_SERVICES = [
     { id: 'prevision_annee', label: '📆 Prévision Annuelle', sections: ['intro', 'general', 'love', 'career', 'health', 'finances', 'advice'] },
     { id: 'prevision_mois', label: '📅 Prévision Mensuelle', sections: ['intro', 'general', 'focus', 'opportunities', 'advice'] },
     { id: 'cycle_personnel', label: '🔄 Cycle Personnel', sections: ['intro', 'current_period', 'energy', 'focus', 'advice'] },
+    { id: 'cycle_business', label: '💼 Cycle Business', sections: ['intro', 'current_period', 'business_energy', 'opportunities', 'risks', 'advice'] },
+    { id: 'cycle_sante', label: '🏥 Cycle Santé', sections: ['intro', 'current_period', 'vitality', 'attention_areas', 'wellness_tips', 'advice'] },
+    { id: 'guide_horaire', label: '⏰ Guide Horaire', sections: ['intro', 'morning', 'afternoon', 'evening', 'best_hours', 'advice'] },
+    { id: 'eclairage_decision', label: '💡 Éclairage Décision', sections: ['intro', 'context', 'pros', 'cons', 'timing', 'recommendation'] },
     { id: 'phases_vie', label: '🔄 Phases de Vie', sections: ['intro', 'current_phase', 'lessons', 'opportunities', 'transition'] },
+    { id: 'timing_lunaire', label: '🌙 Timing Lunaire', sections: ['intro', 'current_phase', 'moon_influence', 'activities', 'advice'] },
 ];
 
 const SECTION_LABELS: Record<string, string> = {
@@ -45,6 +50,27 @@ const SECTION_LABELS: Record<string, string> = {
     'current_phase': 'Phase Actuelle',
     'lessons': 'Leçons',
     'transition': 'Transition',
+    // Cycle Business
+    'business_energy': 'Énergie Business',
+    'risks': 'Risques à Éviter',
+    // Cycle Santé
+    'vitality': 'Vitalité',
+    'attention_areas': 'Zones d\'Attention',
+    'wellness_tips': 'Conseils Bien-être',
+    // Guide Horaire
+    'morning': 'Matinée',
+    'afternoon': 'Après-midi',
+    'evening': 'Soirée',
+    'best_hours': 'Meilleures Heures',
+    // Éclairage Décision
+    'context': 'Contexte',
+    'pros': 'Points Positifs',
+    'cons': 'Points Négatifs',
+    'timing': 'Timing Idéal',
+    'recommendation': 'Recommandation',
+    // Timing Lunaire
+    'moon_influence': 'Influence Lunaire',
+    'activities': 'Activités Favorables',
 };
 
 export default function ReportsConfig() {
