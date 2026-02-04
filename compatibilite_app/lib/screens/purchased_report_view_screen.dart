@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../core/navigation_helper.dart';
 import '../theme/app_theme.dart';
 import '../widgets/animated_background.dart';
 import '../services/supabase_manager.dart';
@@ -65,7 +66,7 @@ class _PurchasedReportViewScreenState extends State<PurchasedReportViewScreen> {
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: AppColors.textLight),
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => NavigationHelper.goToMenu(context),
           ),
           title: Text(
             widget.purchaseTitle,

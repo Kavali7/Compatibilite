@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../core/constants.dart';
+import '../core/navigation_helper.dart';
 import '../services/health_cycle_service.dart';
 import '../widgets/animated_background.dart';
 
@@ -78,7 +79,7 @@ class _HealthCycleReportScreenState extends State<HealthCycleReportScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.textLight),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => NavigationHelper.goToMenu(context),
         ),
         title: Text(
           '🏥 Cycle Santé',
@@ -114,7 +115,7 @@ class _HealthCycleReportScreenState extends State<HealthCycleReportScreen> {
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: () => NavigationHelper.goToMenu(context),
               child: const Text('Retour'),
             ),
           ],

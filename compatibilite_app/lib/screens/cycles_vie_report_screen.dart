@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../core/constants.dart';
+import '../core/navigation_helper.dart';
 import '../services/cycles_vie_service.dart';
 import '../widgets/animated_background.dart';
 import 'decision_advice_screen.dart';
@@ -162,7 +163,7 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.textLight),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => NavigationHelper.goToMenu(context),
         ),
         title: Text(
           _reportTitle,
@@ -1164,9 +1165,9 @@ class _CyclesVieReportScreenState extends State<CyclesVieReportScreen> {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.arrow_back, size: 18),
-              label: const Text('Retour à l\'accueil'),
+              onPressed: () => NavigationHelper.goToMenu(context),
+              icon: const Icon(Icons.home, size: 18),
+              label: const Text('Voir autres services'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.primary,
                 side: const BorderSide(color: AppColors.primary),

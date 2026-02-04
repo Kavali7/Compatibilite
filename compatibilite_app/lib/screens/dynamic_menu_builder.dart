@@ -4,11 +4,13 @@ import '../services/auth_service.dart';
 import '../services/app_settings_service.dart';
 import '../services/pricing_service.dart';
 import '../widgets/hamburger_menu_overlay.dart';
+import '../widgets/auth_required_wrapper.dart';
 import 'auth/login_page.dart';
 import 'auth/simple_signup_screen.dart';
 import 'purchase_history_screen.dart';
 import 'temporal_purchase_screen.dart';
 import 'cycles_vie_home_screen.dart';
+import 'compatibility_wizard.dart';
 import 'portrait_ame_purchase_screen.dart';
 import 'personal_cycle_purchase_screen.dart';
 import 'business_cycle_purchase_screen.dart';
@@ -126,14 +128,28 @@ class DynamicMenuBuilder {
       ));
     }
     
+    // Compatibilité Couple (Service gratuit principal - Page d'accueil)
+    if (isEnabled('compatibilite_couple')) {
+      entries.add(MenuEntry(
+        label: '❤️ Compatibilité Couple',
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const CompatibilityWizard()),
+          );
+        },
+      ));
+    }
+    
     // Prévisions Temporelles (accès direct au service)
     if (isEnabled('previsions_temporelles')) {
       entries.add(MenuEntry(
         label: '✨ Prévisions Temporelles',
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const TemporalPurchaseScreen()),
-          );
+        onTap: () async {
+          if (await AuthRequiredWrapper.ensureAuthenticated(context)) {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const TemporalPurchaseScreen()),
+            );
+          }
         },
       ));
     }
@@ -142,10 +158,12 @@ class DynamicMenuBuilder {
     if (isEnabled('cycles_vie')) {
       entries.add(MenuEntry(
         label: '🌀 Cycles de Vie',
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const CyclesVieHomeScreen()),
-          );
+        onTap: () async {
+          if (await AuthRequiredWrapper.ensureAuthenticated(context)) {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const CyclesVieHomeScreen()),
+            );
+          }
         },
       ));
     }
@@ -156,12 +174,14 @@ class DynamicMenuBuilder {
       if (portraitPlan != null) {
         entries.add(MenuEntry(
           label: '✨ Portrait de l\'Âme',
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => PortraitAmePurchaseScreen(plan: portraitPlan),
-              ),
-            );
+          onTap: () async {
+            if (await AuthRequiredWrapper.ensureAuthenticated(context)) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => PortraitAmePurchaseScreen(plan: portraitPlan),
+                ),
+              );
+            }
           },
         ));
       }
@@ -173,12 +193,14 @@ class DynamicMenuBuilder {
       if (cyclePlan != null) {
         entries.add(MenuEntry(
           label: '🔄 Cycle Personnel',
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => PersonalCyclePurchaseScreen(plan: cyclePlan),
-              ),
-            );
+          onTap: () async {
+            if (await AuthRequiredWrapper.ensureAuthenticated(context)) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => PersonalCyclePurchaseScreen(plan: cyclePlan),
+                ),
+              );
+            }
           },
         ));
       }
@@ -190,12 +212,14 @@ class DynamicMenuBuilder {
       if (businessPlan != null) {
         entries.add(MenuEntry(
           label: '💼 Cycle Business',
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => BusinessCyclePurchaseScreen(plan: businessPlan),
-              ),
-            );
+          onTap: () async {
+            if (await AuthRequiredWrapper.ensureAuthenticated(context)) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => BusinessCyclePurchaseScreen(plan: businessPlan),
+                ),
+              );
+            }
           },
         ));
       }
@@ -207,12 +231,14 @@ class DynamicMenuBuilder {
       if (healthPlan != null) {
         entries.add(MenuEntry(
           label: '🏥 Cycle Santé',
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => HealthCyclePurchaseScreen(plan: healthPlan),
-              ),
-            );
+          onTap: () async {
+            if (await AuthRequiredWrapper.ensureAuthenticated(context)) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => HealthCyclePurchaseScreen(plan: healthPlan),
+                ),
+              );
+            }
           },
         ));
       }
@@ -224,12 +250,14 @@ class DynamicMenuBuilder {
       if (dailyPlan != null) {
         entries.add(MenuEntry(
           label: '⏰ Guide Horaire',
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => DailyGuidePurchaseScreen(plan: dailyPlan),
-              ),
-            );
+          onTap: () async {
+            if (await AuthRequiredWrapper.ensureAuthenticated(context)) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => DailyGuidePurchaseScreen(plan: dailyPlan),
+                ),
+              );
+            }
           },
         ));
       }
@@ -240,13 +268,15 @@ class DynamicMenuBuilder {
       final decisionPlan = PricingService.instance.getPlanByType('decision_credit');
       if (decisionPlan != null) {
         entries.add(MenuEntry(
-          label: 'Éclairage Décision',
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => DecisionAdvicePurchaseScreen(plan: decisionPlan),
-              ),
-            );
+          label: '💡 Éclairage Décision',
+          onTap: () async {
+            if (await AuthRequiredWrapper.ensureAuthenticated(context)) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => DecisionAdvicePurchaseScreen(plan: decisionPlan),
+                ),
+              );
+            }
           },
         ));
       }
@@ -258,12 +288,14 @@ class DynamicMenuBuilder {
       if (phasePlan != null) {
         entries.add(MenuEntry(
           label: '🔄 Phases de Vie',
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => LifePhasePurchaseScreen(plan: phasePlan),
-              ),
-            );
+          onTap: () async {
+            if (await AuthRequiredWrapper.ensureAuthenticated(context)) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => LifePhasePurchaseScreen(plan: phasePlan),
+                ),
+              );
+            }
           },
         ));
       }
@@ -275,12 +307,14 @@ class DynamicMenuBuilder {
       if (lunarPlan != null) {
         entries.add(MenuEntry(
           label: '🌙 Timing Lunaire',
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => LunarTimingPurchaseScreen(plan: lunarPlan),
-              ),
-            );
+          onTap: () async {
+            if (await AuthRequiredWrapper.ensureAuthenticated(context)) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => LunarTimingPurchaseScreen(plan: lunarPlan),
+                ),
+              );
+            }
           },
         ));
       }

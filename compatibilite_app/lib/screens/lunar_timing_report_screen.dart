@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../core/constants.dart';
+import '../core/navigation_helper.dart';
 import '../services/lunar_timing_service.dart';
 import '../widgets/animated_background.dart';
 
@@ -79,7 +80,7 @@ class _LunarTimingReportScreenState extends State<LunarTimingReportScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.textLight),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => NavigationHelper.goToMenu(context),
         ),
         title: Text(
           'Votre Timing Lunaire',

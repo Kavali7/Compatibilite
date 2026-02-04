@@ -144,13 +144,20 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
       onLoginSuccess: _checkSession,
       onLogout: () => setState(() => _reset()),
     );
-    _menuBuilder.loadConfig();
+    _menuBuilder.loadConfig().then((_) {
+      debugPrint('>>> MenuBuilder config loaded');
+    });
     
     if (SupabaseManager.isReady) {
       _repository = CompatibilityRepository(SupabaseManager.client);
     }
     // Load pricing plans
-    PricingService.instance.fetchPlans().then((_) {
+    debugPrint('>>> Starting PricingService.fetchPlans()...');
+    PricingService.instance.fetchPlans().then((plans) {
+      debugPrint('>>> fetchPlans completed: ${plans.length} plans loaded');
+      for (final p in plans) {
+        debugPrint('>>>   - ${p.planType}: ${p.name} (active: ${p.isActive})');
+      }
       if (mounted) {
         setState(() {
           try {
@@ -160,6 +167,8 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           }
         });
       }
+    }).catchError((e) {
+      debugPrint('>>> fetchPlans ERROR: $e');
     });
     
     // Check for existing session/profile

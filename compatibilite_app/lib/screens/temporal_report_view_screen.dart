@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../core/navigation_helper.dart';
 import '../theme/app_theme.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/temporal_report_card.dart';
@@ -24,7 +25,7 @@ class TemporalReportViewScreen extends StatelessWidget {
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: AppColors.textLight),
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => NavigationHelper.goToMenu(context),
           ),
           title: Text(
             'Votre Prévision',
@@ -37,10 +38,7 @@ class TemporalReportViewScreen extends StatelessWidget {
           actions: [
             IconButton(
               icon: const Icon(Icons.home, color: AppColors.textLight),
-              onPressed: () {
-                // Go back to home / purchase screen
-                Navigator.of(context).popUntil((route) => route.isFirst);
-              },
+              onPressed: () => NavigationHelper.goToMenu(context),
             ),
           ],
         ),
@@ -121,11 +119,9 @@ class TemporalReportViewScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.of(context).popUntil((route) => route.isFirst);
-                      },
+                      onPressed: () => NavigationHelper.goToMenu(context),
                       icon: const Icon(Icons.home),
-                      label: const Text('Retour à l\'accueil'),
+                      label: const Text('Voir autres services'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.textLight,
                         side: BorderSide(color: AppColors.primary.withValues(alpha: 0.5)),

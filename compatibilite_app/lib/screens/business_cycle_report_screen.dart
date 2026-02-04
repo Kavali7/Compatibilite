@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 import '../core/constants.dart';
+import '../core/navigation_helper.dart';
 import '../widgets/animated_background.dart';
 import '../services/business_cycle_service.dart';
 
@@ -98,7 +99,7 @@ class _BusinessCycleReportScreenState extends State<BusinessCycleReportScreen> {
         children: [
           IconButton(
             icon: const Icon(Icons.arrow_back, color: AppColors.textLight),
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => NavigationHelper.goToMenu(context),
           ),
           Expanded(
             child: Text(

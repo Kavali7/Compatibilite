@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../core/constants.dart';
+import '../core/navigation_helper.dart';
 import '../services/life_phase_service.dart';
 import '../widgets/animated_background.dart';
 
@@ -70,7 +71,7 @@ class _LifePhaseReportScreenState extends State<LifePhaseReportScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.textLight),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => NavigationHelper.goToMenu(context),
         ),
         title: Text(
           'Phases de Vie',
@@ -101,7 +102,7 @@ class _LifePhaseReportScreenState extends State<LifePhaseReportScreen> {
             const SizedBox(height: 16),
             Text('Données non disponibles', style: GoogleFonts.poppins(color: Colors.white70)),
             const SizedBox(height: 24),
-            ElevatedButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Retour')),
+            ElevatedButton(onPressed: () => NavigationHelper.goToMenu(context), child: const Text('Retour')),
           ],
         ),
       );

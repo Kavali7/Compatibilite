@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../core/constants.dart';
+import '../core/navigation_helper.dart';
 import '../services/daily_guide_service.dart';
 import '../widgets/animated_background.dart';
 
@@ -69,7 +70,7 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.textLight),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => NavigationHelper.goToMenu(context),
         ),
         title: Text(
           'Guide Horaire',

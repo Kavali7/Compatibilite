@@ -266,17 +266,25 @@ class CyclesVieService {
     required String cycleType,
     required int periodNumber,
   }) async {
-    final response = await _client
-        .from('cycle_vie_decision_advice')
-        .select()
-        .eq('decision_type_id', decisionTypeId)
-        .eq('cycle_type', cycleType)
-        .eq('period_number', periodNumber)
-        .eq('is_active', true)
-        .maybeSingle();
+    try {
+      debugPrint('>>> getAdvice: typeId=$decisionTypeId, cycle=$cycleType, period=$periodNumber');
+      
+      final response = await _client
+          .from('cycle_vie_decision_advice')
+          .select()
+          .eq('decision_type_id', decisionTypeId)
+          .eq('cycle_type', cycleType)
+          .eq('period_number', periodNumber)
+          .maybeSingle();
 
-    if (response == null) return null;
-    return DecisionAdvice.fromJson(response);
+      debugPrint('>>> getAdvice response: ${response != null ? "FOUND" : "NULL"}');
+      
+      if (response == null) return null;
+      return DecisionAdvice.fromJson(response);
+    } catch (e) {
+      debugPrint('>>> getAdvice error: $e');
+      return null;
+    }
   }
 
   // ═══════════════════════════════════════════════════════════════

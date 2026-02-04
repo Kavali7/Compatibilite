@@ -108,6 +108,20 @@ export default function LegalIndex() {
         }
     }
 
+    async function handleToggleActive(page: LegalPage) {
+        try {
+            const { error } = await supabase
+                .from('legal_pages')
+                .update({ is_active: !page.is_active })
+                .eq('id', page.id);
+            if (error) throw error;
+            fetchPages();
+        } catch (err) {
+            console.error(err);
+            alert('Erreur lors du changement de statut');
+        }
+    }
+
     async function handleDelete(id: string) {
         if (!window.confirm('Êtes-vous sûr de vouloir supprimer cette page ?')) return;
 
@@ -263,6 +277,12 @@ export default function LegalIndex() {
                                 className="text-red-600 hover:text-red-900 text-sm font-medium px-2 py-1"
                             >
                                 Supprimer
+                            </button>
+                            <button
+                                onClick={() => handleToggleActive(page)}
+                                className={`text-sm font-medium px-3 py-1 rounded ${page.is_active ? 'bg-orange-50 text-orange-700 hover:bg-orange-100' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}
+                            >
+                                {page.is_active ? '👁️ Masquer' : '👁️ Afficher'}
                             </button>
                             <button
                                 onClick={() => handleEdit(page)}

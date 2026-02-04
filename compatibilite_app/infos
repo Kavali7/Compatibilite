@@ -14,6 +14,8 @@ git add -A; git commit -m "correction 1 dans le panneau admin"
 flutter pub get
 flutter run --dart-define-from-file=.env
 
+firebase hosting:channel:deploy growpeak-agence.com
+
 flutter run -d web-server --web-hostname=0.0.0.0 --web-port=8080 --dart-define-from-file=.env
 http://192.168.137.1:8080
 http://172.26.164.165:8080

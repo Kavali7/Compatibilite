@@ -38,7 +38,10 @@ class _DecisionAdvicePurchaseScreenState extends State<DecisionAdvicePurchaseScr
   int? _birthDay;
   DateTime? _birthdate;
   
-  // Date cible de la décision
+  // Date cible de la décision - dropdowns séparés
+  int? _targetYear;
+  int? _targetMonth;
+  int? _targetDay;
   DateTime _targetDate = DateTime.now();
   
   // Type de décision sélectionné
@@ -90,6 +93,22 @@ class _DecisionAdvicePurchaseScreenState extends State<DecisionAdvicePurchaseScr
     _birthMonth = now.month;
     _birthDay = now.day;
     _updateBirthdate();
+    
+    // Initialize target date dropdowns to today
+    _targetYear = now.year;
+    _targetMonth = now.month;
+    _targetDay = now.day;
+    _updateTargetDate();
+  }
+
+  void _updateTargetDate() {
+    if (_targetYear != null && _targetMonth != null && _targetDay != null) {
+      final maxDay = _daysInMonth(_targetYear, _targetMonth);
+      if (_targetDay! > maxDay) {
+        _targetDay = maxDay;
+      }
+      _targetDate = DateTime(_targetYear!, _targetMonth!, _targetDay!);
+    }
   }
 
   void _updateBirthdate() {
@@ -600,6 +619,15 @@ class _DecisionAdvicePurchaseScreenState extends State<DecisionAdvicePurchaseScr
   }
 
   Widget _buildTargetDatePicker() {
+    // Generate years from 1900 to 2030
+    final years = List<int>.generate(131, (i) => 1900 + i);
+    const months = [
+      'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+      'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
+    ];
+    final maxDay = _daysInMonth(_targetYear, _targetMonth);
+    final days = List<int>.generate(maxDay, (i) => i + 1);
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -607,27 +635,58 @@ class _DecisionAdvicePurchaseScreenState extends State<DecisionAdvicePurchaseScr
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
       ),
-      child: InkWell(
-        onTap: _pickTargetDate,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: Row(
-            children: [
-              Icon(Icons.calendar_today, color: AppColors.primary),
-              const SizedBox(width: 12),
-              Text(
-                _formatDate(_targetDate),
-                style: TextStyle(
-                  color: AppColors.textLight,
-                  fontSize: 16,
-                ),
-              ),
-              const Spacer(),
-              Icon(Icons.edit, color: AppColors.textMuted, size: 20),
-            ],
+      child: Column(
+        children: [
+          DropdownButtonFormField<int>(
+            decoration: const InputDecoration(labelText: 'Année'),
+            value: _targetYear,
+            dropdownColor: AppColors.block,
+            style: TextStyle(color: AppColors.textLight),
+            items: years.map((y) => DropdownMenuItem<int>(value: y, child: Text('$y'))).toList(),
+            onChanged: (val) => setState(() { _targetYear = val; _updateTargetDate(); }),
           ),
-        ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<int>(
+            decoration: const InputDecoration(labelText: 'Mois'),
+            value: _targetMonth,
+            dropdownColor: AppColors.block,
+            style: TextStyle(color: AppColors.textLight),
+            items: List.generate(months.length, (i) => DropdownMenuItem<int>(value: i + 1, child: Text(months[i]))),
+            onChanged: (val) => setState(() { _targetMonth = val; _updateTargetDate(); }),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<int>(
+            decoration: const InputDecoration(labelText: 'Jour'),
+            value: _targetDay != null && _targetDay! <= maxDay ? _targetDay : null,
+            dropdownColor: AppColors.block,
+            style: TextStyle(color: AppColors.textLight),
+            items: days.map((d) => DropdownMenuItem<int>(value: d, child: Text('$d'))).toList(),
+            onChanged: (val) => setState(() { _targetDay = val; _updateTargetDate(); }),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.secondary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.event, color: AppColors.secondary, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Date prévue: ${_formatDate(_targetDate)}',
+                    style: TextStyle(
+                      color: AppColors.textLight,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -638,29 +697,6 @@ class _DecisionAdvicePurchaseScreenState extends State<DecisionAdvicePurchaseScr
       'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
     ];
     return '${date.day} ${months[date.month - 1]} ${date.year}';
-  }
-
-  Future<void> _pickTargetDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _targetDate,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.dark(
-              primary: AppColors.primary,
-              surface: AppColors.block,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null && mounted) {
-      setState(() => _targetDate = picked);
-    }
   }
 
   Widget _buildPaymentMethodSection() {

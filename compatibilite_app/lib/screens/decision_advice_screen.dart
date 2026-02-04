@@ -147,6 +147,9 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
     // Type déjà débloqué pendant cette session
     if (_unlockedTypeIds.contains(typeId)) return true;
     
+    // Si on vient d'un paiement (purchaseId présent), accès autorisé (crédits attribués)
+    if (widget.purchaseId != null && widget.purchaseId!.isNotEmpty) return true;
+    
     // Crédits illimités (-1)
     if (_creditBalance != null && _creditBalance!.totalCredits < 0) return true;
     

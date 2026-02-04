@@ -152,6 +152,7 @@ class DecisionCreditService {
     if (uid == null) return [];
 
     try {
+      // Requête simplifiée sans relation FK (évite PGRST200)
       var query = _client
           .from('user_decision_usage')
           .select('''
@@ -160,14 +161,13 @@ class DecisionCreditService {
             cycle_type,
             period_number,
             target_date,
-            created_at,
-            cycle_vie_decision_types(label, icon_name)
+            created_at
           ''')
           .eq('user_id', uid);
       
       // Filtrer par achat si fourni
       if (purchaseId != null) {
-        query = query.eq('cycle_vie_purchase_id', purchaseId);
+        query = query.eq('purchase_id', purchaseId);
       }
       
       // Ordonner et limiter
@@ -181,12 +181,12 @@ class DecisionCreditService {
         return DecisionUsage(
           id: item['id'] ?? '',
           decisionTypeId: item['decision_type_id'] ?? '',
-          decisionTypeLabel: item['cycle_vie_decision_types']?['label'] ?? 'Inconnu',
-          decisionTypeIcon: item['cycle_vie_decision_types']?['icon_name'],
+          decisionTypeLabel: 'Type de décision', // Label par défaut
+          decisionTypeIcon: null,
           cycleType: item['cycle_type'] ?? '',
           periodNumber: item['period_number'] ?? 0,
-          targetDate: DateTime.parse(item['target_date']),
-          createdAt: DateTime.parse(item['created_at']),
+          targetDate: DateTime.tryParse(item['target_date'] ?? '') ?? DateTime.now(),
+          createdAt: DateTime.tryParse(item['created_at'] ?? '') ?? DateTime.now(),
         );
       }).toList();
     } catch (e) {
