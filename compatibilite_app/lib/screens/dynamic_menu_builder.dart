@@ -2,23 +2,11 @@ import 'package:flutter/material.dart';
 import '../services/menu_config_service.dart';
 import '../services/auth_service.dart';
 import '../services/app_settings_service.dart';
-import '../services/pricing_service.dart';
 import '../widgets/hamburger_menu_overlay.dart';
-import '../widgets/auth_required_wrapper.dart';
 import 'auth/login_page.dart';
 import 'auth/simple_signup_screen.dart';
 import 'purchase_history_screen.dart';
-import 'temporal_purchase_screen.dart';
-import 'cycles_vie_home_screen.dart';
-import 'compatibility_wizard.dart';
-import 'portrait_ame_purchase_screen.dart';
-import 'personal_cycle_purchase_screen.dart';
-import 'business_cycle_purchase_screen.dart';
-import 'health_cycle_purchase_screen.dart';
-import 'daily_guide_purchase_screen.dart';
-import 'life_phase_purchase_screen.dart';
-import 'lunar_timing_purchase_screen.dart';
-import 'decision_advice_purchase_screen.dart';
+import 'services_catalog_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Helper class to build dynamic menu entries based on admin configuration
@@ -128,196 +116,20 @@ class DynamicMenuBuilder {
       ));
     }
     
-    // Compatibilité Couple (Service gratuit principal - Page d'accueil)
-    if (isEnabled('compatibilite_couple')) {
+    // ========================================
+    // NOS SERVICES - Single unified catalog entry
+    // ========================================
+    // All individual service menu items have been consolidated into
+    // a single "Nos Services" entry that opens the ServicesCatalogScreen
+    if (isEnabled('services_catalog')) {
       entries.add(MenuEntry(
-        label: '❤️ Compatibilité Couple',
+        label: '🌟 Nos Services',
         onTap: () {
           Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const CompatibilityWizard()),
+            MaterialPageRoute(builder: (_) => ServicesCatalogScreen()),
           );
         },
       ));
-    }
-    
-    // Prévisions Temporelles (accès direct au service)
-    if (isEnabled('previsions_temporelles')) {
-      entries.add(MenuEntry(
-        label: '✨ Prévisions Temporelles',
-        onTap: () async {
-          if (await AuthRequiredWrapper.ensureAuthenticated(context)) {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const TemporalPurchaseScreen()),
-            );
-          }
-        },
-      ));
-    }
-    
-    // Cycles de Vie (nouveau service)
-    if (isEnabled('cycles_vie')) {
-      entries.add(MenuEntry(
-        label: '🌀 Cycles de Vie',
-        onTap: () async {
-          if (await AuthRequiredWrapper.ensureAuthenticated(context)) {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const CyclesVieHomeScreen()),
-            );
-          }
-        },
-      ));
-    }
-    
-    // Portrait de l'Âme (Service 01)
-    if (isEnabled('portrait_ame')) {
-      final portraitPlan = PricingService.instance.portraitAmePlan;
-      if (portraitPlan != null) {
-        entries.add(MenuEntry(
-          label: '✨ Portrait de l\'Âme',
-          onTap: () async {
-            if (await AuthRequiredWrapper.ensureAuthenticated(context)) {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => PortraitAmePurchaseScreen(plan: portraitPlan),
-                ),
-              );
-            }
-          },
-        ));
-      }
-    }
-    
-    // Cycle Personnel (Service 02)
-    if (isEnabled('cycle_personnel')) {
-      final cyclePlan = PricingService.instance.getPlanByType('personal_cycle_annual');
-      if (cyclePlan != null) {
-        entries.add(MenuEntry(
-          label: '🔄 Cycle Personnel',
-          onTap: () async {
-            if (await AuthRequiredWrapper.ensureAuthenticated(context)) {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => PersonalCyclePurchaseScreen(plan: cyclePlan),
-                ),
-              );
-            }
-          },
-        ));
-      }
-    }
-    
-    // Cycle Business (Service 03)
-    if (isEnabled('cycle_business')) {
-      final businessPlan = PricingService.instance.getPlanByType('business_cycle_annual');
-      if (businessPlan != null) {
-        entries.add(MenuEntry(
-          label: '💼 Cycle Business',
-          onTap: () async {
-            if (await AuthRequiredWrapper.ensureAuthenticated(context)) {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => BusinessCyclePurchaseScreen(plan: businessPlan),
-                ),
-              );
-            }
-          },
-        ));
-      }
-    }
-    
-    // Cycle Santé (Service 04)
-    if (isEnabled('cycle_sante')) {
-      final healthPlan = PricingService.instance.getPlanByType('health_cycle_annual');
-      if (healthPlan != null) {
-        entries.add(MenuEntry(
-          label: '🏥 Cycle Santé',
-          onTap: () async {
-            if (await AuthRequiredWrapper.ensureAuthenticated(context)) {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => HealthCyclePurchaseScreen(plan: healthPlan),
-                ),
-              );
-            }
-          },
-        ));
-      }
-    }
-    
-    // Guide Horaire (Service 05)
-    if (isEnabled('guide_horaire')) {
-      final dailyPlan = PricingService.instance.getPlanByType('daily_guide_day');
-      if (dailyPlan != null) {
-        entries.add(MenuEntry(
-          label: '⏰ Guide Horaire',
-          onTap: () async {
-            if (await AuthRequiredWrapper.ensureAuthenticated(context)) {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => DailyGuidePurchaseScreen(plan: dailyPlan),
-                ),
-              );
-            }
-          },
-        ));
-      }
-    }
-    
-    // Éclairage Décision (Service 06)
-    if (isEnabled('eclairage_decision')) {
-      final decisionPlan = PricingService.instance.getPlanByType('decision_credit');
-      if (decisionPlan != null) {
-        entries.add(MenuEntry(
-          label: '💡 Éclairage Décision',
-          onTap: () async {
-            if (await AuthRequiredWrapper.ensureAuthenticated(context)) {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => DecisionAdvicePurchaseScreen(plan: decisionPlan),
-                ),
-              );
-            }
-          },
-        ));
-      }
-    }
-    
-    // Phases de Vie (Service 07)
-    if (isEnabled('phases_vie')) {
-      final phasePlan = PricingService.instance.getPlanByType('life_phase_report');
-      if (phasePlan != null) {
-        entries.add(MenuEntry(
-          label: '🔄 Phases de Vie',
-          onTap: () async {
-            if (await AuthRequiredWrapper.ensureAuthenticated(context)) {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => LifePhasePurchaseScreen(plan: phasePlan),
-                ),
-              );
-            }
-          },
-        ));
-      }
-    }
-    
-    // Timing Lunaire (Service 08)
-    if (isEnabled('timing_lunaire')) {
-      final lunarPlan = PricingService.instance.getPlanByType('lunar_timing_monthly');
-      if (lunarPlan != null) {
-        entries.add(MenuEntry(
-          label: '🌙 Timing Lunaire',
-          onTap: () async {
-            if (await AuthRequiredWrapper.ensureAuthenticated(context)) {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => LunarTimingPurchaseScreen(plan: lunarPlan),
-                ),
-              );
-            }
-          },
-        ));
-      }
     }
     
     // Contact options

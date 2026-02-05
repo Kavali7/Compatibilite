@@ -26,7 +26,8 @@ type MenuConfigSettings = {
 // Menu item categories for organization
 const MENU_CATEGORIES = {
     actions: ['mes_achats', 'se_connecter', 'creer_compte', 'se_deconnecter'],
-    services: ['previsions_temporelles', 'compatibilite', 'cycles_vie', 'portrait_ame',
+    catalog: ['services_catalog'], // NEW: Unified catalog entry
+    services: ['compatibilite_couple', 'previsions_temporelles', 'portrait_ame',
         'cycle_personnel', 'cycle_business', 'cycle_sante', 'guide_horaire',
         'eclairage_decision', 'phases_vie', 'timing_lunaire'],
     contact: ['contacter', 'whatsapp', 'appeler'],
@@ -38,22 +39,23 @@ const DEFAULT_MENU_CONFIG: MenuConfigSettings = {
     se_connecter: { label: 'Se connecter', enabled: true, order: 2 },
     creer_compte: { label: 'Créer un compte', enabled: true, order: 3 },
     se_deconnecter: { label: 'Se déconnecter', enabled: true, order: 4 },
-    // Services
-    previsions_temporelles: { label: '✨ Prévisions Temporelles', enabled: true, order: 8 },
-    compatibilite: { label: '💑 Test de Compatibilité', enabled: true, order: 9 },
-    cycles_vie: { label: '🌀 Cycles de Vie', enabled: true, order: 10 },
-    portrait_ame: { label: '✨ Portrait de l\'Âme', enabled: true, order: 11 },
-    cycle_personnel: { label: '🔄 Cycle Personnel', enabled: true, order: 12 },
-    cycle_business: { label: '💼 Cycle Business', enabled: true, order: 13 },
-    cycle_sante: { label: '🏥 Cycle Santé', enabled: true, order: 14 },
-    guide_horaire: { label: '⏰ Guide Horaire', enabled: true, order: 15 },
-    eclairage_decision: { label: '💡 Éclairage Décision', enabled: true, order: 16 },
-    phases_vie: { label: '🔄 Phases de Vie', enabled: true, order: 17 },
-    timing_lunaire: { label: '🌙 Timing Lunaire', enabled: true, order: 18 },
+    // NEW: Unified Services Catalog
+    services_catalog: { label: '🌟 Nos Services', enabled: true, order: 5 },
     // Contact
-    contacter: { label: 'Contacter Growpeak Agence', enabled: true, order: 5 },
-    whatsapp: { label: 'WhatsApp Growpeak Agence', enabled: true, order: 6 },
-    appeler: { label: 'Appeler Growpeak Agence', enabled: true, order: 7 },
+    contacter: { label: 'Contacter Growpeak Agence', enabled: true, order: 6 },
+    whatsapp: { label: 'WhatsApp Growpeak Agence', enabled: true, order: 7 },
+    appeler: { label: 'Appeler Growpeak Agence', enabled: true, order: 8 },
+    // Individual Services (controls visibility in catalog)
+    compatibilite_couple: { label: '❤️ Compatibilité Couple', enabled: true, order: 10 },
+    previsions_temporelles: { label: '🔮 Ce Que l\'Avenir Réserve À Votre Couple', enabled: true, order: 11 },
+    portrait_ame: { label: '✨ Qui Êtes-Vous Vraiment', enabled: true, order: 12 },
+    cycle_personnel: { label: '📅 Calendrier de Votre Destinée', enabled: true, order: 13 },
+    cycle_business: { label: '💼 L\'Année Business Idéale', enabled: true, order: 14 },
+    cycle_sante: { label: '🏥 Cycle Santé', enabled: true, order: 15 },
+    guide_horaire: { label: '⏰ Horloge de Productivité', enabled: true, order: 16 },
+    eclairage_decision: { label: '💡 Guide des Grandes Décisions', enabled: true, order: 17 },
+    phases_vie: { label: '🔄 D\'où Venez-Vous, Où Allez-Vous', enabled: true, order: 18 },
+    timing_lunaire: { label: '🌙 Calendrier Lunaire Personnel', enabled: true, order: 19 },
 };
 
 type PrimaryServiceOption =
@@ -567,10 +569,43 @@ export default function Settings() {
                     </div>
                 </div>
 
-                {/* Services */}
+                {/* Services Catalog Entry */}
+                <div className="menu-category catalog-category">
+                    <h4 className="category-header">🌟 Catalogue des Services</h4>
+                    <p className="muted small">Entrée unique dans le menu qui ouvre le catalogue de tous les services.</p>
+                    <div className="menu-config-settings">
+                        {MENU_CATEGORIES.catalog
+                            .filter(menuId => menuConfig[menuId])
+                            .map(menuId => {
+                                const config = menuConfig[menuId];
+                                return (
+                                    <div key={menuId} className="settings-toggle-row catalog-row">
+                                        <label className="toggle-label">
+                                            <span className="toggle-icon">🌟</span>
+                                            <div>
+                                                <strong>{config.label}</strong>
+                                                <p className="muted small">Affiche le catalogue de tous les services</p>
+                                            </div>
+                                        </label>
+                                        <button
+                                            className={`toggle-btn ${config.enabled ? 'active' : ''}`}
+                                            onClick={() => toggleMenuEnabled(menuId)}
+                                        >
+                                            {config.enabled ? 'Visible' : 'Masqué'}
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                    </div>
+                </div>
+
+                {/* Services Visibility in Catalog */}
                 <div className="menu-category">
-                    <h4 className="category-header">🚀 Services (Payants)</h4>
-                    <p className="muted small">Masquez un service pour le rendre temporairement indisponible.</p>
+                    <h4 className="category-header">🚀 Visibilité des Services dans le Catalogue</h4>
+                    <p className="muted small">
+                        Contrôlez quels services apparaissent dans le catalogue.
+                        Les services masqués ne seront pas visibles pour les utilisateurs.
+                    </p>
                     <div className="menu-config-settings">
                         {MENU_CATEGORIES.services
                             .filter(menuId => menuConfig[menuId])
@@ -778,6 +813,20 @@ export default function Settings() {
                 }
                 .service-row:hover {
                     border-color: rgba(159,122,234,0.4);
+                }
+                .catalog-category {
+                    background: linear-gradient(135deg, rgba(255,215,0,0.05) 0%, rgba(255,165,0,0.05) 100%);
+                    border-color: rgba(255,215,0,0.2);
+                }
+                .catalog-category .category-header {
+                    color: #ffd700;
+                }
+                .catalog-row {
+                    background: linear-gradient(135deg, rgba(255,215,0,0.08) 0%, rgba(255,165,0,0.08) 100%);
+                    border: 1px solid rgba(255,215,0,0.3);
+                }
+                .catalog-row:hover {
+                    border-color: rgba(255,215,0,0.5);
                 }
             `}</style>
         </div>
