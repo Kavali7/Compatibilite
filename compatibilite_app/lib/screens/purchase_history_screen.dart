@@ -3,16 +3,12 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../core/navigation_helper.dart';
 import '../services/auth_service.dart';
-import '../services/supabase_manager.dart';
-import '../services/currency_service.dart';
 import '../services/stored_report_service.dart';
 import '../models/stored_report_model.dart';
 import '../widgets/animated_background.dart';
-import 'compatibility_wizard.dart';
-import 'purchased_report_view_screen.dart';
 import 'stored_report_viewer_screen.dart';
 
-/// Screen to view purchase history (all service types)
+/// Screen to view purchase history - reads only from stored_reports
 class PurchaseHistoryScreen extends StatefulWidget {
   const PurchaseHistoryScreen({super.key});
 
@@ -22,16 +18,26 @@ class PurchaseHistoryScreen extends StatefulWidget {
 
 class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
   bool _isLoading = true;
-  List<_PurchaseItem> _purchases = [];
+  List<StoredReport> _allReports = [];
+  List<StoredReport> _filteredReports = [];
   String? _error;
+  String _selectedFilter = 'all';
+
+  // Filter categories
+  static const Map<String, String> _filters = {
+    'all': 'Tous',
+    'couple': 'Couple',
+    'cycles': 'Cycles',
+    'previsions': 'Prévisions',
+  };
 
   @override
   void initState() {
     super.initState();
-    _loadPurchases();
+    _loadReports();
   }
 
-  Future<void> _loadPurchases() async {
+  Future<void> _loadReports() async {
     final user = AuthService.instance.currentUser;
     if (user == null) {
       setState(() {
@@ -42,42 +48,15 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
     }
 
     try {
-      if (!SupabaseManager.isReady) {
-        setState(() {
-          _isLoading = false;
-          _error = 'Service indisponible';
-        });
-        return;
-      }
-
-      final List<_PurchaseItem> allPurchases = [];
-
-      // 1. Fetch stored reports (new system)
-      final storedReports = await StoredReportService.instance.getUserReports(user.id);
-      for (final report in storedReports) {
-        allPurchases.add(_PurchaseItem(
-          id: report.id,
-          type: report.serviceType,
-          title: report.serviceLabel,
-          subtitle: _formatDate(report.createdAt),
-          date: report.createdAt,
-          icon: StoredReport.getIconForType(report.serviceType),
-          storedReport: report,
-        ));
-      }
-
-      // 2. Fetch legacy data (couple_profiles without stored reports)
-      await _loadLegacyPurchases(user.id, allPurchases);
-
-      // Sort by date descending
-      allPurchases.sort((a, b) => b.date.compareTo(a.date));
-
+      final reports = await StoredReportService.instance.getUserReports(user.id);
+      
       setState(() {
-        _purchases = allPurchases;
+        _allReports = reports;
+        _applyFilter();
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint('Error loading purchases: $e');
+      debugPrint('Error loading reports: $e');
       setState(() {
         _isLoading = false;
         _error = 'Erreur lors du chargement: $e';
@@ -85,198 +64,47 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
     }
   }
 
-  Future<void> _loadLegacyPurchases(String userId, List<_PurchaseItem> purchases) async {
-    try {
-      final client = SupabaseManager.client;
-
-      // Get IDs of stored reports to avoid duplicates
-      final storedReportPaymentIds = purchases
-          .where((p) => p.storedReport?.paymentId != null)
-          .map((p) => p.storedReport!.paymentId!)
-          .toSet();
-
-      // Fetch payments that don't have stored reports
-      final payments = await client
-          .from('payments')
-          .select('id, amount_fcfa, plan_type, payment_method, created_at, status')
-          .eq('user_id', userId)
-          .eq('status', 'success')
-          .order('created_at', ascending: false);
-
-      // Fetch couple profiles
-      final profiles = await client
-          .from('couple_profiles')
-          .select('id, user_firstname, partner_firstname, payment_id, created_at')
-          .eq('user_id', userId)
-          .order('created_at', ascending: false);
-
-      // Process payments
-      for (final payment in (payments as List)) {
-        final paymentId = payment['id'] as String;
-        
-        // Skip if already in stored reports
-        if (storedReportPaymentIds.contains(paymentId)) continue;
-
-        final planType = payment['plan_type'] as String? ?? '';
-        final amount = payment['amount_fcfa'] as int? ?? 0;
-        final method = payment['payment_method'] as String? ?? '';
-        final date = DateTime.parse(payment['created_at'] as String);
-
-        // Find matching profile
-        var matchingProfile = (profiles as List).cast<Map<String, dynamic>>().firstWhere(
-          (p) => p['payment_id'] == paymentId,
-          orElse: () => <String, dynamic>{},
-        );
-
-        // For compatibility reports
-        if (!planType.contains('temporel') && matchingProfile.isNotEmpty) {
-          final userFirstname = matchingProfile['user_firstname'] as String? ?? '';
-          final partnerFirstname = matchingProfile['partner_firstname'] as String? ?? '';
-          
-          purchases.add(_PurchaseItem(
-            id: paymentId,
-            type: StoredReport.typeCompatibility,
-            title: userFirstname.isNotEmpty && partnerFirstname.isNotEmpty
-                ? 'Compatibilité: $userFirstname & $partnerFirstname'
-                : 'Rapport de Compatibilité',
-            subtitle: '${_formatDate(date)} • ${CurrencyService.instance.formatAmount(amount)} • $method',
-            date: date,
-            icon: '❤️',
-            legacyProfileId: matchingProfile['id'] as String?,
-            legacyProfileData: matchingProfile,
-          ));
-        } else if (planType.contains('temporel')) {
-          // Temporal predictions
-          String title = 'Prévision Temporelle';
-          if (planType.contains('jour')) title = 'Prévision Journalière';
-          if (planType.contains('mois')) title = 'Prévision Mensuelle';
-          if (planType.contains('annee') || planType.contains('année')) title = 'Prévision Annuelle';
-
-          purchases.add(_PurchaseItem(
-            id: paymentId,
-            type: StoredReport.typeTemporal,
-            title: title,
-            subtitle: '${_formatDate(date)} • ${CurrencyService.instance.formatAmount(amount)} • $method',
-            date: date,
-            icon: '📅',
-          ));
-        }
-      }
-
-      // Add standalone profiles (free access)
-      for (final profile in (profiles as List).cast<Map<String, dynamic>>()) {
-        final profileId = profile['id'] as String;
-        final alreadyAdded = purchases.any((p) => p.id == profileId || p.legacyProfileId == profileId);
-
-        if (!alreadyAdded) {
-          final userFirstname = profile['user_firstname'] as String? ?? '';
-          final partnerFirstname = profile['partner_firstname'] as String? ?? '';
-          final date = DateTime.parse(profile['created_at'] as String);
-
-          purchases.add(_PurchaseItem(
-            id: profileId,
-            type: StoredReport.typeCompatibility,
-            title: userFirstname.isNotEmpty && partnerFirstname.isNotEmpty
-                ? 'Compatibilité: $userFirstname & $partnerFirstname'
-                : 'Rapport de Compatibilité',
-            subtitle: '${_formatDate(date)} • Accès gratuit',
-            date: date,
-            icon: '❤️',
-            legacyProfileId: profileId,
-            legacyProfileData: profile,
-          ));
-        }
-      }
-    } catch (e) {
-      debugPrint('Error loading legacy purchases: $e');
+  void _applyFilter() {
+    switch (_selectedFilter) {
+      case 'couple':
+        _filteredReports = _allReports.where((r) => 
+          r.serviceType == StoredReport.typeCompatibility
+        ).toList();
+        break;
+      case 'cycles':
+        _filteredReports = _allReports.where((r) => 
+          r.serviceType == StoredReport.typeCyclePersonnel ||
+          r.serviceType == StoredReport.typeCycleBusiness ||
+          r.serviceType == StoredReport.typeCycleSante ||
+          r.serviceType == StoredReport.typePortraitAme ||
+          r.serviceType == StoredReport.typePhasesVie ||
+          r.serviceType == StoredReport.typeGuideHoraire ||
+          r.serviceType == StoredReport.typeTimingLunaire ||
+          r.serviceType == StoredReport.typeEclairageDecision
+        ).toList();
+        break;
+      case 'previsions':
+        _filteredReports = _allReports.where((r) => 
+          r.serviceType == StoredReport.typeTemporal
+        ).toList();
+        break;
+      default:
+        _filteredReports = List.from(_allReports);
     }
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
+  void _setFilter(String filter) {
+    setState(() {
+      _selectedFilter = filter;
+      _applyFilter();
+    });
   }
 
-  void _openReport(_PurchaseItem purchase) async {
-    // If we have a stored report, use the new viewer
-    if (purchase.storedReport != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => StoredReportViewerScreen(report: purchase.storedReport!),
-        ),
-      );
-      return;
-    }
-
-    // Legacy compatibility reports
-    if (purchase.legacyProfileId != null && purchase.legacyProfileData != null) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => const Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
-        ),
-      );
-
-      try {
-        final client = SupabaseManager.client;
-        final profileResponse = await client
-            .from('couple_profiles')
-            .select('*')
-            .eq('id', purchase.legacyProfileId!)
-            .maybeSingle();
-
-        if (!mounted) return;
-        Navigator.pop(context);
-
-        if (profileResponse == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Rapport introuvable'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          return;
-        }
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => PurchasedReportViewScreen(
-              profileId: purchase.legacyProfileId!,
-              profileData: profileResponse,
-              purchaseTitle: purchase.title,
-            ),
-          ),
-        );
-      } catch (e) {
-        if (!mounted) return;
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erreur: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-      return;
-    }
-
-    // Temporal predictions (legacy, no detailed view)
-    if (purchase.type == StoredReport.typeTemporal) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Prévision: ${purchase.title}'),
-          backgroundColor: AppColors.secondary,
-        ),
-      );
-      return;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Ce rapport n\'est plus disponible'),
-        backgroundColor: Colors.orange,
+  void _openReport(StoredReport report) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => StoredReportViewerScreen(report: report),
       ),
     );
   }
@@ -302,7 +130,48 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
             ),
           ),
         ),
-        body: _buildBody(),
+        body: Column(
+          children: [
+            // Filters
+            _buildFilters(),
+            // Content
+            Expanded(child: _buildBody()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilters() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: _filters.entries.map((entry) {
+            final isSelected = _selectedFilter == entry.key;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: FilterChip(
+                label: Text(entry.value),
+                selected: isSelected,
+                onSelected: (_) => _setFilter(entry.key),
+                backgroundColor: AppColors.block.withOpacity(0.6),
+                selectedColor: AppColors.primary.withOpacity(0.3),
+                labelStyle: TextStyle(
+                  color: isSelected ? AppColors.primary : AppColors.textMuted,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+                side: BorderSide(
+                  color: isSelected ? AppColors.primary : Colors.transparent,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -335,7 +204,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                     _isLoading = true;
                     _error = null;
                   });
-                  _loadPurchases();
+                  _loadReports();
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
@@ -348,7 +217,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
       );
     }
 
-    if (_purchases.isEmpty) {
+    if (_filteredReports.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -369,27 +238,26 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
               ),
               const SizedBox(height: 24),
               Text(
-                'Aucun achat',
+                _selectedFilter == 'all' 
+                    ? 'Aucun achat'
+                    : 'Aucun achat dans cette catégorie',
                 style: GoogleFonts.philosopher(
-                  fontSize: 22,
+                  fontSize: 20,
                   fontWeight: FontWeight.w700,
                   color: AppColors.textLight,
                 ),
               ),
               const SizedBox(height: 8),
               const Text(
-                'Vos rapports et prévisions apparaîtront ici après achat',
+                'Vos rapports apparaîtront ici après achat',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.textMuted),
               ),
               const SizedBox(height: 32),
               ElevatedButton.icon(
-                onPressed: () => Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const CompatibilityWizard()),
-                ),
-                icon: const Icon(Icons.favorite),
-                label: const Text('Faire une consultation'),
+                onPressed: () => NavigationHelper.goToMenu(context),
+                icon: const Icon(Icons.explore),
+                label: const Text('Découvrir les services'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
@@ -403,22 +271,24 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: _loadPurchases,
+      onRefresh: _loadReports,
       color: AppColors.primary,
       child: ListView.separated(
         padding: const EdgeInsets.all(16),
-        itemCount: _purchases.length,
+        itemCount: _filteredReports.length,
         separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (context, index) => _buildPurchaseCard(_purchases[index]),
+        itemBuilder: (context, index) => _buildReportCard(_filteredReports[index]),
       ),
     );
   }
 
-  Widget _buildPurchaseCard(_PurchaseItem purchase) {
-    final color = _getColorForType(purchase.type);
+  Widget _buildReportCard(StoredReport report) {
+    final icon = StoredReport.getIconForType(report.serviceType);
+    final color = _getColorForType(report.serviceType);
+    final dateStr = '${report.createdAt.day}/${report.createdAt.month}/${report.createdAt.year}';
 
     return InkWell(
-      onTap: () => _openReport(purchase),
+      onTap: () => _openReport(report),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -436,7 +306,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
-                purchase.icon,
+                icon,
                 style: const TextStyle(fontSize: 24),
               ),
             ),
@@ -446,7 +316,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    purchase.title,
+                    report.serviceLabel,
                     style: GoogleFonts.philosopher(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
@@ -455,7 +325,7 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    purchase.subtitle,
+                    dateStr,
                     style: const TextStyle(
                       color: AppColors.textMuted,
                       fontSize: 12,
@@ -500,33 +370,3 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
     }
   }
 }
-
-/// Internal model for purchase items (supports both new and legacy data)
-class _PurchaseItem {
-  final String id;
-  final String type;
-  final String title;
-  final String subtitle;
-  final DateTime date;
-  final String icon;
-  
-  // For new stored reports
-  final StoredReport? storedReport;
-  
-  // For legacy compatibility reports
-  final String? legacyProfileId;
-  final Map<String, dynamic>? legacyProfileData;
-
-  const _PurchaseItem({
-    required this.id,
-    required this.type,
-    required this.title,
-    required this.subtitle,
-    required this.date,
-    required this.icon,
-    this.storedReport,
-    this.legacyProfileId,
-    this.legacyProfileData,
-  });
-}
-

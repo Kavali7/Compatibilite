@@ -8,7 +8,10 @@ import 'package:intl/intl.dart';
 
 import '../core/constants.dart';
 import '../core/navigation_helper.dart';
+import '../models/stored_report_model.dart';
+import '../services/auth_service.dart';
 import '../services/personal_cycle_service.dart';
+import '../services/stored_report_service.dart';
 import '../widgets/animated_background.dart';
 
 /// Écran d'affichage du rapport Cycle Personnel
@@ -59,6 +62,9 @@ class _PersonalCycleReportScreenState extends State<PersonalCycleReportScreen> {
           _yearCalendar = results[1] as PersonalYearCalendar;
           _isLoading = false;
         });
+        
+        // Store report for "Mes Achats" (fire and forget)
+        _storeReportForHistory();
       }
     } catch (e) {
       debugPrint('Erreur chargement cycle personnel: $e');
@@ -68,6 +74,57 @@ class _PersonalCycleReportScreenState extends State<PersonalCycleReportScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  /// Store the report for "Mes Achats" feature
+  /// This is a fire-and-forget operation that doesn't block UX
+  void _storeReportForHistory() async {
+    try {
+      final user = AuthService.instance.currentUser;
+      if (user == null) {
+        debugPrint('_storeReportForHistory: No user logged in');
+        return;
+      }
+
+      // Check if report already exists to avoid duplicates
+      final exists = await StoredReportService.instance.hasStoredReport(
+        userId: user.id,
+        serviceType: StoredReport.typeCyclePersonnel,
+      );
+
+      if (exists) {
+        debugPrint('_storeReportForHistory: Report already exists, skipping');
+        return;
+      }
+
+      // Prepare report data from current period
+      final reportData = <String, dynamic>{
+        'first_name': widget.firstName,
+        'birthdate': widget.birthdate.toIso8601String(),
+        if (_currentPeriod != null) ...{
+          'period_number': _currentPeriod!.periodNumber,
+          'period_name': _currentPeriod!.periodName,
+          'theme_central': _currentPeriod!.themeCentral,
+          'energie_periode': _currentPeriod!.energiePeriode,
+          'period_start_date': _currentPeriod!.periodStartDate.toIso8601String(),
+          'period_end_date': _currentPeriod!.periodEndDate.toIso8601String(),
+        },
+        'stored_at': DateTime.now().toIso8601String(),
+      };
+
+      // Store the report
+      await StoredReportService.instance.storeCyclePersonnelReport(
+        userId: user.id,
+        userName: widget.firstName,
+        birthDate: widget.birthdate,
+        reportData: reportData,
+      );
+
+      debugPrint('✅ Cycle Personnel report stored for Mes Achats');
+    } catch (e) {
+      // Silent error - don't impact user experience
+      debugPrint('⚠️ Error storing report (ignored): $e');
     }
   }
 

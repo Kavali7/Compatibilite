@@ -101,6 +101,33 @@ class StoredReportService {
     }
   }
 
+  /// Check if a stored report already exists for a user and service type
+  /// Used to prevent duplicate entries in "Mes Achats"
+  Future<bool> hasStoredReport({
+    required String userId,
+    required String serviceType,
+  }) async {
+    if (!SupabaseManager.isReady) {
+      return false;
+    }
+
+    try {
+      final client = Supabase.instance.client;
+      
+      final response = await client
+          .from('stored_reports')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('service_type', serviceType)
+          .limit(1);
+
+      return (response as List).isNotEmpty;
+    } catch (e) {
+      debugPrint('StoredReportService: Error checking report existence: $e');
+      return false; // Assume not exists on error, allow store attempt
+    }
+  }
+
   /// Store Portrait de l'Âme report
   Future<String?> storePortraitAmeReport({
     required String userId,

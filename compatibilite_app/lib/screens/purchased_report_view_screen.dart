@@ -133,15 +133,16 @@ class _PurchasedReportViewScreenState extends State<PurchasedReportViewScreen> {
       );
     }
 
-    // Build report display from profile data
+    // Build report display - prioritize RPC data, fallback to profile data
+    final data = _reportData ?? widget.profileData;
     final profile = widget.profileData;
-    final userFirstname = profile['user_firstname'] as String? ?? 'Partenaire 1';
-    final partnerFirstname = profile['partner_firstname'] as String? ?? 'Partenaire 2';
-    final coupleNumber = profile['couple_number']?.toString() ?? '?';
-    final coupleVibration = profile['couple_vibration'] as String? ?? '';
-    final dailyAdvice = profile['daily_advice'] as String? ?? '';
-    final createdAt = profile['created_at'] != null 
-        ? DateTime.tryParse(profile['created_at'] as String) 
+    final userFirstname = (data['user_firstname'] ?? profile['user_firstname']) as String? ?? 'Partenaire 1';
+    final partnerFirstname = (data['partner_firstname'] ?? profile['partner_firstname']) as String? ?? 'Partenaire 2';
+    final coupleNumber = (data['couple_number'] ?? profile['couple_number'])?.toString() ?? '?';
+    final coupleVibration = (data['couple_vibration'] ?? profile['couple_vibration']) as String? ?? '';
+    final dailyAdvice = (data['daily_advice'] ?? data['advice'] ?? profile['daily_advice']) as String? ?? '';
+    final createdAt = (data['created_at'] ?? profile['created_at']) != null 
+        ? DateTime.tryParse((data['created_at'] ?? profile['created_at']) as String) 
         : null;
 
     return SingleChildScrollView(

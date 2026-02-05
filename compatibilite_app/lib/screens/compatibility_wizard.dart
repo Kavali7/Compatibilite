@@ -21,6 +21,8 @@ import '../services/legal_repository.dart'; // Added
 import '../services/app_settings_service.dart'; // Phase 2
 import '../services/menu_config_service.dart';
 import '../services/currency_service.dart';
+import '../services/stored_report_service.dart';
+import '../models/stored_report_model.dart';
 import 'dynamic_menu_builder.dart';
 import '../theme/app_theme.dart';
 import '../widgets/animated_background.dart';
@@ -570,6 +572,30 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           _partnerBInput = partnerB;
         });
         debugPrint('>>> _fetchAndSetSummary: SUCCÈS - Summary défini');
+        
+        // Store in stored_reports for Mes Achats
+        try {
+          await StoredReportService.instance.storeCompatibilityReport(
+            userId: user.id,
+            user1Name: _nameAController.text,
+            user2Name: _nameBController.text,
+            user1BirthDate: _birthA!,
+            user2BirthDate: _birthB!,
+            reportData: {
+              'couple_number': summary.coupleNumber,
+              'couple_meaning': summary.coupleMeaning,
+              'couple_deep_meaning': summary.coupleDeepMeaning,
+              'couple_daily_number': summary.coupleDailyNumber,
+              'user_firstname': _nameAController.text,
+              'partner_firstname': _nameBController.text,
+              'user_birthdate': _birthA?.toIso8601String(),
+              'partner_birthdate': _birthB?.toIso8601String(),
+            },
+          );
+          debugPrint('>>> _fetchAndSetSummary: Report stored in stored_reports');
+        } catch (storeError) {
+          debugPrint('>>> _fetchAndSetSummary: Failed to store report: $storeError');
+        }
       } else {
         debugPrint('>>> _fetchAndSetSummary: ATTENTION - Summary est null');
         _showSnack('Le rapport n\'a pas pu être généré. Veuillez réessayer.');

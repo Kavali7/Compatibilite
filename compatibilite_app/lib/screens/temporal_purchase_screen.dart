@@ -13,6 +13,8 @@ import '../services/currency_service.dart';
 import '../services/menu_config_service.dart';
 import '../services/payment/fedapay_gateway.dart';
 import '../services/payment/payment_gateway.dart';
+import '../services/stored_report_service.dart';
+import '../models/stored_report_model.dart';
 import 'auth/login_page.dart';
 import 'auth/simple_signup_screen.dart';
 import 'purchase_history_screen.dart';
@@ -1473,6 +1475,44 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
         setState(() => _isProcessingPayment = false);
         
         if (report != null) {
+          // Store in stored_reports for Mes Achats
+          try {
+            String periodLabel = 'Prévision';
+            switch (_selectedPeriod) {
+              case 'annee':
+                periodLabel = 'Prévision Annuelle ${_selectedDate.year}';
+                break;
+              case 'mois':
+                final months = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+                    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+                periodLabel = 'Prévision ${months[_selectedDate.month - 1]} ${_selectedDate.year}';
+                break;
+              case 'jour':
+                periodLabel = 'Prévision ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}';
+                break;
+            }
+            
+            await StoredReportService.instance.storeTemporalReport(
+              userId: userId,
+              periodType: _selectedPeriod,
+              targetDate: _selectedDate,
+              reportData: {
+                'bloc0_titre': report.bloc0Titre,
+                'bloc0_contenu': report.bloc0Contenu,
+                'bloc1_contenu': report.bloc1Contenu,
+                'bloc2_contenu': report.bloc2Contenu,
+                'bloc3_contenu': report.bloc3Contenu,
+                'numero_periode': report.numeroPeriode,
+                'periode': report.periode,
+                'etat_relationnel': report.etatRelationnel,
+                'period_label': periodLabel,
+              },
+            );
+            debugPrint('TemporalPurchaseScreen: Report stored in stored_reports');
+          } catch (storeError) {
+            debugPrint('TemporalPurchaseScreen: Failed to store report: $storeError');
+          }
+          
           _showSnack('Paiement réussi ! Votre prévision est prête.');
           // Navigate to report view screen instead of pop
           Navigator.of(context).push(

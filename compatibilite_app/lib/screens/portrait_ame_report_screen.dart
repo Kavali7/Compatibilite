@@ -9,6 +9,9 @@ import 'package:intl/intl.dart';
 import '../core/constants.dart';
 import '../core/navigation_helper.dart';
 import '../services/cycles_vie_service.dart';
+import '../services/stored_report_service.dart';
+import '../services/auth_service.dart';
+import '../models/stored_report_model.dart';
 import '../widgets/animated_background.dart';
 
 /// Écran d'affichage du rapport Portrait de l'Âme
@@ -54,6 +57,34 @@ class _PortraitAmeReportScreenState extends State<PortraitAmeReportScreen> {
           _soulPeriod = soulPeriod;
           _isLoading = false;
         });
+        
+        // Store in stored_reports for Mes Achats
+        try {
+          final user = AuthService.instance.currentUser;
+          if (user != null && soulPeriod != null) {
+            await StoredReportService.instance.storePortraitAmeReport(
+              userId: user.id,
+              userName: widget.firstName,
+              birthDate: widget.birthdate,
+              reportData: {
+                'identite_cosmique': soulPeriod.identiteCosmique,
+                'introduction': soulPeriod.introduction,
+                'heritage_cosmique': soulPeriod.heritageCosmique,
+                'coeur_etre': soulPeriod.coeurEtre,
+                'forces_naturelles': soulPeriod.forcesNaturelles,
+                'defis_transcender': soulPeriod.defisTranscender,
+                'vocations_ideales': soulPeriod.vocationsIdeales,
+                'affinites_geographiques': soulPeriod.affinitesGeographiques,
+                'vigilance_sante': soulPeriod.vigilanceSante,
+                'conseils_epanouissement': soulPeriod.conseilsEpanouissement,
+                'message_cosmique': soulPeriod.messageCosmique,
+              },
+            );
+            debugPrint('PortraitAmeReportScreen: Report stored in stored_reports');
+          }
+        } catch (storeError) {
+          debugPrint('PortraitAmeReportScreen: Failed to store report: $storeError');
+        }
       }
     } catch (e) {
       debugPrint('Erreur chargement portrait: $e');
