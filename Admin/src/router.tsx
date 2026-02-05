@@ -20,6 +20,7 @@ import TemporalPurchases from './pages/compatibilite/TemporalPurchases';
 import ReportSections from './pages/compatibilite/ReportSections';
 import TextTypeSettings from './pages/compatibilite/TextTypeSettings';
 import Prospects from './pages/compatibilite/Prospects';
+import ServiceCatalogEditor from './pages/ServiceCatalogEditor';
 
 // Cycles de Vie imports
 import CyclesIndex from './pages/cycles';
@@ -45,6 +46,7 @@ const router = createBrowserRouter([
       { path: 'subscriptions', element: <Subscriptions /> },
       { path: 'reports', element: <ReportsConfig /> },
       { path: 'admin-users', element: <AdminUsers /> },
+      { path: 'service-catalog', element: <ServiceCatalogEditor /> },
       { path: 'legal', element: <LegalIndex /> },
       {
         path: 'compatibilite',

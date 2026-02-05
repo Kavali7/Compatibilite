@@ -51,16 +51,19 @@ class _ServicesCatalogScreenState extends State<ServicesCatalogScreen> {
 
   Future<void> _loadConfig() async {
     try {
-      final config = await MenuConfigService.instance.getMenuConfig();
-      await _menuBuilder.loadConfig();
-      if (mounted) {
-        setState(() {
+      // Load both menu config and service catalog in parallel
+      await Future.wait([
+        MenuConfigService.instance.getMenuConfig().then((config) {
           _menuConfig = config;
-          _isLoading = false;
-        });
+        }),
+        ServiceCatalogData.loadServices(),
+        _menuBuilder.loadConfig(),
+      ]);
+      if (mounted) {
+        setState(() => _isLoading = false);
       }
     } catch (e) {
-      debugPrint('Error loading menu config: $e');
+      debugPrint('Error loading config: $e');
       if (mounted) {
         setState(() => _isLoading = false);
       }

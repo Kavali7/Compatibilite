@@ -59,6 +59,7 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
             title: 'Système',
             items: [
                 { to: '/settings', icon: '⚙️', label: 'Paramètres' },
+                { to: '/service-catalog', icon: '📚', label: 'Catalogue Services' },
                 { to: '/reports', icon: '📝', label: 'Config Rapports' },
                 { to: '/legal', icon: '📜', label: 'Pages Légales' },
                 { to: '/admin-users', icon: '👥', label: 'Gestion Admins' },

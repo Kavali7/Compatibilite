@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/supabase_manager.dart';
 
 /// Model representing a service item in the catalog
 class ServiceCatalogItem {
@@ -23,9 +24,72 @@ class ServiceCatalogItem {
   });
 }
 
-/// Static catalog data with new marketing names and descriptions
+/// Service to fetch and cache catalog data from Supabase
 class ServiceCatalogData {
-  static const List<Map<String, dynamic>> services = [
+  static List<Map<String, dynamic>>? _cachedServices;
+  static bool _isLoading = false;
+  static DateTime? _lastFetch;
+  static const Duration _cacheExpiry = Duration(minutes: 30);
+
+  /// Load services from Supabase with caching
+  static Future<List<Map<String, dynamic>>> loadServices() async {
+    // Return cache if valid
+    if (_cachedServices != null && 
+        _lastFetch != null && 
+        DateTime.now().difference(_lastFetch!) < _cacheExpiry) {
+      return _cachedServices!;
+    }
+
+    // Prevent multiple simultaneous loads
+    if (_isLoading) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      return _cachedServices ?? _fallbackServices;
+    }
+
+    _isLoading = true;
+    try {
+      final response = await SupabaseManager.client
+          .from('service_catalog')
+          .select()
+          .eq('enabled', true)
+          .order('display_order', ascending: true);
+
+      if (response != null && response is List && response.isNotEmpty) {
+        _cachedServices = response.map((item) => {
+          'id': item['id'] as String,
+          'name': item['name'] as String,
+          'emoji': item['emoji'] as String,
+          'planType': item['plan_type'] as String? ?? 'consultation',
+          'requiresAuth': item['id'] != 'compatibilite_couple',
+          'advantages': (item['advantages'] as List?)?.cast<String>() ?? <String>[],
+        }).toList();
+        _lastFetch = DateTime.now();
+        debugPrint('ServiceCatalogData: Loaded ${_cachedServices!.length} services from Supabase');
+        return _cachedServices!;
+      }
+    } catch (e) {
+      debugPrint('ServiceCatalogData: Error loading from Supabase: $e');
+    } finally {
+      _isLoading = false;
+    }
+
+    // Fallback to static data
+    debugPrint('ServiceCatalogData: Using fallback static services');
+    return _fallbackServices;
+  }
+
+  /// Synchronous getter for cached services (with fallback)
+  static List<Map<String, dynamic>> get services => _cachedServices ?? _fallbackServices;
+
+  /// Force refresh from Supabase
+  static Future<void> refresh() async {
+    _cachedServices = null;
+    _lastFetch = null;
+    await loadServices();
+  }
+
+  /// Fallback static data (used if Supabase is unavailable)
+  static const List<Map<String, dynamic>> _fallbackServices = [
     {
       'id': 'compatibilite_couple',
       'name': 'Compatibilité Couple',
