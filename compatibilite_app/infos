@@ -119,6 +119,7 @@ Les politiques RLS utilisent `auth.uid()` mais l'app utilise le `user_id` de la 
 │  → Ce user_id N'EST PAS dans auth.users                      │
 └──────────────────────────────────────────────────────────────┘
                             │
+                            
                             ▼
 ┌──────────────────────────────────────────────────────────────┐
 │  Supabase RLS vérifie: auth.uid() = user_id                  │
