@@ -128,6 +128,38 @@ class StoredReportService {
     }
   }
 
+  /// Check if a compatibility report already exists for specific partners
+  /// Prevents duplicate entries when user revisits the wizard with same names
+  Future<bool> hasStoredCompatibilityReport({
+    required String userId,
+    required String user1Name,
+    required String user2Name,
+  }) async {
+    if (!SupabaseManager.isReady) {
+      return false;
+    }
+
+    try {
+      final client = Supabase.instance.client;
+      
+      // The service_label contains "User1Name & User2Name"
+      final expectedLabel = '$user1Name & $user2Name';
+      
+      final response = await client
+          .from('stored_reports')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('service_type', StoredReport.typeCompatibility)
+          .eq('service_label', expectedLabel)
+          .limit(1);
+
+      return (response as List).isNotEmpty;
+    } catch (e) {
+      debugPrint('StoredReportService: Error checking compatibility report: $e');
+      return false;
+    }
+  }
+
   /// Store Portrait de l'Âme report
   Future<String?> storePortraitAmeReport({
     required String userId,

@@ -573,26 +573,37 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
         });
         debugPrint('>>> _fetchAndSetSummary: SUCCÈS - Summary défini');
         
-        // Store in stored_reports for Mes Achats
+        // Store in stored_reports for Mes Achats (only if not already stored)
         try {
-          await StoredReportService.instance.storeCompatibilityReport(
+          // Check if this exact compatibility report already exists
+          final alreadyStored = await StoredReportService.instance.hasStoredCompatibilityReport(
             userId: user.id,
-            user1Name: _nameAController.text,
-            user2Name: _nameBController.text,
-            user1BirthDate: _birthA!,
-            user2BirthDate: _birthB!,
-            reportData: {
-              'couple_number': summary.coupleNumber,
-              'couple_meaning': summary.coupleMeaning,
-              'couple_deep_meaning': summary.coupleDeepMeaning,
-              'couple_daily_number': summary.coupleDailyNumber,
-              'user_firstname': _nameAController.text,
-              'partner_firstname': _nameBController.text,
-              'user_birthdate': _birthA?.toIso8601String(),
-              'partner_birthdate': _birthB?.toIso8601String(),
-            },
+            user1Name: _nameAController.text.trim(),
+            user2Name: _nameBController.text.trim(),
           );
-          debugPrint('>>> _fetchAndSetSummary: Report stored in stored_reports');
+          
+          if (!alreadyStored) {
+            await StoredReportService.instance.storeCompatibilityReport(
+              userId: user.id,
+              user1Name: _nameAController.text,
+              user2Name: _nameBController.text,
+              user1BirthDate: _birthA!,
+              user2BirthDate: _birthB!,
+              reportData: {
+                'couple_number': summary.coupleNumber,
+                'couple_meaning': summary.coupleMeaning,
+                'couple_deep_meaning': summary.coupleDeepMeaning,
+                'couple_daily_number': summary.coupleDailyNumber,
+                'user_firstname': _nameAController.text,
+                'partner_firstname': _nameBController.text,
+                'user_birthdate': _birthA?.toIso8601String(),
+                'partner_birthdate': _birthB?.toIso8601String(),
+              },
+            );
+            debugPrint('>>> _fetchAndSetSummary: Report stored in stored_reports');
+          } else {
+            debugPrint('>>> _fetchAndSetSummary: Report already exists, skipping duplicate');
+          }
         } catch (storeError) {
           debugPrint('>>> _fetchAndSetSummary: Failed to store report: $storeError');
         }

@@ -58,29 +58,39 @@ class _PortraitAmeReportScreenState extends State<PortraitAmeReportScreen> {
           _isLoading = false;
         });
         
-        // Store in stored_reports for Mes Achats
+        // Store in stored_reports for Mes Achats (only if not already stored)
         try {
           final user = AuthService.instance.currentUser;
           if (user != null && soulPeriod != null) {
-            await StoredReportService.instance.storePortraitAmeReport(
+            // Check if already stored to prevent duplicates
+            final alreadyStored = await StoredReportService.instance.hasStoredReport(
               userId: user.id,
-              userName: widget.firstName,
-              birthDate: widget.birthdate,
-              reportData: {
-                'identite_cosmique': soulPeriod.identiteCosmique,
-                'introduction': soulPeriod.introduction,
-                'heritage_cosmique': soulPeriod.heritageCosmique,
-                'coeur_etre': soulPeriod.coeurEtre,
-                'forces_naturelles': soulPeriod.forcesNaturelles,
-                'defis_transcender': soulPeriod.defisTranscender,
-                'vocations_ideales': soulPeriod.vocationsIdeales,
-                'affinites_geographiques': soulPeriod.affinitesGeographiques,
-                'vigilance_sante': soulPeriod.vigilanceSante,
-                'conseils_epanouissement': soulPeriod.conseilsEpanouissement,
-                'message_cosmique': soulPeriod.messageCosmique,
-              },
+              serviceType: StoredReport.typePortraitAme,
             );
-            debugPrint('PortraitAmeReportScreen: Report stored in stored_reports');
+            
+            if (!alreadyStored) {
+              await StoredReportService.instance.storePortraitAmeReport(
+                userId: user.id,
+                userName: widget.firstName,
+                birthDate: widget.birthdate,
+                reportData: {
+                  'identite_cosmique': soulPeriod.identiteCosmique,
+                  'introduction': soulPeriod.introduction,
+                  'heritage_cosmique': soulPeriod.heritageCosmique,
+                  'coeur_etre': soulPeriod.coeurEtre,
+                  'forces_naturelles': soulPeriod.forcesNaturelles,
+                  'defis_transcender': soulPeriod.defisTranscender,
+                  'vocations_ideales': soulPeriod.vocationsIdeales,
+                  'affinites_geographiques': soulPeriod.affinitesGeographiques,
+                  'vigilance_sante': soulPeriod.vigilanceSante,
+                  'conseils_epanouissement': soulPeriod.conseilsEpanouissement,
+                  'message_cosmique': soulPeriod.messageCosmique,
+                },
+              );
+              debugPrint('PortraitAmeReportScreen: Report stored in stored_reports');
+            } else {
+              debugPrint('PortraitAmeReportScreen: Report already exists, skipping');
+            }
           }
         } catch (storeError) {
           debugPrint('PortraitAmeReportScreen: Failed to store report: $storeError');
