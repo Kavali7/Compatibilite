@@ -8,16 +8,21 @@ import 'package:intl/intl.dart';
 
 import '../core/constants.dart';
 import '../core/navigation_helper.dart';
+import '../models/stored_report_model.dart';
+import '../services/auth_service.dart';
 import '../services/lunar_timing_service.dart';
+import '../services/stored_report_service.dart';
 import '../widgets/animated_background.dart';
 
 /// Écran de rapport du Timing Lunaire
 class LunarTimingReportScreen extends StatefulWidget {
   final String userName;
+  final StoredReport? frozenReport; // For frozen reading from Mes Achats
 
   const LunarTimingReportScreen({
     super.key,
     required this.userName,
+    this.frozenReport,
   });
 
   @override
@@ -38,6 +43,12 @@ class _LunarTimingReportScreenState extends State<LunarTimingReportScreen> {
   }
 
   Future<void> _loadData() async {
+    // If frozen report provided, just mark as not loading (UI will show minimal frozen data)
+    if (widget.frozenReport != null) {
+      setState(() => _isLoading = false);
+      return;
+    }
+    
     try {
       final phases = await LunarTimingService.instance.getAllPhases();
       
@@ -62,6 +73,9 @@ class _LunarTimingReportScreenState extends State<LunarTimingReportScreen> {
           _calendar = calendar;
           _isLoading = false;
         });
+        
+        // Store report for "Mes Achats" (fire and forget)
+        _storeReportForHistory();
       }
     } catch (e) {
       debugPrint('Error loading lunar data: $e');
@@ -70,6 +84,53 @@ class _LunarTimingReportScreenState extends State<LunarTimingReportScreen> {
       }
     }
   }
+
+  void _storeReportForHistory() async {
+    try {
+      final user = AuthService.instance.currentUser;
+      if (user == null) return;
+
+      // Check if report already exists
+      final exists = await StoredReportService.instance.hasStoredReport(
+        userId: user.id,
+        serviceType: StoredReport.typeTimingLunaire,
+      );
+
+      if (exists) {
+        debugPrint('Lunar Timing report already exists, skipping');
+        return;
+      }
+
+      // Prepare report data
+      final reportData = <String, dynamic>{
+        'user_name': widget.userName,
+        if (_currentPhaseInfo != null) ...{
+          'phase_number': _currentPhaseInfo!.phase.phaseNumber,
+          'phase_name': _currentPhaseInfo!.phase.phaseName,
+          'theme': _currentPhaseInfo!.phase.theme,
+          'energy_type': _currentPhaseInfo!.phase.energyType,
+          'emoji': _currentPhaseInfo!.phase.emoji,
+          'days_remaining': _currentPhaseInfo!.daysRemaining,
+          'progress_percentage': _currentPhaseInfo!.progressPercentage,
+        },
+        'stored_at': DateTime.now().toIso8601String(),
+      };
+
+      await StoredReportService.instance.storeCyclesVieReport(
+        userId: user.id,
+        serviceType: StoredReport.typeTimingLunaire,
+        userName: widget.userName,
+        birthDate: DateTime.now(), // Lunar timing doesn't use birth date
+        targetDate: DateTime.now(),
+        reportData: reportData,
+      );
+
+      debugPrint('✅ Lunar Timing report stored for Mes Achats');
+    } catch (e) {
+      debugPrint('⚠️ Error storing Lunar Timing report: $e');
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {

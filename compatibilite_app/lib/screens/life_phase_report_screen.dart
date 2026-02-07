@@ -7,18 +7,23 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../core/constants.dart';
 import '../core/navigation_helper.dart';
+import '../models/stored_report_model.dart';
+import '../services/auth_service.dart';
 import '../services/life_phase_service.dart';
+import '../services/stored_report_service.dart';
 import '../widgets/animated_background.dart';
 
 /// Écran de rapport des Phases de Vie
 class LifePhaseReportScreen extends StatefulWidget {
   final String userName;
   final DateTime birthDate;
+  final StoredReport? frozenReport;
 
   const LifePhaseReportScreen({
     super.key,
     required this.userName,
     required this.birthDate,
+    this.frozenReport,
   });
 
   @override
@@ -38,6 +43,12 @@ class _LifePhaseReportScreenState extends State<LifePhaseReportScreen> {
   }
 
   Future<void> _loadData() async {
+    // If frozen report provided, skip fresh loading
+    if (widget.frozenReport != null) {
+      setState(() => _isLoading = false);
+      return;
+    }
+    
     try {
       final phases = await LifePhaseService.instance.getAllPhases();
       
@@ -53,12 +64,62 @@ class _LifePhaseReportScreenState extends State<LifePhaseReportScreen> {
           _selectedPhaseIndex = (currentInfo?.phase.phaseNumber ?? 1) - 1;
           _isLoading = false;
         });
+        
+        // Store report for "Mes Achats" (fire and forget)
+        _storeReportForHistory();
       }
     } catch (e) {
       debugPrint('LifePhaseReportScreen: Error loading data: $e');
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  /// Store the report for "Mes Achats" feature
+  void _storeReportForHistory() async {
+    try {
+      final user = AuthService.instance.currentUser;
+      if (user == null) return;
+
+      // Check if report already exists
+      final exists = await StoredReportService.instance.hasStoredReport(
+        userId: user.id,
+        serviceType: StoredReport.typePhasesVie,
+      );
+      if (exists) return;
+
+      // Prepare report data
+      final phasesData = _phases.map((p) => {
+        'phase_number': p.phaseNumber,
+        'phase_name': p.phaseName,
+        'theme': p.theme,
+        'age_range': p.ageRange,
+        'full_content': p.fullContent,
+        'impacts': p.impacts,
+        'questions_reflection': p.questionsReflection,
+        'travail_guerison': p.travailGuerison,
+      }).toList();
+
+      await StoredReportService.instance.storeCyclesVieReport(
+        userId: user.id,
+        serviceType: StoredReport.typePhasesVie,
+        userName: widget.userName,
+        birthDate: widget.birthDate,
+        targetDate: null,
+        reportData: {
+          'user_name': widget.userName,
+          'birth_date': widget.birthDate.toIso8601String(),
+          'phases': phasesData,
+          'current_phase_number': _currentPhaseInfo?.phase.phaseNumber,
+          'current_age': _currentPhaseInfo?.currentAge,
+          'year_in_phase': _currentPhaseInfo?.yearInPhase,
+          'years_remaining': _currentPhaseInfo?.yearsRemaining,
+        },
+      );
+      debugPrint('LifePhaseReportScreen: Report stored');
+    } catch (e) {
+      debugPrint('LifePhaseReportScreen: Failed to store: $e');
     }
   }
 

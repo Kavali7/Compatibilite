@@ -387,8 +387,7 @@ class _DailyGuidePurchaseScreenState extends State<DailyGuidePurchaseScreen> {
 
   /// Dropdowns de date style Compatibilité
   Widget _buildDateDropdowns() {
-    final now = DateTime.now();
-    final years = [now.year, now.year + 1]; // Année courante et suivante
+    final years = List<int>.generate(1136, (i) => 1900 + i); // 1900 → 3035
     final months = const [
       'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
       'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',

@@ -18,11 +18,13 @@ import '../widgets/animated_background.dart';
 class PersonalCycleReportScreen extends StatefulWidget {
   final String firstName;
   final DateTime birthdate;
+  final StoredReport? frozenReport; // For frozen reading from Mes Achats
 
   const PersonalCycleReportScreen({
     super.key,
     required this.firstName,
     required this.birthdate,
+    this.frozenReport,
   });
 
   @override
@@ -44,6 +46,12 @@ class _PersonalCycleReportScreenState extends State<PersonalCycleReportScreen> {
   }
 
   Future<void> _loadData() async {
+    // If frozen report provided, use its data instead of loading fresh
+    if (widget.frozenReport != null) {
+      _loadFromFrozenReport();
+      return;
+    }
+    
     setState(() {
       _isLoading = true;
       _error = null;
@@ -74,6 +82,44 @@ class _PersonalCycleReportScreenState extends State<PersonalCycleReportScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  /// Load data from frozen report (for Mes Achats viewing)
+  void _loadFromFrozenReport() {
+    final data = widget.frozenReport!.reportData;
+    
+    try {
+      // Parse frozen period data
+      _currentPeriod = CurrentPeriodInfo(
+        periodNumber: data['period_number'] ?? 1,
+        periodName: data['period_name'] ?? 'Période',
+        themeCentral: data['theme_central'] ?? '',
+        energiePeriode: data['energie_periode'] ?? '',
+        periodStartDate: DateTime.tryParse(data['period_start_date'] ?? '') ?? DateTime.now(),
+        periodEndDate: DateTime.tryParse(data['period_end_date'] ?? '') ?? DateTime.now(),
+        dayInPeriod: data['day_in_period'] ?? 1,
+        daysRemaining: data['days_remaining'] ?? 0,
+        descriptionTheme: data['description_theme'] ?? '',
+        tresFavorables: List<String>.from(data['tres_favorables'] ?? []),
+        favorables: List<String>.from(data['favorables'] ?? []),
+        reporter: List<String>.from(data['reporter'] ?? []),
+        attention: List<String>.from(data['attention'] ?? []),
+        conseils: List<String>.from(data['conseils'] ?? []),
+        affirmation: data['affirmation'] ?? '',
+        influenceDecisions: data['influence_decisions'] ?? '',
+        enseignement: data['enseignement'] ?? '',
+      );
+      
+      setState(() {
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading frozen report: $e');
+      setState(() {
+        _error = 'Erreur lors du chargement du rapport';
+        _isLoading = false;
+      });
     }
   }
 

@@ -6,9 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../core/constants.dart';
+import '../models/stored_report_model.dart';
 import '../services/cycles_vie_service.dart';
+import '../services/daily_guide_service.dart';
 import '../services/decision_credit_service.dart';
 import '../services/auth_service.dart';
+import '../services/stored_report_service.dart';
 import '../widgets/animated_background.dart';
 import '../widgets/credit_pack_purchase_modal.dart';
 
@@ -51,6 +54,10 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
   CreditBalance? _creditBalance;
   Set<String> _unlockedTypeIds = {}; // Types déjà débloqués
 
+  // Créneaux quotidiens (7 périodes de 3h25)
+  List<DailyPeriodWithSlot>? _dailyPeriods;
+  DailyPeriodWithSlot? _currentDailyPeriod;
+
   late AnimationController _gaugeController;
   late Animation<double> _gaugeAnimation;
 
@@ -73,10 +80,11 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
   Future<void> _loadInitialData() async {
     setState(() => _isLoading = true);
     
-    // Charger les crédits et types en parallèle
+    // Charger les crédits, types et créneaux quotidiens en parallèle
     await Future.wait([
       _loadCreditBalance(),
       _loadDecisionTypesOnly(),
+      _loadDailyPeriods(),
     ]);
     
     // Charger le conseil après que crédits et types soient prêts
@@ -206,6 +214,9 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
           if (result.success) {
             _unlockedTypeIds.add(_selectedDecisionTypeId!);
             _creditBalance = result.balance;
+            
+            // Store report for "Mes Achats" after successful credit consumption
+            _storeReportForHistory();
           }
         } else {
           // Pas connecté, débloquer quand même (grace mode)
@@ -213,11 +224,11 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
         }
       }
 
-      // Animer la jauge
+      // Animer la jauge (score 1-5 → 0.2–1.0)
       if (_currentAdvice != null && _currentAdvice!.favorabilityScore != null) {
         _gaugeAnimation = Tween<double>(
           begin: 0,
-          end: _currentAdvice!.favorabilityScore! / 100,
+          end: _currentAdvice!.favorabilityScore! / 5.0,
         ).animate(
           CurvedAnimation(parent: _gaugeController, curve: Curves.easeOutCubic),
         );
@@ -231,6 +242,50 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
       setState(() => _isLoadingAdvice = false);
     }
   }
+
+  /// Store the report for "Mes Achats" feature
+  void _storeReportForHistory() async {
+    try {
+      final user = AuthService.instance.currentUser;
+      if (user == null || _currentAdvice == null) return;
+
+      // Find the decision type label
+      final decisionType = _decisionTypes.firstWhere(
+        (dt) => dt.id == _selectedDecisionTypeId,
+        orElse: () => _decisionTypes.first,
+      );
+
+      // Prepare report data
+      final reportData = <String, dynamic>{
+        'decision_type_id': _selectedDecisionTypeId,
+        'decision_type_label': decisionType.label,
+        'cycle_type': widget.cycleType,
+        'period_number': widget.currentPeriodNumber,
+        'target_date': widget.targetDate.toIso8601String(),
+        'favorability_score': _currentAdvice!.favorabilityScore,
+        'advice_text': _currentAdvice!.adviceText,
+        'cosmic_context': _currentAdvice!.cosmicContext,
+        'recommended_actions': _currentAdvice!.recommendedActions,
+        'optimal_timing': _currentAdvice!.optimalTiming,
+        'warnings': _currentAdvice!.warnings,
+        'stored_at': DateTime.now().toIso8601String(),
+      };
+
+      await StoredReportService.instance.storeCyclesVieReport(
+        userId: user.id,
+        serviceType: StoredReport.typeEclairageDecision,
+        userName: decisionType.label,
+        birthDate: widget.birthdate,
+        targetDate: widget.targetDate,
+        reportData: reportData,
+      );
+
+      debugPrint('✅ Decision Advice report stored for Mes Achats');
+    } catch (e) {
+      debugPrint('⚠️ Error storing Decision Advice report: $e');
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -503,11 +558,11 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
         return Icons.work;
       case 'demande_promotion':
         return Icons.arrow_upward;
-      case 'demission_changement':
+      case 'demission':
         return Icons.exit_to_app;
       case 'voyage':
         return Icons.flight;
-      case 'mariage_engagement':
+      case 'mariage':
         return Icons.favorite;
       case 'debut_relation':
         return Icons.people;
@@ -515,6 +570,22 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
         return Icons.local_hospital;
       case 'debut_traitement':
         return Icons.medical_services;
+      case 'construction_renovation':
+        return Icons.construction;
+      case 'negociation_accord':
+        return Icons.gavel;
+      case 'campagne_pub':
+        return Icons.campaign;
+      case 'vente_bien':
+        return Icons.sell;
+      case 'inscription_formation':
+        return Icons.school;
+      case 'changement_habitudes':
+        return Icons.fitness_center;
+      case 'pelerinage_retraite':
+        return Icons.self_improvement;
+      case 'autre':
+        return Icons.help_outline;
       default:
         return Icons.help_outline;
     }
@@ -575,6 +646,12 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
             _currentAdvice!.closingMessage!.isNotEmpty) ...[
           const SizedBox(height: 24),
           _buildClosingMessageCard(),
+        ],
+
+        // Section créneaux quotidiens (7 périodes de 3h25)
+        if (_dailyPeriods != null && _dailyPeriods!.isNotEmpty) ...[
+          const SizedBox(height: 28),
+          _buildDailyPeriodsSection(),
         ],
       ],
     );
@@ -796,6 +873,226 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
     );
   }
 
+  /// Charge les 7 créneaux quotidiens pour la date cible
+  Future<void> _loadDailyPeriods() async {
+    try {
+      _dailyPeriods = await DailyGuideService.instance.getPeriodsForDate(widget.targetDate);
+      _currentDailyPeriod = await DailyGuideService.instance.getCurrentPeriodForDate(widget.targetDate);
+    } catch (e) {
+      debugPrint('⏰ Erreur chargement créneaux quotidiens: $e');
+    }
+  }
+
+  /// Section des 7 créneaux quotidiens intégrée au rapport décision
+  Widget _buildDailyPeriodsSection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.block,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF0284C7).withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Titre section
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0284C7).withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.schedule, color: Color(0xFF0284C7), size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Créneaux du jour',
+                      style: GoogleFonts.philosopher(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textLight,
+                      ),
+                    ),
+                    Text(
+                      '7 périodes cosmiques pour cette journée',
+                      style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Info contextuelle
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0284C7).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.lightbulb_outline, color: const Color(0xFF0284C7), size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Chaque jour est divisé en 7 périodes de ~3h25, '
+                    'dont les énergies varient selon le jour de la semaine.',
+                    style: TextStyle(
+                      color: AppColors.textLight,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Liste des 7 créneaux
+          ...(_dailyPeriods ?? []).map((pws) => _buildDailyPeriodItem(pws)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDailyPeriodItem(DailyPeriodWithSlot pws) {
+    final isCurrent = _currentDailyPeriod?.periodNumber == pws.periodNumber;
+    final periodColor = const Color(0xFF0284C7);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isCurrent
+            ? periodColor.withValues(alpha: 0.15)
+            : AppColors.background,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isCurrent ? periodColor : AppColors.textMuted.withValues(alpha: 0.15),
+          width: isCurrent ? 2 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // En-tête créneau
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: isCurrent ? periodColor : AppColors.block,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(
+                  child: Text(
+                    '${pws.periodNumber}',
+                    style: GoogleFonts.philosopher(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: isCurrent ? Colors.white : periodColor,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            pws.periodName,
+                            style: TextStyle(
+                              color: AppColors.textLight,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        if (isCurrent)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: periodColor,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              'EN COURS',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${pws.timeSlotLabel}  •  ${pws.keyword}',
+                      style: TextStyle(
+                        color: isCurrent ? periodColor : AppColors.textMuted,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // Activités favorables/défavorables (compact)
+          if (pws.favorablesList.isNotEmpty || pws.eviterList.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                ...pws.favorablesList.take(3).map((a) => _buildMiniActivityChip(a, Colors.green, Icons.check_circle)),
+                ...pws.eviterList.take(2).map((a) => _buildMiniActivityChip(a, Colors.red.shade300, Icons.cancel)),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniActivityChip(String text, Color color, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: color),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(color: AppColors.textLight, fontSize: 11),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildFavorabilityGauge() {
     final score = _currentAdvice?.favorabilityScore ?? 0;
     final color = _getFavorabilityColor(score);
@@ -832,7 +1129,7 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
                     width: 160,
                     height: 160,
                     child: CircularProgressIndicator(
-                      value: _gaugeAnimation.value * percentage,
+                      value: _gaugeAnimation.value,
                       strokeWidth: 12,
                       backgroundColor: Colors.grey.withValues(alpha: 0.2),
                       valueColor: AlwaysStoppedAnimation<Color>(color),

@@ -7,6 +7,14 @@ import '../services/stored_report_service.dart';
 import '../models/stored_report_model.dart';
 import '../widgets/animated_background.dart';
 import 'stored_report_viewer_screen.dart';
+// Native report screens for frozen reading
+import 'personal_cycle_report_screen.dart';
+import 'business_cycle_report_screen.dart';
+import 'health_cycle_report_screen.dart';
+import 'lunar_timing_report_screen.dart';
+import 'portrait_ame_report_screen.dart';
+import 'daily_guide_report_screen.dart';
+import 'life_phase_report_screen.dart';
 
 /// Screen to view purchase history - reads only from stored_reports
 class PurchaseHistoryScreen extends StatefulWidget {
@@ -101,12 +109,87 @@ class _PurchaseHistoryScreenState extends State<PurchaseHistoryScreen> {
   }
 
   void _openReport(StoredReport report) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => StoredReportViewerScreen(report: report),
-      ),
-    );
+    final reportData = report.reportData;
+    final metadata = report.metadata;
+    
+    switch (report.serviceType) {
+      case StoredReport.typeCyclePersonnel:
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => PersonalCycleReportScreen(
+            firstName: reportData['first_name'] ?? metadata['user_name'] ?? 'Utilisateur',
+            birthdate: DateTime.tryParse(reportData['birthdate'] ?? metadata['birth_date'] ?? '') ?? DateTime.now(),
+            frozenReport: report,
+          ),
+        ));
+        break;
+        
+      case StoredReport.typeCycleBusiness:
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => BusinessCycleReportScreen(
+            companyName: reportData['company_name'] ?? metadata['user_name'] ?? 'Entreprise',
+            referenceDate: DateTime.tryParse(reportData['reference_date'] ?? metadata['birth_date'] ?? '') ?? DateTime.now(),
+            frozenReport: report,
+          ),
+        ));
+        break;
+        
+      case StoredReport.typeCycleSante:
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => HealthCycleReportScreen(
+            userName: reportData['user_name'] ?? metadata['user_name'] ?? 'Utilisateur',
+            birthDate: DateTime.tryParse(reportData['birth_date'] ?? metadata['birth_date'] ?? '') ?? DateTime.now(),
+            frozenReport: report,
+          ),
+        ));
+        break;
+        
+      case StoredReport.typeTimingLunaire:
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => LunarTimingReportScreen(
+            userName: reportData['user_name'] ?? metadata['user_name'] ?? 'Utilisateur',
+            frozenReport: report,
+          ),
+        ));
+        break;
+        
+      case StoredReport.typePortraitAme:
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => PortraitAmeReportScreen(
+            firstName: reportData['first_name'] ?? metadata['user_name'] ?? 'Utilisateur',
+            birthdate: DateTime.tryParse(reportData['birthdate'] ?? metadata['birth_date'] ?? '') ?? DateTime.now(),
+            frozenReport: report,
+          ),
+        ));
+        break;
+
+      case StoredReport.typeGuideHoraire:
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => DailyGuideReportScreen(
+            targetDate: DateTime.tryParse(reportData['target_date'] ?? metadata['target_date'] ?? '') ?? DateTime.now(),
+            frozenReport: report,
+          ),
+        ));
+        break;
+
+      case StoredReport.typePhasesVie:
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => LifePhaseReportScreen(
+            userName: reportData['user_name'] ?? metadata['user_name'] ?? 'Utilisateur',
+            birthDate: DateTime.tryParse(reportData['birth_date'] ?? metadata['birth_date'] ?? '') ?? DateTime.now(),
+            frozenReport: report,
+          ),
+        ));
+        break;
+        
+      // For these types, use generic viewer as they don't have dedicated frozen support yet
+      case StoredReport.typeCompatibility:
+      case StoredReport.typeTemporal:
+      case StoredReport.typeEclairageDecision:
+      default:
+        Navigator.push(context, MaterialPageRoute(
+          builder: (_) => StoredReportViewerScreen(report: report),
+        ));
+    }
   }
 
   @override

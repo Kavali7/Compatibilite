@@ -8,18 +8,23 @@ import 'package:intl/intl.dart';
 
 import '../core/constants.dart';
 import '../core/navigation_helper.dart';
+import '../models/stored_report_model.dart';
+import '../services/auth_service.dart';
 import '../services/health_cycle_service.dart';
+import '../services/stored_report_service.dart';
 import '../widgets/animated_background.dart';
 
 /// Écran de rapport du Cycle Santé
 class HealthCycleReportScreen extends StatefulWidget {
   final String userName;
   final DateTime birthDate;
+  final StoredReport? frozenReport; // For frozen reading from Mes Achats
 
   const HealthCycleReportScreen({
     super.key,
     required this.userName,
     required this.birthDate,
+    this.frozenReport,
   });
 
   @override
@@ -40,6 +45,12 @@ class _HealthCycleReportScreenState extends State<HealthCycleReportScreen> {
   }
 
   Future<void> _loadData() async {
+    // If frozen report provided, just mark as not loading (UI will show minimal frozen data)
+    if (widget.frozenReport != null) {
+      setState(() => _isLoading = false);
+      return;
+    }
+    
     try {
       final periods = await HealthCycleService.instance.getAllPeriods();
       
@@ -61,6 +72,9 @@ class _HealthCycleReportScreenState extends State<HealthCycleReportScreen> {
           _selectedPeriodIndex = (currentInfo?.period.periodNumber ?? 1) - 1;
           _isLoading = false;
         });
+        
+        // Store report for "Mes Achats" (fire and forget)
+        _storeReportForHistory();
       }
     } catch (e) {
       debugPrint('HealthCycleReportScreen: Error loading data: $e');
@@ -69,6 +83,52 @@ class _HealthCycleReportScreenState extends State<HealthCycleReportScreen> {
       }
     }
   }
+
+  void _storeReportForHistory() async {
+    try {
+      final user = AuthService.instance.currentUser;
+      if (user == null) return;
+
+      // Check if report already exists
+      final exists = await StoredReportService.instance.hasStoredReport(
+        userId: user.id,
+        serviceType: StoredReport.typeCycleSante,
+      );
+
+      if (exists) {
+        debugPrint('Health Cycle report already exists, skipping');
+        return;
+      }
+
+      // Prepare report data
+      final reportData = <String, dynamic>{
+        'user_name': widget.userName,
+        'birth_date': widget.birthDate.toIso8601String(),
+        if (_currentPeriodInfo != null) ...{
+          'period_number': _currentPeriodInfo!.period.periodNumber,
+          'period_name': _currentPeriodInfo!.period.periodName,
+          'theme_central': _currentPeriodInfo!.period.themeCentral,
+          'day_in_period': _currentPeriodInfo!.dayInPeriod,
+          'days_remaining': _currentPeriodInfo!.daysRemaining,
+        },
+        'stored_at': DateTime.now().toIso8601String(),
+      };
+
+      await StoredReportService.instance.storeCyclesVieReport(
+        userId: user.id,
+        serviceType: StoredReport.typeCycleSante,
+        userName: widget.userName,
+        birthDate: widget.birthDate,
+        targetDate: DateTime.now(),
+        reportData: reportData,
+      );
+
+      debugPrint('✅ Health Cycle report stored for Mes Achats');
+    } catch (e) {
+      debugPrint('⚠️ Error storing Health Cycle report: $e');
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {

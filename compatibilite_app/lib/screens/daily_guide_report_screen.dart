@@ -7,16 +7,21 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../core/constants.dart';
 import '../core/navigation_helper.dart';
+import '../models/stored_report_model.dart';
+import '../services/auth_service.dart';
 import '../services/daily_guide_service.dart';
+import '../services/stored_report_service.dart';
 import '../widgets/animated_background.dart';
 
 /// Écran de rapport du Guide Horaire
 class DailyGuideReportScreen extends StatefulWidget {
   final DateTime targetDate;
+  final StoredReport? frozenReport;
 
   const DailyGuideReportScreen({
     super.key,
     required this.targetDate,
+    this.frozenReport,
   });
 
   @override
@@ -24,8 +29,8 @@ class DailyGuideReportScreen extends StatefulWidget {
 }
 
 class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
-  List<DailyPeriod>? _periods;
-  DailyPeriod? _currentPeriod;
+  List<DailyPeriodWithSlot>? _periods;
+  DailyPeriodWithSlot? _currentPeriod;
   bool _isLoading = true;
   String? _error;
 
@@ -40,9 +45,15 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
   }
 
   Future<void> _loadData() async {
+    // If frozen report provided, skip fresh loading
+    if (widget.frozenReport != null) {
+      setState(() => _isLoading = false);
+      return;
+    }
+    
     try {
-      final periods = await DailyGuideService.instance.getPeriods();
-      final current = await DailyGuideService.instance.getCurrentPeriod();
+      final periods = await DailyGuideService.instance.getPeriodsForDate(widget.targetDate);
+      final current = await DailyGuideService.instance.getCurrentPeriodForDate(widget.targetDate);
       
       if (mounted) {
         setState(() {
@@ -50,6 +61,9 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
           _currentPeriod = current;
           _isLoading = false;
         });
+        
+        // Store report for "Mes Achats" (fire and forget)
+        _storeReportForHistory();
       }
     } catch (e) {
       if (mounted) {
@@ -58,6 +72,49 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  /// Store the report for "Mes Achats" feature
+  void _storeReportForHistory() async {
+    try {
+      final user = AuthService.instance.currentUser;
+      if (user == null) return;
+
+      // Check if report already exists
+      final exists = await StoredReportService.instance.hasStoredReport(
+        userId: user.id,
+        serviceType: StoredReport.typeGuideHoraire,
+      );
+      if (exists) return;
+
+      // Prepare report data from periods
+      final periodsData = (_periods ?? []).map((p) => {
+        'period_name': p.periodName,
+        'time_slot': p.timeSlotLabel,
+        'keyword': p.keyword,
+        'description': p.description,
+        'period_letter': p.periodLetter,
+        'period_number': p.periodNumber,
+        'favorables': p.favorablesList,
+        'eviter': p.eviterList,
+      }).toList();
+
+      await StoredReportService.instance.storeCyclesVieReport(
+        userId: user.id,
+        serviceType: StoredReport.typeGuideHoraire,
+        userName: user.email ?? 'Utilisateur',
+        birthDate: widget.targetDate,
+        targetDate: widget.targetDate,
+        reportData: {
+          'target_date': widget.targetDate.toIso8601String(),
+          'periods': periodsData,
+          'current_period_name': _currentPeriod?.periodName ?? '',
+        },
+      );
+      debugPrint('DailyGuideReportScreen: Report stored');
+    } catch (e) {
+      debugPrint('DailyGuideReportScreen: Failed to store: $e');
     }
   }
 
@@ -267,7 +324,7 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
               ),
               const Spacer(),
               Text(
-                period.timeSlot,
+                period.timeSlotLabel,
                 style: GoogleFonts.poppins(
                   color: _themeColor,
                   fontWeight: FontWeight.bold,
@@ -384,14 +441,14 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
             ],
           ),
           const SizedBox(height: 20),
-          ...(_periods ?? []).map((period) => _buildTimelineItem(period)),
+          ...(_periods ?? []).map((pws) => _buildTimelineItem(pws)),
         ],
       ),
     );
   }
 
-  Widget _buildTimelineItem(DailyPeriod period) {
-    final isCurrent = _currentPeriod?.id == period.id;
+  Widget _buildTimelineItem(DailyPeriodWithSlot period) {
+    final isCurrent = _currentPeriod?.periodNumber == period.periodNumber;
     
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -422,7 +479,7 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
                 ),
                 child: Center(
                   child: Text(
-                    period.periodLetter,
+                    period.periodNumber.toString(),
                     style: GoogleFonts.philosopher(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -450,7 +507,7 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
                           ),
                         ),
                         Text(
-                          period.timeSlot,
+                          period.timeSlotLabel,
                           style: TextStyle(
                             color: isCurrent ? _themeColor : AppColors.textMuted,
                             fontSize: 13,
@@ -482,7 +539,7 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
     );
   }
 
-  void _showPeriodDetails(DailyPeriod period) {
+  void _showPeriodDetails(DailyPeriodWithSlot period) {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.block,
@@ -526,7 +583,7 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
                     ),
                     child: Center(
                       child: Text(
-                        period.periodLetter,
+                        period.periodNumber.toString(),
                         style: GoogleFonts.philosopher(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -549,7 +606,7 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
                           ),
                         ),
                         Text(
-                          period.timeSlot,
+                          period.timeSlotLabel,
                           style: TextStyle(
                             color: _themeColor,
                             fontWeight: FontWeight.bold,

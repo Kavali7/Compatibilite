@@ -53,12 +53,13 @@ class _DecisionAdvicePurchaseScreenState extends State<DecisionAdvicePurchaseScr
   // Payment provider
   PaymentProvider _selectedProvider = PaymentProvider.kkiapay;
   
-  // Liste des types de décision
+  // Liste des types de décision (28 types)
   static const List<Map<String, String>> _decisionTypes = [
     // Immobilier
     {'code': 'location_immobilier', 'label': 'Location immobilière', 'category': 'Immobilier'},
     {'code': 'achat_immobilier', 'label': 'Achat immobilier', 'category': 'Immobilier'},
     {'code': 'demenagement', 'label': 'Déménagement', 'category': 'Immobilier'},
+    {'code': 'construction_renovation', 'label': 'Construction / Rénovation', 'category': 'Immobilier'},
     // Finance
     {'code': 'achat_vehicule', 'label': 'Achat véhicule', 'category': 'Finance'},
     {'code': 'achat_important', 'label': 'Achat important', 'category': 'Finance'},
@@ -67,13 +68,19 @@ class _DecisionAdvicePurchaseScreenState extends State<DecisionAdvicePurchaseScr
     {'code': 'investissement', 'label': 'Investissement', 'category': 'Finance'},
     // Juridique
     {'code': 'signature_contrat', 'label': 'Signature de contrat', 'category': 'Juridique'},
+    {'code': 'negociation_accord', 'label': 'Négociation / Accord formel', 'category': 'Juridique'},
     // Business
     {'code': 'lancement_business', 'label': 'Lancement business', 'category': 'Business'},
     {'code': 'partenariat', 'label': 'Partenariat / Association', 'category': 'Business'},
+    // Commerce
+    {'code': 'campagne_pub', 'label': 'Campagne publicitaire', 'category': 'Commerce'},
+    {'code': 'vente_bien', 'label': 'Vente d\'un bien', 'category': 'Commerce'},
     // Carrière
     {'code': 'entretien_embauche', 'label': 'Entretien d\'embauche', 'category': 'Carrière'},
     {'code': 'demande_promotion', 'label': 'Demande de promotion', 'category': 'Carrière'},
     {'code': 'demission', 'label': 'Démission / Changement', 'category': 'Carrière'},
+    // Éducation
+    {'code': 'inscription_formation', 'label': 'Inscription à formation / école', 'category': 'Éducation'},
     // Personnel
     {'code': 'voyage', 'label': 'Voyage', 'category': 'Personnel'},
     {'code': 'mariage', 'label': 'Mariage / Engagement', 'category': 'Personnel'},
@@ -81,6 +88,9 @@ class _DecisionAdvicePurchaseScreenState extends State<DecisionAdvicePurchaseScr
     // Santé  
     {'code': 'operation_medicale', 'label': 'Opération médicale', 'category': 'Santé'},
     {'code': 'debut_traitement', 'label': 'Début de traitement', 'category': 'Santé'},
+    {'code': 'changement_habitudes', 'label': 'Changement d\'habitudes de vie', 'category': 'Santé'},
+    // Spirituel
+    {'code': 'pelerinage_retraite', 'label': 'Pèlerinage / Retraite spirituelle', 'category': 'Spirituel'},
     // Autre
     {'code': 'autre', 'label': 'Autre décision importante', 'category': 'Autre'},
   ];
@@ -289,13 +299,16 @@ class _DecisionAdvicePurchaseScreenState extends State<DecisionAdvicePurchaseScr
 
   Widget _buildDecisionTypesOverview() {
     final categories = [
-      ('Immobilier', 3),
+      ('Immobilier', 4),
       ('Finance', 5),
-      ('Juridique', 1),
+      ('Juridique', 2),
       ('Business', 2),
+      ('Commerce', 2),
       ('Carrière', 3),
+      ('Éducation', 1),
       ('Personnel', 3),
-      ('Santé', 2),
+      ('Santé', 3),
+      ('Spirituel', 1),
       ('Autre', 1),
     ];
 
@@ -313,7 +326,7 @@ class _DecisionAdvicePurchaseScreenState extends State<DecisionAdvicePurchaseScr
               Icon(Icons.category, color: AppColors.primary, size: 22),
               const SizedBox(width: 10),
               Text(
-                '20 Types de Décisions',
+                '28 Types de Décisions',
                 style: GoogleFonts.philosopher(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -582,45 +595,102 @@ class _DecisionAdvicePurchaseScreenState extends State<DecisionAdvicePurchaseScr
   }
 
   Widget _buildDecisionTypeDropdown() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.block,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
-      ),
-      child: DropdownButtonFormField<String>(
-        decoration: const InputDecoration(
-          labelText: 'Sélectionnez un type',
-          border: InputBorder.none,
-        ),
-        value: _selectedDecisionType,
-        dropdownColor: AppColors.block,
-        style: TextStyle(color: AppColors.textLight),
-        isExpanded: true,
-        items: _decisionTypes.map((dt) {
-          return DropdownMenuItem<String>(
-            value: dt['code'],
-            child: Text(
-              '${dt['category']} - ${dt['label']}',
-              overflow: TextOverflow.ellipsis,
+    // Trouver la description détaillée du type sélectionné
+    String? selectedDescription;
+    if (_selectedDecisionType != null) {
+      final selected = _decisionTypes.firstWhere(
+        (dt) => dt['code'] == _selectedDecisionType,
+        orElse: () => {},
+      );
+      if (selected.isNotEmpty) {
+        selectedDescription = selected['description'];
+      }
+    }
+
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.block,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+          ),
+          child: DropdownButtonFormField<String>(
+            decoration: const InputDecoration(
+              labelText: 'Sélectionnez un type',
+              border: InputBorder.none,
             ),
-          );
-        }).toList(),
-        onChanged: (val) => setState(() => _selectedDecisionType = val),
-        validator: (value) {
-          if (value == null || value.isEmpty) {
-            return 'Veuillez sélectionner un type de décision';
-          }
-          return null;
-        },
-      ),
+            value: _selectedDecisionType,
+            dropdownColor: AppColors.block,
+            style: TextStyle(color: AppColors.textLight),
+            isExpanded: true,
+            items: _decisionTypes.map((dt) {
+              return DropdownMenuItem<String>(
+                value: dt['code'],
+                child: Text(
+                  '${dt['category']} - ${dt['label']}',
+                  overflow: TextOverflow.ellipsis,
+                ),
+              );
+            }).toList(),
+            onChanged: (val) => setState(() => _selectedDecisionType = val),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Veuillez sélectionner un type de décision';
+              }
+              return null;
+            },
+          ),
+        ),
+        // Description détaillée du type sélectionné
+        if (_selectedDecisionType != null) ...[
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.info_outline, color: AppColors.primary, size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Ce que ce type couvre',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  selectedDescription ?? 'Analyse personnalisée de votre cycle pour cette décision.',
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 13,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
     );
   }
 
   Widget _buildTargetDatePicker() {
-    // Generate years from 1900 to 2030
-    final years = List<int>.generate(131, (i) => 1900 + i);
+    // Generate years from 1900 to 3035
+    final years = List<int>.generate(1136, (i) => 1900 + i);
     const months = [
       'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
       'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',

@@ -18,11 +18,13 @@ import '../widgets/animated_background.dart';
 class PortraitAmeReportScreen extends StatefulWidget {
   final String firstName;
   final DateTime birthdate;
+  final StoredReport? frozenReport; // For frozen reading from Mes Achats
 
   const PortraitAmeReportScreen({
     super.key,
     required this.firstName,
     required this.birthdate,
+    this.frozenReport,
   });
 
   @override
@@ -43,6 +45,12 @@ class _PortraitAmeReportScreenState extends State<PortraitAmeReportScreen> {
   }
 
   Future<void> _loadPortrait() async {
+    // If frozen report provided, use its data instead of loading fresh
+    if (widget.frozenReport != null) {
+      _loadFromFrozenReport();
+      return;
+    }
+    
     setState(() {
       _isLoading = true;
       _error = null;
@@ -106,6 +114,36 @@ class _PortraitAmeReportScreenState extends State<PortraitAmeReportScreen> {
       }
     }
   }
+
+  /// Load data from frozen report (for Mes Achats viewing)
+  void _loadFromFrozenReport() {
+    final data = widget.frozenReport!.reportData;
+    
+    try {
+      _soulPeriod = SoulPeriod(
+        identiteCosmique: data['identite_cosmique'] ?? '',
+        introduction: data['introduction'] ?? '',
+        heritageCosmique: data['heritage_cosmique'] ?? '',
+        coeurEtre: data['coeur_etre'] ?? '',
+        forcesNaturelles: data['forces_naturelles'] ?? '',
+        defisTranscender: data['defis_transcender'] ?? '',
+        vocationsIdeales: data['vocations_ideales'] ?? '',
+        affinitesGeographiques: data['affinites_geographiques'] ?? '',
+        vigilanceSante: data['vigilance_sante'] ?? '',
+        conseilsEpanouissement: data['conseils_epanouissement'] ?? '',
+        messageCosmique: data['message_cosmique'] ?? '',
+      );
+      
+      setState(() => _isLoading = false);
+    } catch (e) {
+      debugPrint('Error loading frozen report: $e');
+      setState(() {
+        _error = 'Erreur lors du chargement du rapport';
+        _isLoading = false;
+      });
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {

@@ -7,6 +7,70 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'auth_service.dart';
 
+/// Les 7 créneaux horaires fixes (3h25 chacun, de minuit à minuit)
+/// Basé sur le livre de H. Spencer Lewis, Chapitre 11
+class DailyTimeSlot {
+  final int periodNumber; // 1 à 7
+  final int startHour;
+  final int startMinute;
+  final int endHour;
+  final int endMinute;
+
+  const DailyTimeSlot(this.periodNumber, this.startHour, this.startMinute, this.endHour, this.endMinute);
+
+  String get timeSlot {
+    final sh = startHour.toString().padLeft(2, '0');
+    final sm = startMinute.toString().padLeft(2, '0');
+    final eh = endHour.toString().padLeft(2, '0');
+    final em = endMinute.toString().padLeft(2, '0');
+    return '${sh}h$sm - ${eh}h$em';
+  }
+
+  /// Vérifie si une heure/minute donnée tombe dans ce créneau
+  bool containsTime(int hour, int minute) {
+    final timeInMinutes = hour * 60 + minute;
+    final startInMinutes = startHour * 60 + startMinute;
+    final endInMinutes = endHour * 60 + endMinute;
+    
+    if (endInMinutes == 0) {
+      // Dernier créneau : 20:34 → 00:00 (minuit)
+      return timeInMinutes >= startInMinutes;
+    }
+    return timeInMinutes >= startInMinutes && timeInMinutes < endInMinutes;
+  }
+}
+
+/// Les 7 créneaux fixes
+const List<DailyTimeSlot> kDailyTimeSlots = [
+  DailyTimeSlot(1, 0, 0, 3, 25),     // 00h00 - 03h25
+  DailyTimeSlot(2, 3, 25, 6, 51),    // 03h25 - 06h51
+  DailyTimeSlot(3, 6, 51, 10, 17),   // 06h51 - 10h17
+  DailyTimeSlot(4, 10, 17, 13, 42),  // 10h17 - 13h42
+  DailyTimeSlot(5, 13, 42, 17, 8),   // 13h42 - 17h08
+  DailyTimeSlot(6, 17, 8, 20, 34),   // 17h08 - 20h34
+  DailyTimeSlot(7, 20, 34, 0, 0),    // 20h34 - 00h00
+];
+
+/// Tableau de rotation jour/lettre (Chart E du livre)
+/// Index 0 = Dimanche (DateTime.sunday = 7, mais on utilise % 7)
+/// Chaque sous-liste = lettres pour pér.1..7 ce jour-là
+const List<List<String>> kDailyRotation = [
+  // Dimanche
+  ['G', 'A', 'B', 'C', 'D', 'E', 'F'],
+  // Lundi
+  ['C', 'D', 'E', 'F', 'G', 'A', 'B'],
+  // Mardi
+  ['F', 'G', 'A', 'B', 'C', 'D', 'E'],
+  // Mercredi
+  ['B', 'C', 'D', 'E', 'F', 'G', 'A'],
+  // Jeudi
+  ['E', 'F', 'G', 'A', 'B', 'C', 'D'],
+  // Vendredi
+  ['A', 'B', 'C', 'D', 'E', 'F', 'G'],
+  // Samedi
+  ['D', 'E', 'F', 'G', 'A', 'B', 'C'],
+];
+
 /// Modèle pour un créneau horaire quotidien
 class DailyPeriod {
   final String id;
@@ -66,47 +130,41 @@ class DailyPeriod {
     return activitiesEviter!.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
   }
 
-  /// Créneau horaire approximatif basé sur period_letter
-  String get timeSlot {
-    switch (periodLetter.toUpperCase()) {
-      case 'A': return '5h-8h';
-      case 'B': return '8h-11h';
-      case 'C': return '11h-14h';
-      case 'D': return '14h-16h';
-      case 'E': return '16h-18h';
-      case 'F': return '18h-21h';
-      case 'G': return '21h-5h';
-      default: return '';
-    }
+  /// Créneau horaire — maintenant calculé à partir du numéro de période
+  /// et non plus hardcodé par lettre
+  String timeSlotForPeriodNumber(int periodNumber) {
+    if (periodNumber < 1 || periodNumber > 7) return '';
+    return kDailyTimeSlots[periodNumber - 1].timeSlot;
   }
+}
 
-  /// Heure de début (pour déterminer la période actuelle)
-  int get startHour {
-    switch (periodLetter.toUpperCase()) {
-      case 'A': return 5;
-      case 'B': return 8;
-      case 'C': return 11;
-      case 'D': return 14;
-      case 'E': return 16;
-      case 'F': return 18;
-      case 'G': return 21;
-      default: return 0;
-    }
-  }
+/// Wrapper qui associe un DailyPeriod (contenu de la DB) avec son créneau
+/// horaire effectif et son numéro de période pour une date donnée.
+/// Nécessaire car la même lettre peut occuper différents créneaux selon le jour.
+class DailyPeriodWithSlot {
+  final DailyPeriod period;
+  final int periodNumber; // 1 à 7 (position dans la journée)
+  final DailyTimeSlot timeSlot;
 
-  /// Heure de fin
-  int get endHour {
-    switch (periodLetter.toUpperCase()) {
-      case 'A': return 8;
-      case 'B': return 11;
-      case 'C': return 14;
-      case 'D': return 16;
-      case 'E': return 18;
-      case 'F': return 21;
-      case 'G': return 5; // Après minuit
-      default: return 0;
-    }
-  }
+  DailyPeriodWithSlot({
+    required this.period,
+    required this.periodNumber,
+    required this.timeSlot,
+  });
+
+  /// Raccourcis vers les champs du DailyPeriod
+  String get id => period.id;
+  String get periodLetter => period.periodLetter;
+  String get periodName => period.periodName;
+  String get keyword => period.keyword;
+  String get description => period.description;
+  String? get activitiesFavorables => period.activitiesFavorables;
+  String? get activitiesEviter => period.activitiesEviter;
+  String? get colorCode => period.colorCode;
+  String? get energyLevel => period.energyLevel;
+  List<String> get favorablesList => period.favorablesList;
+  List<String> get eviterList => period.eviterList;
+  String get timeSlotLabel => timeSlot.timeSlot;
 }
 
 /// Modèle pour un achat de guide quotidien
@@ -181,22 +239,50 @@ class DailyGuideService {
     }
   }
 
-  /// Récupère la période actuelle selon l'heure
-  Future<DailyPeriod?> getCurrentPeriod() async {
-    final periods = await getPeriods();
-    final now = DateTime.now();
-    final currentHour = now.hour;
+  /// Convertit DateTime.weekday (1=lundi..7=dimanche) en index rotation (0=dimanche..6=samedi)
+  static int _weekdayToRotationIndex(int weekday) {
+    // DateTime: 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat, 7=Sun
+    // Rotation: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+    return weekday % 7; // 7%7=0=Sun, 1%7=1=Mon, etc.
+  }
 
-    for (final period in periods) {
-      // Cas spécial pour la nuit (période G: 21h-5h)
-      if (period.periodLetter.toUpperCase() == 'G') {
-        if (currentHour >= 21 || currentHour < 5) {
-          return period;
-        }
-      } else {
-        if (currentHour >= period.startHour && currentHour < period.endHour) {
-          return period;
-        }
+  /// Récupère les 7 périodes ordonnées pour une date donnée
+  /// L'ordre des lettres dépend du jour de la semaine (rotation)
+  Future<List<DailyPeriodWithSlot>> getPeriodsForDate(DateTime date) async {
+    final allPeriods = await getPeriods();
+    final rotIndex = _weekdayToRotationIndex(date.weekday);
+    final rotation = kDailyRotation[rotIndex];
+
+    final result = <DailyPeriodWithSlot>[];
+    for (int i = 0; i < 7; i++) {
+      final letter = rotation[i];
+      final period = allPeriods.firstWhere(
+        (p) => p.periodLetter.toUpperCase() == letter,
+        orElse: () => allPeriods.first,
+      );
+      result.add(DailyPeriodWithSlot(
+        period: period,
+        periodNumber: i + 1,
+        timeSlot: kDailyTimeSlots[i],
+      ));
+    }
+    return result;
+  }
+
+  /// Récupère la période actuelle (maintenant) pour aujourd'hui
+  Future<DailyPeriodWithSlot?> getCurrentPeriod() async {
+    return getCurrentPeriodForDate(DateTime.now());
+  }
+
+  /// Récupère la période active pour une date/heure donnée
+  Future<DailyPeriodWithSlot?> getCurrentPeriodForDate(DateTime dateTime) async {
+    final periods = await getPeriodsForDate(dateTime);
+    final hour = dateTime.hour;
+    final minute = dateTime.minute;
+
+    for (final pws in periods) {
+      if (pws.timeSlot.containsTime(hour, minute)) {
+        return pws;
       }
     }
 

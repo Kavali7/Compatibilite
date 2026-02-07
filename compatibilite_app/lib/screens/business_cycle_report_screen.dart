@@ -4,17 +4,22 @@ import 'package:intl/intl.dart';
 
 import '../core/constants.dart';
 import '../core/navigation_helper.dart';
-import '../widgets/animated_background.dart';
+import '../models/stored_report_model.dart';
+import '../services/auth_service.dart';
 import '../services/business_cycle_service.dart';
+import '../services/stored_report_service.dart';
+import '../widgets/animated_background.dart';
 
 class BusinessCycleReportScreen extends StatefulWidget {
   final String companyName;
   final DateTime referenceDate;
+  final StoredReport? frozenReport; // For frozen reading from Mes Achats
 
   const BusinessCycleReportScreen({
     super.key,
     required this.companyName,
     required this.referenceDate,
+    this.frozenReport,
   });
 
   @override
@@ -36,6 +41,12 @@ class _BusinessCycleReportScreenState extends State<BusinessCycleReportScreen> {
   }
 
   Future<void> _loadData() async {
+    // If frozen report provided, use its data instead of loading fresh
+    if (widget.frozenReport != null) {
+      _loadFromFrozenReport();
+      return;
+    }
+    
     setState(() {
       _isLoading = true;
       _error = null;
@@ -53,6 +64,9 @@ class _BusinessCycleReportScreenState extends State<BusinessCycleReportScreen> {
           _calendar = calendar;
           _isLoading = false;
         });
+        
+        // Store report for "Mes Achats" (fire and forget)
+        _storeReportForHistory();
       }
     } catch (e) {
       if (mounted) {
@@ -63,6 +77,83 @@ class _BusinessCycleReportScreenState extends State<BusinessCycleReportScreen> {
       }
     }
   }
+
+  /// Load data from frozen report (for Mes Achats viewing)
+  void _loadFromFrozenReport() {
+    final data = widget.frozenReport!.reportData;
+    
+    try {
+      _currentPeriod = CurrentBusinessPeriodInfo(
+        periodNumber: data['period_number'] ?? 1,
+        periodName: data['period_name'] ?? 'Période',
+        themeCentral: data['theme_central'] ?? '',
+        energieBusiness: data['energie_business'] ?? '',
+        focusStrategique: data['focus_strategique'] ?? '',
+        periodStartDate: DateTime.tryParse(data['period_start_date'] ?? '') ?? DateTime.now(),
+        periodEndDate: DateTime.tryParse(data['period_end_date'] ?? '') ?? DateTime.now(),
+        dayInPeriod: data['day_in_period'] ?? 1,
+        daysRemaining: data['days_remaining'] ?? 0,
+      );
+      
+      setState(() => _isLoading = false);
+    } catch (e) {
+      debugPrint('Error loading frozen report: $e');
+      setState(() {
+        _error = 'Erreur lors du chargement du rapport';
+        _isLoading = false;
+      });
+    }
+  }
+
+
+  /// Store the report for "Mes Achats" feature
+  void _storeReportForHistory() async {
+    try {
+      final user = AuthService.instance.currentUser;
+      if (user == null) return;
+
+      // Check if report already exists
+      final exists = await StoredReportService.instance.hasStoredReport(
+        userId: user.id,
+        serviceType: StoredReport.typeCycleBusiness,
+      );
+
+      if (exists) {
+        debugPrint('Business Cycle report already exists, skipping');
+        return;
+      }
+
+      // Prepare report data
+      final reportData = <String, dynamic>{
+        'company_name': widget.companyName,
+        'reference_date': widget.referenceDate.toIso8601String(),
+        if (_currentPeriod != null) ...{
+          'period_number': _currentPeriod!.periodNumber,
+          'period_name': _currentPeriod!.periodName,
+          'theme_central': _currentPeriod!.themeCentral,
+          'energie_business': _currentPeriod!.energieBusiness,
+          'focus_strategique': _currentPeriod!.focusStrategique,
+          'period_start_date': _currentPeriod!.periodStartDate.toIso8601String(),
+          'period_end_date': _currentPeriod!.periodEndDate.toIso8601String(),
+        },
+        'stored_at': DateTime.now().toIso8601String(),
+      };
+
+      await StoredReportService.instance.storeCyclesVieReport(
+        userId: user.id,
+        serviceType: StoredReport.typeCycleBusiness,
+        userName: widget.companyName,
+        birthDate: widget.referenceDate,
+        targetDate: DateTime.now(),
+        reportData: reportData,
+      );
+
+      debugPrint('✅ Business Cycle report stored for Mes Achats');
+    } catch (e) {
+      debugPrint('⚠️ Error storing Business Cycle report: $e');
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {

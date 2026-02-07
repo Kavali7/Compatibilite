@@ -525,6 +525,7 @@ class DecisionType {
   final String? category;
   final String? iconName;
   final String? description;
+  final String? detailedDescription;
   final int displayOrder;
 
   DecisionType({
@@ -534,6 +535,7 @@ class DecisionType {
     this.category,
     this.iconName,
     this.description,
+    this.detailedDescription,
     required this.displayOrder,
   });
 
@@ -543,8 +545,9 @@ class DecisionType {
       code: json['code'] ?? '',
       label: json['label'] ?? '',
       category: json['category'],
-      iconName: json['icon_name'],
+      iconName: json['icon'],
       description: json['description'],
+      detailedDescription: json['detailed_description'],
       displayOrder: json['display_order'] ?? 0,
     );
   }
