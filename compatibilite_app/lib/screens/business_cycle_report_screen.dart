@@ -93,6 +93,26 @@ class _BusinessCycleReportScreenState extends State<BusinessCycleReportScreen> {
         periodEndDate: DateTime.tryParse(data['period_end_date'] ?? '') ?? DateTime.now(),
         dayInPeriod: data['day_in_period'] ?? 1,
         daysRemaining: data['days_remaining'] ?? 0,
+        fenetreStrategique: data['fenetre_strategique'] is Map
+            ? Map<String, dynamic>.from(data['fenetre_strategique'])
+            : {'points': []},
+        actionsRecommandees: data['actions_recommandees'] is List
+            ? List<String>.from(data['actions_recommandees'])
+            : [],
+        risquesEviter: data['risques_eviter'] is List
+            ? List<String>.from(data['risques_eviter'])
+            : [],
+        indicateursCles: data['indicateurs_cles'] is List
+            ? List<Map<String, dynamic>>.from(
+                (data['indicateurs_cles'] as List).map((e) => Map<String, dynamic>.from(e)))
+            : [],
+        decisionsFavorables: data['decisions_favorables'] is List
+            ? List<String>.from(data['decisions_favorables'])
+            : [],
+        decisionsDefavorables: data['decisions_defavorables'] is List
+            ? List<String>.from(data['decisions_defavorables'])
+            : [],
+        astuceStrategique: data['astuce_strategique'] ?? '',
       );
       
       setState(() => _isLoading = false);

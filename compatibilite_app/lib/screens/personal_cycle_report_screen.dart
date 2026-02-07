@@ -101,10 +101,14 @@ class _PersonalCycleReportScreenState extends State<PersonalCycleReportScreen> {
         dayInPeriod: data['day_in_period'] ?? 1,
         daysRemaining: data['days_remaining'] ?? 0,
         descriptionTheme: data['description_theme'] ?? '',
-        tresFavorables: List<String>.from(data['tres_favorables'] ?? []),
-        favorables: List<String>.from(data['favorables'] ?? []),
-        reporter: List<String>.from(data['reporter'] ?? []),
-        attention: List<String>.from(data['attention'] ?? []),
+        domainesFavorables: Map<String, dynamic>.from(data['domaines_favorables'] ?? {
+          'tres_favorables': data['tres_favorables'] ?? [],
+          'favorables': data['favorables'] ?? [],
+        }),
+        domainesEviter: Map<String, dynamic>.from(data['domaines_eviter'] ?? {
+          'reporter': data['reporter'] ?? [],
+          'attention': data['attention'] ?? [],
+        }),
         conseils: List<String>.from(data['conseils'] ?? []),
         affirmation: data['affirmation'] ?? '',
         influenceDecisions: data['influence_decisions'] ?? '',

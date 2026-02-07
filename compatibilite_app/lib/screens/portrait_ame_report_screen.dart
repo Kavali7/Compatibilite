@@ -121,6 +121,11 @@ class _PortraitAmeReportScreenState extends State<PortraitAmeReportScreen> {
     
     try {
       _soulPeriod = SoulPeriod(
+        id: data['id'] ?? '',
+        periodNumber: data['period_number'] ?? 0,
+        polarity: data['polarity'] ?? 'A',
+        dateStart: data['date_start'] ?? '',
+        dateEnd: data['date_end'] ?? '',
         identiteCosmique: data['identite_cosmique'] ?? '',
         introduction: data['introduction'] ?? '',
         heritageCosmique: data['heritage_cosmique'] ?? '',
