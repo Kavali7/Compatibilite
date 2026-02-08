@@ -17,6 +17,7 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   String? _errorMessage;
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -184,11 +185,18 @@ class _LoginPageState extends State<LoginPage> {
                       TextFormField(
                         controller: _passwordController,
                         style: const TextStyle(color: AppColors.textLight),
-                        obscureText: true,
+                        obscureText: _obscurePassword,
                         decoration: InputDecoration(
                           labelText: 'Mot de passe',
                           labelStyle: const TextStyle(color: AppColors.textMuted),
                           prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primary),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                              color: AppColors.textMuted,
+                            ),
+                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                          ),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),

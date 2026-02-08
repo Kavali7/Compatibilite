@@ -32,6 +32,13 @@ class DailyGuidePurchaseScreen extends StatefulWidget {
 class _DailyGuidePurchaseScreenState extends State<DailyGuidePurchaseScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   
+  // Identité de l'utilisateur
+  final TextEditingController _firstNameController = TextEditingController();
+  int? _birthYear;
+  int? _birthMonth;
+  int? _birthDay;
+  DateTime? _birthDate;
+  
   // Date cible - composants séparés (style Compatibilité)
   int? _targetYear;
   int? _targetMonth;
@@ -77,7 +84,7 @@ class _DailyGuidePurchaseScreenState extends State<DailyGuidePurchaseScreen> {
       body: AnimatedBackground(
         showStars: true,
         showOrbs: true,
-        starCount: 35,
+        starCount: 60,
         child: _buildContent(),
       ),
     );
@@ -101,6 +108,10 @@ class _DailyGuidePurchaseScreenState extends State<DailyGuidePurchaseScreen> {
 
             // Récapitulatif du plan
             _buildPlanSummary(),
+            const SizedBox(height: 28),
+
+            // Formulaire - Identité personnelle
+            _buildPersonalInfoSection(),
             const SizedBox(height: 28),
 
             // Formulaire - Date cible
@@ -359,6 +370,160 @@ class _DailyGuidePurchaseScreenState extends State<DailyGuidePurchaseScreen> {
     return '$jour ${date.day} $moisNom ${date.year}';
   }
 
+  Widget _buildPersonalInfoSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '✨ Votre identité',
+          style: GoogleFonts.philosopher(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textLight,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Votre guide est personnalisé selon votre date de naissance.',
+          style: TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.block,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+          ),
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _firstNameController,
+                style: const TextStyle(color: AppColors.textLight),
+                decoration: InputDecoration(
+                  labelText: 'Prénom',
+                  labelStyle: TextStyle(color: AppColors.textMuted),
+                  prefixIcon: Icon(Icons.person, color: AppColors.primary),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: AppColors.textMuted.withValues(alpha: 0.3)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppColors.primary),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Veuillez entrer votre prénom';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              _buildBirthDateDropdowns(),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildBirthDateDropdowns() {
+    final years = List<int>.generate(126, (i) => 1900 + i); // 1900 → 2025
+    final months = const [
+      'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+      'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre',
+    ];
+    final maxBirthDay = _daysInMonth(_birthYear, _birthMonth);
+    final birthDays = List<int>.generate(maxBirthDay, (i) => i + 1);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Date de naissance',
+          style: TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 13,
+          ),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<int>(
+          decoration: const InputDecoration(labelText: 'Jour'),
+          isExpanded: true,
+          value: _birthDay != null && _birthDay! <= maxBirthDay ? _birthDay : null,
+          items: birthDays
+              .map((d) => DropdownMenuItem<int>(
+                    value: d,
+                    child: Text('$d'),
+                  ))
+              .toList(),
+          onChanged: (val) {
+            setState(() {
+              _birthDay = val;
+              _updateBirthDate();
+            });
+          },
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<int>(
+          decoration: const InputDecoration(labelText: 'Mois'),
+          isExpanded: true,
+          value: _birthMonth,
+          items: List.generate(
+            months.length,
+            (index) => DropdownMenuItem<int>(
+              value: index + 1,
+              child: Text(months[index]),
+            ),
+          ),
+          onChanged: (val) {
+            setState(() {
+              _birthMonth = val;
+              _updateBirthDate();
+            });
+          },
+        ),
+        const SizedBox(height: 12),
+        DropdownButtonFormField<int>(
+          decoration: const InputDecoration(labelText: 'Année'),
+          isExpanded: true,
+          value: _birthYear,
+          items: years
+              .map((y) => DropdownMenuItem<int>(
+                    value: y,
+                    child: Text('$y'),
+                  ))
+              .toList(),
+          onChanged: (val) {
+            setState(() {
+              _birthYear = val;
+              _updateBirthDate();
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  void _updateBirthDate() {
+    if (_birthYear != null && _birthMonth != null && _birthDay != null) {
+      final maxDay = _daysInMonth(_birthYear, _birthMonth);
+      if (_birthDay! > maxDay) {
+        _birthDay = null;
+        _birthDate = null;
+        return;
+      }
+      _birthDate = DateTime(_birthYear!, _birthMonth!, _birthDay!);
+    } else {
+      _birthDate = null;
+    }
+  }
+
   Widget _buildFormSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -593,7 +758,7 @@ class _DailyGuidePurchaseScreenState extends State<DailyGuidePurchaseScreen> {
   }
 
   Widget _buildPaymentButton() {
-    final canPay = _targetDate != null;
+    final canPay = _targetDate != null && _birthDate != null && _firstNameController.text.trim().isNotEmpty;
     
     return SizedBox(
       width: double.infinity,
@@ -638,8 +803,8 @@ class _DailyGuidePurchaseScreenState extends State<DailyGuidePurchaseScreen> {
   }
 
   Future<void> _processPayment() async {
-    if (_targetDate == null) {
-      setState(() => _error = 'Veuillez sélectionner une date.');
+    if (_targetDate == null || _birthDate == null || _firstNameController.text.trim().isEmpty) {
+      setState(() => _error = 'Veuillez remplir tous les champs (prénom, date de naissance, date du guide).');
       return;
     }
 
@@ -693,6 +858,8 @@ class _DailyGuidePurchaseScreenState extends State<DailyGuidePurchaseScreen> {
                 MaterialPageRoute(
                   builder: (_) => DailyGuideReportScreen(
                     targetDate: _targetDate!,
+                    firstName: _firstNameController.text.trim(),
+                    birthDate: _birthDate!,
                   ),
                 ),
               );
@@ -704,6 +871,8 @@ class _DailyGuidePurchaseScreenState extends State<DailyGuidePurchaseScreen> {
                   MaterialPageRoute(
                     builder: (_) => DailyGuideReportScreen(
                       targetDate: _targetDate!,
+                      firstName: _firstNameController.text.trim(),
+                      birthDate: _birthDate!,
                     ),
                   ),
                 );

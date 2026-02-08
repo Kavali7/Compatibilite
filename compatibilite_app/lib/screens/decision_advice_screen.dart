@@ -224,11 +224,11 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
         }
       }
 
-      // Animer la jauge (score 1-5 → 0.2–1.0)
+      // Animer la jauge (score 0-100 → 0.0–1.0)
       if (_currentAdvice != null && _currentAdvice!.favorabilityScore != null) {
         _gaugeAnimation = Tween<double>(
           begin: 0,
-          end: _currentAdvice!.favorabilityScore! / 5.0,
+          end: _currentAdvice!.favorabilityScore! / 100.0,
         ).animate(
           CurvedAnimation(parent: _gaugeController, curve: Curves.easeOutCubic),
         );
@@ -443,6 +443,17 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
   }
 
   Widget _buildDecisionTypeSelector() {
+    // Find description for the selected type
+    String? selectedDescription;
+    if (_selectedDecisionTypeId != null && _decisionTypes.isNotEmpty) {
+      try {
+        final selected = _decisionTypes.firstWhere(
+          (dt) => dt.id == _selectedDecisionTypeId,
+        );
+        selectedDescription = selected.detailedDescription ?? selected.description;
+      } catch (_) {}
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -527,6 +538,47 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
               _loadAdvice();
             },
           ),
+          // Description du type sélectionné
+          if (_selectedDecisionTypeId != null && selectedDescription != null && selectedDescription.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.info_outline, color: AppColors.primary, size: 16),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Ce que ce type couvre',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    selectedDescription,
+                    style: TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 13,
+                      height: 1.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1073,6 +1125,7 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
 
   Widget _buildMiniActivityChip(String text, Color color, IconData icon) {
     return Container(
+      constraints: const BoxConstraints(maxWidth: 220),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
@@ -1084,9 +1137,12 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
         children: [
           Icon(icon, size: 11, color: color),
           const SizedBox(width: 4),
-          Text(
-            text,
-            style: TextStyle(color: AppColors.textLight, fontSize: 11),
+          Flexible(
+            child: Text(
+              text,
+              style: TextStyle(color: AppColors.textLight, fontSize: 11),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
@@ -1097,8 +1153,7 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
     final score = _currentAdvice?.favorabilityScore ?? 0;
     final color = _getFavorabilityColor(score);
     final label = _getFavorabilityLabel(score);
-    // Convertir score 1-5 en pourcentage pour l'animation (1=20%, 5=100%)
-    final percentage = score / 5.0;
+
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -1140,7 +1195,7 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '$score/5',
+                        '$score%',
                         style: GoogleFonts.philosopher(
                           fontSize: 48,
                           fontWeight: FontWeight.bold,
@@ -1176,25 +1231,23 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
   }
 
   Color _getFavorabilityColor(int score) {
-    switch (score) {
-      case 5: return Colors.green;
-      case 4: return Colors.lightGreen;
-      case 3: return Colors.orange;
-      case 2: return Colors.deepOrange;
-      case 1: return Colors.red;
-      default: return Colors.grey;
-    }
+    // Score DB: 0-100
+    if (score >= 80) return Colors.green;
+    if (score >= 65) return Colors.lightGreen;
+    if (score >= 50) return Colors.orange;
+    if (score >= 35) return Colors.deepOrange;
+    if (score > 0) return Colors.red;
+    return Colors.grey;
   }
 
   String _getFavorabilityLabel(int score) {
-    switch (score) {
-      case 5: return 'Très Favorable';
-      case 4: return 'Favorable';
-      case 3: return 'Neutre';
-      case 2: return 'Défavorable';
-      case 1: return 'À Éviter';
-      default: return 'Non évalué';
-    }
+    // Score DB: 0-100
+    if (score >= 80) return 'Très Favorable';
+    if (score >= 65) return 'Favorable';
+    if (score >= 50) return 'Neutre';
+    if (score >= 35) return 'Défavorable';
+    if (score > 0) return 'À Éviter';
+    return 'Non évalué';
   }
 
   Widget _buildAdviceCard() {

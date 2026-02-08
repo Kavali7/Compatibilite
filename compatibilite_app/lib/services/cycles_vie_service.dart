@@ -627,26 +627,24 @@ class DecisionAdvice {
 
   Color get favorabilityColor {
     if (favorabilityScore == null) return Colors.grey;
-    switch (favorabilityScore!) {
-      case 5: return Colors.green;
-      case 4: return Colors.lightGreen;
-      case 3: return Colors.orange;
-      case 2: return Colors.deepOrange;
-      case 1: return Colors.red;
-      default: return Colors.grey;
-    }
+    final s = favorabilityScore!;
+    if (s >= 80) return Colors.green;
+    if (s >= 65) return Colors.lightGreen;
+    if (s >= 50) return Colors.orange;
+    if (s >= 35) return Colors.deepOrange;
+    if (s > 0) return Colors.red;
+    return Colors.grey;
   }
 
   String get favorabilityLabel {
     if (favorabilityScore == null) return 'Non évalué';
-    switch (favorabilityScore!) {
-      case 5: return 'Très favorable';
-      case 4: return 'Favorable';
-      case 3: return 'Neutre';
-      case 2: return 'Défavorable';
-      case 1: return 'Déconseillé';
-      default: return 'Non évalué';
-    }
+    final s = favorabilityScore!;
+    if (s >= 80) return 'Très favorable';
+    if (s >= 65) return 'Favorable';
+    if (s >= 50) return 'Neutre';
+    if (s >= 35) return 'Défavorable';
+    if (s > 0) return 'Déconseillé';
+    return 'Non évalué';
   }
   
   /// Vérifie si le conseil a du contenu enrichi

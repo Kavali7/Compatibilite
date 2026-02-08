@@ -9,6 +9,7 @@ import '../core/constants.dart';
 import '../core/navigation_helper.dart';
 import '../models/stored_report_model.dart';
 import '../services/auth_service.dart';
+import '../services/cycles_vie_service.dart';
 import '../services/daily_guide_service.dart';
 import '../services/stored_report_service.dart';
 import '../widgets/animated_background.dart';
@@ -16,11 +17,15 @@ import '../widgets/animated_background.dart';
 /// Écran de rapport du Guide Horaire
 class DailyGuideReportScreen extends StatefulWidget {
   final DateTime targetDate;
+  final String? firstName;
+  final DateTime? birthDate;
   final StoredReport? frozenReport;
 
   const DailyGuideReportScreen({
     super.key,
     required this.targetDate,
+    this.firstName,
+    this.birthDate,
     this.frozenReport,
   });
 
@@ -31,12 +36,13 @@ class DailyGuideReportScreen extends StatefulWidget {
 class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
   List<DailyPeriodWithSlot>? _periods;
   DailyPeriodWithSlot? _currentPeriod;
+  SoulPeriod? _soulPeriod;
   bool _isLoading = true;
   String? _error;
 
-  // Couleur thème bleu ciel
-  static const Color _themeColor = Color(0xFF0284C7);
-  static const Color _themeColorDark = Color(0xFF075985);
+  // Couleur accent subtile — doré chaud pour lisibilité sur fond sombre
+  static const Color _accentColor = Color(0xFFD4A574); // ambre doux
+  static const Color _accentColorDark = Color(0xFF8B6A45); // ambre profond
 
   @override
   void initState() {
@@ -55,10 +61,21 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
       final periods = await DailyGuideService.instance.getPeriodsForDate(widget.targetDate);
       final current = await DailyGuideService.instance.getCurrentPeriodForDate(widget.targetDate);
       
+      // Charger le profil Soul si la date de naissance est fournie
+      SoulPeriod? soulPeriod;
+      if (widget.birthDate != null) {
+        try {
+          soulPeriod = await CyclesVieService().getSoulPeriodForBirthdate(widget.birthDate!);
+        } catch (e) {
+          debugPrint('>>> Erreur chargement Soul period: $e');
+        }
+      }
+      
       if (mounted) {
         setState(() {
           _periods = periods;
           _currentPeriod = current;
+          _soulPeriod = soulPeriod;
           _isLoading = false;
         });
         
@@ -138,7 +155,7 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.share, color: _themeColor),
+            icon: Icon(Icons.share, color: _accentColor),
             onPressed: () {
               // TODO: Partage
             },
@@ -148,8 +165,7 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
       body: AnimatedBackground(
         showStars: true,
         showOrbs: true,
-        starCount: 35,
-        gradientColors: const [_themeColor, _themeColorDark],
+        starCount: 60,
         child: _buildContent(),
       ),
     );
@@ -157,8 +173,8 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
 
   Widget _buildContent() {
     if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: _themeColor),
+      return Center(
+        child: CircularProgressIndicator(color: _accentColor),
       );
     }
 
@@ -185,7 +201,7 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
                   });
                   _loadData();
                 },
-                style: ElevatedButton.styleFrom(backgroundColor: _themeColor),
+                style: ElevatedButton.styleFrom(backgroundColor: _accentColor),
                 child: const Text('Réessayer'),
               ),
             ],
@@ -224,18 +240,18 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            _themeColor.withValues(alpha: 0.2),
-            _themeColorDark.withValues(alpha: 0.1),
+            _accentColor.withValues(alpha: 0.1),
+            _accentColorDark.withValues(alpha: 0.08),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _themeColor.withValues(alpha: 0.3)),
+        border: Border.all(color: _accentColor.withValues(alpha: 0.25)),
       ),
       child: Column(
         children: [
-          Icon(Icons.calendar_today, color: _themeColor, size: 32),
+          Icon(Icons.calendar_today, color: _accentColor, size: 32),
           const SizedBox(height: 12),
           Text(
             _formatDate(widget.targetDate),
@@ -247,6 +263,18 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
+          if (widget.firstName != null && widget.firstName!.isNotEmpty) ...[
+            Text(
+              'Guide de ${widget.firstName}',
+              style: GoogleFonts.philosopher(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: _accentColor,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 6),
+          ],
           Text(
             'Votre guide personnalisé des énergies quotidiennes',
             style: TextStyle(
@@ -255,6 +283,36 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
             ),
             textAlign: TextAlign.center,
           ),
+          // Profil cosmique de l'utilisateur
+          if (_soulPeriod != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: _accentColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _accentColor.withValues(alpha: 0.25)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.auto_awesome, color: _accentColor, size: 18),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      'Profil : ${_soulPeriod!.identiteCosmique}',
+                      style: TextStyle(
+                        color: AppColors.textLight,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -277,19 +335,12 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            _themeColor.withValues(alpha: 0.25),
-            _themeColorDark.withValues(alpha: 0.15),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: AppColors.block,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _themeColor, width: 2),
+        border: Border.all(color: _accentColor.withValues(alpha: 0.5), width: 1.5),
         boxShadow: [
           BoxShadow(
-            color: _themeColor.withValues(alpha: 0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -303,7 +354,7 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: _themeColor,
+                  color: _accentColor,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
@@ -326,7 +377,7 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
               Text(
                 period.timeSlotLabel,
                 style: GoogleFonts.poppins(
-                  color: _themeColor,
+                  color: _accentColor,
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
@@ -346,7 +397,7 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
           Text(
             period.keyword,
             style: TextStyle(
-              color: _themeColor,
+              color: _accentColor,
               fontSize: 16,
               fontWeight: FontWeight.w500,
             ),
@@ -401,11 +452,13 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
               children: [
                 Icon(icon, size: 14, color: iconColor),
                 const SizedBox(width: 6),
-                Text(
-                  item,
-                  style: TextStyle(
-                    color: AppColors.textLight,
-                    fontSize: 12,
+                Flexible(
+                  child: Text(
+                    item,
+                    style: TextStyle(
+                      color: AppColors.textLight,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               ],
@@ -428,7 +481,7 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.timeline, color: _themeColor, size: 24),
+              Icon(Icons.timeline, color: _accentColor, size: 24),
               const SizedBox(width: 10),
               Text(
                 'Vos 7 créneaux du jour',
@@ -459,11 +512,11 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: isCurrent 
-              ? _themeColor.withValues(alpha: 0.15)
+              ? _accentColor.withValues(alpha: 0.08)
               : AppColors.background,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isCurrent ? _themeColor : AppColors.textMuted.withValues(alpha: 0.2),
+              color: isCurrent ? _accentColor.withValues(alpha: 0.5) : AppColors.textMuted.withValues(alpha: 0.2),
               width: isCurrent ? 2 : 1,
             ),
           ),
@@ -474,7 +527,7 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: isCurrent ? _themeColor : AppColors.block,
+                  color: isCurrent ? _accentColor : AppColors.block,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(
@@ -483,7 +536,7 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
                     style: GoogleFonts.philosopher(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: isCurrent ? Colors.white : _themeColor,
+                      color: isCurrent ? Colors.white : _accentColor,
                     ),
                   ),
                 ),
@@ -509,7 +562,7 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
                         Text(
                           period.timeSlotLabel,
                           style: TextStyle(
-                            color: isCurrent ? _themeColor : AppColors.textMuted,
+                            color: isCurrent ? _accentColor : AppColors.textMuted,
                             fontSize: 13,
                             fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
                           ),
@@ -530,7 +583,7 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
               const SizedBox(width: 8),
               Icon(
                 Icons.chevron_right,
-                color: isCurrent ? _themeColor : AppColors.textMuted,
+                color: isCurrent ? _accentColor : AppColors.textMuted,
               ),
             ],
           ),
@@ -578,7 +631,7 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: _themeColor,
+                      color: _accentColor,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Center(
@@ -608,7 +661,7 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
                         Text(
                           period.timeSlotLabel,
                           style: TextStyle(
-                            color: _themeColor,
+                            color: _accentColor,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -624,12 +677,12 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: _themeColor.withValues(alpha: 0.1),
+                  color: _accentColor.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.bolt, color: _themeColor),
+                    Icon(Icons.bolt, color: _accentColor),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(

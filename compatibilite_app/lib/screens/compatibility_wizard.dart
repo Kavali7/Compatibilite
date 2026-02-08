@@ -105,10 +105,10 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   // Dynamic menu builder
   late DynamicMenuBuilder _menuBuilder;
   
-  // Email verification state
   bool _isCheckingEmail = false;
   bool _emailExists = false;
   String? _emailCheckError;
+  bool _obscurePassword = true;
   
   // Multi-consultations: track current payment and profile IDs
   String? _lastPaymentId;
@@ -1819,11 +1819,18 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           const SizedBox(height: 12),
           TextField(
             controller: _passwordController,
-            obscureText: true,
+            obscureText: _obscurePassword,
             decoration: InputDecoration(
               labelText: _emailExists ? 'Mot de passe *' : 'Créer un mot de passe *',
               hintText: _emailExists ? 'Entrez votre mot de passe' : 'Minimum 6 caractères',
               prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primary),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                  color: AppColors.textMuted,
+                ),
+                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+              ),
             ),
           ),
           if (_emailExists)
