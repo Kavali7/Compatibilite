@@ -3,26 +3,34 @@
 library;
 
 import 'package:flutter/material.dart';
-import '../screens/compatibility_wizard.dart';
+import '../screens/services_catalog_screen.dart';
 
 /// Centralized navigation helper for consistent UX across the app
 class NavigationHelper {
-  /// Navigate to the main menu, clearing the navigation stack
+  /// Navigate to the services catalog, clearing the navigation stack
   /// Used after viewing reports to encourage service discovery
   static void goToMenu(BuildContext context) {
-    // Use pushAndRemoveUntil to clear the stack and go to home/wizard
+    // Navigate to "Nos Services" catalog — all buttons lead here
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const CompatibilityWizard()),
+      MaterialPageRoute(builder: (_) => const ServicesCatalogScreen()),
+      (route) => false,
+    );
+  }
+
+  /// Navigate to the services catalog so user can purchase another service
+  static void goToServices(BuildContext context) {
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const ServicesCatalogScreen()),
       (route) => false,
     );
   }
   
-  /// Navigate to home with a nice transition
+  /// Navigate to services catalog with a nice transition
   static void goToMenuWithTransition(BuildContext context) {
     Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) => 
-          const CompatibilityWizard(),
+          const ServicesCatalogScreen(),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(
             opacity: animation,

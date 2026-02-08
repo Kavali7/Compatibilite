@@ -137,18 +137,7 @@ class _PersonalCycleReportScreenState extends State<PersonalCycleReportScreen> {
         return;
       }
 
-      // Check if report already exists to avoid duplicates
-      final exists = await StoredReportService.instance.hasStoredReport(
-        userId: user.id,
-        serviceType: StoredReport.typeCyclePersonnel,
-      );
-
-      if (exists) {
-        debugPrint('_storeReportForHistory: Report already exists, skipping');
-        return;
-      }
-
-      // Prepare report data from current period
+      // Prepare FULL report data so frozen viewing shows all sections
       final reportData = <String, dynamic>{
         'first_name': widget.firstName,
         'birthdate': widget.birthdate.toIso8601String(),
@@ -159,6 +148,21 @@ class _PersonalCycleReportScreenState extends State<PersonalCycleReportScreen> {
           'energie_periode': _currentPeriod!.energiePeriode,
           'period_start_date': _currentPeriod!.periodStartDate.toIso8601String(),
           'period_end_date': _currentPeriod!.periodEndDate.toIso8601String(),
+          'day_in_period': _currentPeriod!.dayInPeriod,
+          'days_remaining': _currentPeriod!.daysRemaining,
+          'description_theme': _currentPeriod!.descriptionTheme,
+          'domaines_favorables': {
+            'tres_favorables': _currentPeriod!.tresFavorables,
+            'favorables': _currentPeriod!.favorables,
+          },
+          'domaines_eviter': {
+            'reporter': _currentPeriod!.reporter,
+            'attention': _currentPeriod!.attention,
+          },
+          'conseils': _currentPeriod!.conseils,
+          'affirmation': _currentPeriod!.affirmation,
+          'influence_decisions': _currentPeriod!.influenceDecisions,
+          'enseignement': _currentPeriod!.enseignement,
         },
         'stored_at': DateTime.now().toIso8601String(),
       };
@@ -1036,7 +1040,7 @@ class _PersonalCycleReportScreenState extends State<PersonalCycleReportScreen> {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: () => NavigationHelper.goToMenu(context),
+              onPressed: () => NavigationHelper.goToServices(context),
               icon: const Icon(Icons.home, size: 18),
               label: const Text('Voir autres services'),
               style: OutlinedButton.styleFrom(

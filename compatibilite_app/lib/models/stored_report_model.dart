@@ -14,6 +14,7 @@ class StoredReport {
   final Map<String, dynamic> reportData;
   final Map<String, dynamic> metadata;
   final DateTime createdAt;
+  final DateTime? updatedAt;
 
   const StoredReport({
     required this.id,
@@ -24,6 +25,7 @@ class StoredReport {
     required this.reportData,
     this.metadata = const {},
     required this.createdAt,
+    this.updatedAt,
   });
 
   /// Create from database response
@@ -39,6 +41,9 @@ class StoredReport {
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : DateTime.now(),
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'] as String)
+          : null,
     );
   }
 
@@ -53,6 +58,7 @@ class StoredReport {
       'report_data': reportData,
       'metadata': metadata,
       'created_at': createdAt.toIso8601String(),
+      if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
     };
   }
 
@@ -117,6 +123,6 @@ class StoredReport {
 
   @override
   String toString() {
-    return 'StoredReport(id: $id, serviceType: $serviceType, createdAt: $createdAt)';
+    return 'StoredReport(id: $id, serviceType: $serviceType, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 }

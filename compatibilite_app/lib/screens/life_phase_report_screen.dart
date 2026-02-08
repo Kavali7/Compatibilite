@@ -43,9 +43,9 @@ class _LifePhaseReportScreenState extends State<LifePhaseReportScreen> {
   }
 
   Future<void> _loadData() async {
-    // If frozen report provided, skip fresh loading
+    // If frozen report provided, rebuild from stored data
     if (widget.frozenReport != null) {
-      setState(() => _isLoading = false);
+      _loadFromFrozenReport();
       return;
     }
     
@@ -76,23 +76,70 @@ class _LifePhaseReportScreenState extends State<LifePhaseReportScreen> {
     }
   }
 
+  /// Load data from frozen report (for Mes Achats viewing)
+  void _loadFromFrozenReport() {
+    final data = widget.frozenReport!.reportData;
+    
+    try {
+      // Rebuild phases from stored data
+      final phasesData = data['phases'] as List<dynamic>? ?? [];
+      final phases = phasesData.map((p) {
+        final m = Map<String, dynamic>.from(p);
+        return LifePhase(
+          id: m['id'] ?? '',
+          phaseNumber: m['phase_number'] ?? 0,
+          phaseName: m['phase_name'] ?? '',
+          ageStart: m['age_start'] ?? 0,
+          ageEnd: m['age_end'] ?? 0,
+          theme: m['theme'] ?? '',
+          fullContent: m['full_content'] ?? '',
+          impacts: List<String>.from(m['impacts'] ?? []),
+          questionsReflection: List<String>.from(m['questions_reflection'] ?? []),
+          travailGuerison: List<String>.from(m['travail_guerison'] ?? []),
+        );
+      }).toList();
+
+      // Rebuild current phase info
+      CurrentLifePhaseInfo? currentInfo;
+      final currentNum = data['current_phase_number'];
+      if (currentNum != null && phases.isNotEmpty) {
+        final phase = phases.firstWhere(
+          (p) => p.phaseNumber == currentNum,
+          orElse: () => phases.first,
+        );
+        currentInfo = CurrentLifePhaseInfo(
+          phase: phase,
+          currentAge: data['current_age'] ?? 0,
+          yearInPhase: data['year_in_phase'] ?? 0,
+          yearsRemaining: data['years_remaining'] ?? 0,
+        );
+      }
+
+      setState(() {
+        _phases = phases;
+        _currentPhaseInfo = currentInfo;
+        _selectedPhaseIndex = (currentNum ?? 1) - 1;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading frozen life phase report: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
   /// Store the report for "Mes Achats" feature
   void _storeReportForHistory() async {
     try {
       final user = AuthService.instance.currentUser;
       if (user == null) return;
 
-      // Check if report already exists
-      final exists = await StoredReportService.instance.hasStoredReport(
-        userId: user.id,
-        serviceType: StoredReport.typePhasesVie,
-      );
-      if (exists) return;
-
-      // Prepare report data
+      // Serialize ALL phase data so frozen viewing shows full report
       final phasesData = _phases.map((p) => {
+        'id': p.id,
         'phase_number': p.phaseNumber,
         'phase_name': p.phaseName,
+        'age_start': p.ageStart,
+        'age_end': p.ageEnd,
         'theme': p.theme,
         'age_range': p.ageRange,
         'full_content': p.fullContent,

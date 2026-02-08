@@ -45,9 +45,9 @@ class _HealthCycleReportScreenState extends State<HealthCycleReportScreen> {
   }
 
   Future<void> _loadData() async {
-    // If frozen report provided, just mark as not loading (UI will show minimal frozen data)
+    // If frozen report provided, rebuild from stored data
     if (widget.frozenReport != null) {
-      setState(() => _isLoading = false);
+      _loadFromFrozenReport();
       return;
     }
     
@@ -84,30 +84,95 @@ class _HealthCycleReportScreenState extends State<HealthCycleReportScreen> {
     }
   }
 
+  /// Load data from frozen report (for Mes Achats viewing)
+  void _loadFromFrozenReport() {
+    final data = widget.frozenReport!.reportData;
+    
+    try {
+      // Rebuild periods from stored data
+      final periodsData = data['periods'] as List<dynamic>? ?? [];
+      final periods = periodsData.map((p) {
+        final m = Map<String, dynamic>.from(p);
+        return HealthPeriod(
+          id: m['id'] ?? '',
+          periodNumber: m['period_number'] ?? 0,
+          periodName: m['period_name'] ?? '',
+          themeCentral: m['theme_central'] ?? '',
+          etatEnergetique: m['etat_energetique'] ?? '',
+          pointsVigilance: List<String>.from(m['points_vigilance'] ?? []),
+          activitesRecommandees: List<String>.from(m['activites_recommandees'] ?? []),
+          activitesModerer: List<String>.from(m['activites_moderer'] ?? []),
+          alimentationPrivilegier: List<String>.from(m['alimentation_privilegier'] ?? []),
+          alimentationEviter: List<String>.from(m['alimentation_eviter'] ?? []),
+          reposSommeil: m['repos_sommeil'] ?? '',
+          conseilsPratiques: List<String>.from(m['conseils_pratiques'] ?? []),
+          affirmationBienEtre: m['affirmation_bien_etre'] ?? '',
+          enseignement: m['enseignement'] ?? '',
+          avertissement: m['avertissement'] ?? '',
+        );
+      }).toList();
+
+      // Rebuild current period info
+      CurrentHealthPeriodInfo? currentInfo;
+      final currentNum = data['current_period_number'];
+      if (currentNum != null && periods.isNotEmpty) {
+        final period = periods.firstWhere(
+          (p) => p.periodNumber == currentNum,
+          orElse: () => periods.first,
+        );
+        currentInfo = CurrentHealthPeriodInfo(
+          period: period,
+          startDate: DateTime.tryParse(data['period_start_date'] ?? '') ?? DateTime.now(),
+          endDate: DateTime.tryParse(data['period_end_date'] ?? '') ?? DateTime.now(),
+          dayInPeriod: data['day_in_period'] ?? 1,
+          daysRemaining: data['days_remaining'] ?? 0,
+        );
+      }
+
+      setState(() {
+        _periods = periods;
+        _currentPeriodInfo = currentInfo;
+        _selectedPeriodIndex = (currentNum ?? 1) - 1;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading frozen health report: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
   void _storeReportForHistory() async {
     try {
       final user = AuthService.instance.currentUser;
       if (user == null) return;
 
-      // Check if report already exists
-      final exists = await StoredReportService.instance.hasStoredReport(
-        userId: user.id,
-        serviceType: StoredReport.typeCycleSante,
-      );
+      // Serialize ALL period data so frozen viewing shows full report
+      final periodsData = _periods.map((p) => {
+        'id': p.id,
+        'period_number': p.periodNumber,
+        'period_name': p.periodName,
+        'theme_central': p.themeCentral,
+        'etat_energetique': p.etatEnergetique,
+        'points_vigilance': p.pointsVigilance,
+        'activites_recommandees': p.activitesRecommandees,
+        'activites_moderer': p.activitesModerer,
+        'alimentation_privilegier': p.alimentationPrivilegier,
+        'alimentation_eviter': p.alimentationEviter,
+        'repos_sommeil': p.reposSommeil,
+        'conseils_pratiques': p.conseilsPratiques,
+        'affirmation_bien_etre': p.affirmationBienEtre,
+        'enseignement': p.enseignement,
+        'avertissement': p.avertissement,
+      }).toList();
 
-      if (exists) {
-        debugPrint('Health Cycle report already exists, skipping');
-        return;
-      }
-
-      // Prepare report data
       final reportData = <String, dynamic>{
         'user_name': widget.userName,
         'birth_date': widget.birthDate.toIso8601String(),
+        'periods': periodsData,
         if (_currentPeriodInfo != null) ...{
-          'period_number': _currentPeriodInfo!.period.periodNumber,
-          'period_name': _currentPeriodInfo!.period.periodName,
-          'theme_central': _currentPeriodInfo!.period.themeCentral,
+          'current_period_number': _currentPeriodInfo!.period.periodNumber,
+          'period_start_date': _currentPeriodInfo!.startDate.toIso8601String(),
+          'period_end_date': _currentPeriodInfo!.endDate.toIso8601String(),
           'day_in_period': _currentPeriodInfo!.dayInPeriod,
           'days_remaining': _currentPeriodInfo!.daysRemaining,
         },

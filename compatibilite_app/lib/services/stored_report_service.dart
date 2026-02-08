@@ -13,7 +13,7 @@ class StoredReportService {
   StoredReportService._();
   static final StoredReportService instance = StoredReportService._();
 
-  /// Store a report after successful purchase
+  /// Store a report after successful purchase (UPSERT: updates if same upsert_key exists)
   Future<String?> storeReport({
     required String userId,
     String? paymentId,
@@ -21,6 +21,7 @@ class StoredReportService {
     required String serviceLabel,
     required Map<String, dynamic> reportData,
     Map<String, dynamic>? metadata,
+    required String upsertKey,
   }) async {
     if (!SupabaseManager.isReady) {
       debugPrint('StoredReportService: Supabase not ready');
@@ -37,10 +38,11 @@ class StoredReportService {
         'p_service_label': serviceLabel,
         'p_report_data': reportData,
         'p_metadata': metadata ?? {},
+        'p_upsert_key': upsertKey,
       });
 
       final reportId = response as String?;
-      debugPrint('StoredReportService: Report stored with ID: $reportId');
+      debugPrint('StoredReportService: Report upserted with ID: $reportId (key: $upsertKey)');
       return reportId;
     } catch (e) {
       debugPrint('StoredReportService: Error storing report: $e');
@@ -101,64 +103,8 @@ class StoredReportService {
     }
   }
 
-  /// Check if a stored report already exists for a user and service type
-  /// Used to prevent duplicate entries in "Mes Achats"
-  Future<bool> hasStoredReport({
-    required String userId,
-    required String serviceType,
-  }) async {
-    if (!SupabaseManager.isReady) {
-      return false;
-    }
-
-    try {
-      final client = Supabase.instance.client;
-      
-      final response = await client
-          .from('stored_reports')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('service_type', serviceType)
-          .limit(1);
-
-      return (response as List).isNotEmpty;
-    } catch (e) {
-      debugPrint('StoredReportService: Error checking report existence: $e');
-      return false; // Assume not exists on error, allow store attempt
-    }
-  }
-
-  /// Check if a compatibility report already exists for specific partners
-  /// Prevents duplicate entries when user revisits the wizard with same names
-  Future<bool> hasStoredCompatibilityReport({
-    required String userId,
-    required String user1Name,
-    required String user2Name,
-  }) async {
-    if (!SupabaseManager.isReady) {
-      return false;
-    }
-
-    try {
-      final client = Supabase.instance.client;
-      
-      // The service_label contains "User1Name & User2Name"
-      final expectedLabel = '$user1Name & $user2Name';
-      
-      final response = await client
-          .from('stored_reports')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('service_type', StoredReport.typeCompatibility)
-          .eq('service_label', expectedLabel)
-          .limit(1);
-
-      return (response as List).isNotEmpty;
-    } catch (e) {
-      debugPrint('StoredReportService: Error checking compatibility report: $e');
-      return false;
-    }
-  }
+  /// Helper to format a date as yyyy-MM-dd for upsert keys
+  String _dateKey(DateTime date) => '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
   /// Store Portrait de l'Âme report
   Future<String?> storePortraitAmeReport({
@@ -168,12 +114,14 @@ class StoredReportService {
     required DateTime birthDate,
     required Map<String, dynamic> reportData,
   }) async {
+    final key = 'portrait_ame|${userName.trim().toLowerCase()}|${_dateKey(birthDate)}';
     return storeReport(
       userId: userId,
       paymentId: paymentId,
       serviceType: StoredReport.typePortraitAme,
       serviceLabel: StoredReport.getLabelForType(StoredReport.typePortraitAme),
       reportData: reportData,
+      upsertKey: key,
       metadata: {
         'user_name': userName,
         'birth_date': birthDate.toIso8601String(),
@@ -189,12 +137,14 @@ class StoredReportService {
     required DateTime birthDate,
     required Map<String, dynamic> reportData,
   }) async {
+    final key = 'cycle_personnel|${userName.trim().toLowerCase()}|${_dateKey(birthDate)}';
     return storeReport(
       userId: userId,
       paymentId: paymentId,
       serviceType: StoredReport.typeCyclePersonnel,
       serviceLabel: StoredReport.getLabelForType(StoredReport.typeCyclePersonnel),
       reportData: reportData,
+      upsertKey: key,
       metadata: {
         'user_name': userName,
         'birth_date': birthDate.toIso8601String(),
@@ -212,12 +162,14 @@ class StoredReportService {
     required DateTime user2BirthDate,
     required Map<String, dynamic> reportData,
   }) async {
+    final key = 'compatibility|${user1Name.trim().toLowerCase()}|${_dateKey(user1BirthDate)}|${user2Name.trim().toLowerCase()}|${_dateKey(user2BirthDate)}';
     return storeReport(
       userId: userId,
       paymentId: paymentId,
       serviceType: StoredReport.typeCompatibility,
       serviceLabel: '$user1Name & $user2Name',
       reportData: reportData,
+      upsertKey: key,
       metadata: {
         'user1_name': user1Name,
         'user2_name': user2Name,
@@ -250,12 +202,14 @@ class StoredReportService {
         label = 'Prévision Temporelle';
     }
 
+    final key = 'temporal|$periodType|${_dateKey(targetDate)}';
     return storeReport(
       userId: userId,
       paymentId: paymentId,
       serviceType: StoredReport.typeTemporal,
       serviceLabel: label,
       reportData: reportData,
+      upsertKey: key,
       metadata: {
         'period_type': periodType,
         'target_date': targetDate.toIso8601String(),
@@ -273,12 +227,19 @@ class StoredReportService {
     required DateTime? targetDate,
     required Map<String, dynamic> reportData,
   }) async {
+    // Build the upsert key: serviceType|name|birthdate (+ |targetDate if applicable)
+    final namePart = userName.trim().toLowerCase();
+    final birthPart = _dateKey(birthDate);
+    final key = targetDate != null
+        ? '$serviceType|$namePart|$birthPart|${_dateKey(targetDate)}'
+        : '$serviceType|$namePart|$birthPart';
     return storeReport(
       userId: userId,
       paymentId: paymentId,
       serviceType: serviceType,
       serviceLabel: StoredReport.getLabelForType(serviceType),
       reportData: reportData,
+      upsertKey: key,
       metadata: {
         'user_name': userName,
         'birth_date': birthDate.toIso8601String(),

@@ -53,46 +53,73 @@ class _DecisionAdvicePurchaseScreenState extends State<DecisionAdvicePurchaseScr
   // Payment provider
   PaymentProvider _selectedProvider = PaymentProvider.kkiapay;
   
-  // Liste des types de décision (28 types)
+  // Liste des types de décision (28 types) avec descriptions
   static const List<Map<String, String>> _decisionTypes = [
     // Immobilier
-    {'code': 'location_immobilier', 'label': 'Location immobilière', 'category': 'Immobilier'},
-    {'code': 'achat_immobilier', 'label': 'Achat immobilier', 'category': 'Immobilier'},
-    {'code': 'demenagement', 'label': 'Déménagement', 'category': 'Immobilier'},
-    {'code': 'construction_renovation', 'label': 'Construction / Rénovation', 'category': 'Immobilier'},
+    {'code': 'location_immobilier', 'label': 'Location immobilière', 'category': 'Immobilier',
+     'description': 'Vous cherchez un logement à louer ? Ce type concerne toute décision de location : appartement, maison, bureau. Le moment de la signature influence la qualité de votre expérience locative.'},
+    {'code': 'achat_immobilier', 'label': 'Achat immobilier', 'category': 'Immobilier',
+     'description': 'Vous envisagez d\'acheter une maison ou un appartement ? Ce type couvre l\'acquisition immobilière : achat de terrain, de maison, d\'appartement. Le timing de l\'achat peut influencer la réussite de l\'investissement.'},
+    {'code': 'demenagement', 'label': 'Déménagement', 'category': 'Immobilier',
+     'description': 'Vous prévoyez un déménagement ? Ce type concerne le changement de lieu de vie : déménagement local, régional ou international. Le bon moment peut faciliter la transition.'},
+    {'code': 'construction_renovation', 'label': 'Construction / Rénovation', 'category': 'Immobilier',
+     'description': 'Vous allez entreprendre des travaux ? Ce type concerne tout projet de construction ou rénovation : maison neuve, rénovation d\'appartement, agrandissement, aménagement de local.'},
     // Finance
-    {'code': 'achat_vehicule', 'label': 'Achat véhicule', 'category': 'Finance'},
-    {'code': 'achat_important', 'label': 'Achat important', 'category': 'Finance'},
-    {'code': 'demande_financement', 'label': 'Demande de financement', 'category': 'Finance'},
-    {'code': 'recherche_argent', 'label': 'Recherche d\'argent', 'category': 'Finance'},
-    {'code': 'investissement', 'label': 'Investissement', 'category': 'Finance'},
+    {'code': 'achat_vehicule', 'label': 'Achat véhicule', 'category': 'Finance',
+     'description': 'Vous envisagez l\'achat d\'un véhicule ? Ce type couvre l\'acquisition de voiture, moto ou tout autre moyen de transport. Le moment de l\'achat influence la satisfaction et la fiabilité.'},
+    {'code': 'achat_important', 'label': 'Achat important', 'category': 'Finance',
+     'description': 'Vous prévoyez un achat conséquent ? Ce type concerne les achats majeurs : équipement professionnel, électroménager, mobilier, technologie. Le timing peut influencer la qualité du choix.'},
+    {'code': 'demande_financement', 'label': 'Demande de financement', 'category': 'Finance',
+     'description': 'Vous souhaitez demander un prêt ou un financement ? Ce type couvre les demandes de crédit, de prêt bancaire, de financement participatif ou d\'aide financière.'},
+    {'code': 'recherche_argent', 'label': 'Recherche d\'argent', 'category': 'Finance',
+     'description': 'Vous êtes en quête de fonds ? Ce type concerne la recherche active de moyens financiers : levée de fonds, recherche d\'investisseurs, demande de subvention, emprunt familial.'},
+    {'code': 'investissement', 'label': 'Investissement', 'category': 'Finance',
+     'description': 'Vous envisagez un investissement financier ? Ce type couvre les placements : actions, obligations, immobilier locatif, crypto-monnaies, épargne. Le moment de l\'investissement influence le rendement.'},
     // Juridique
-    {'code': 'signature_contrat', 'label': 'Signature de contrat', 'category': 'Juridique'},
-    {'code': 'negociation_accord', 'label': 'Négociation / Accord formel', 'category': 'Juridique'},
+    {'code': 'signature_contrat', 'label': 'Signature de contrat', 'category': 'Juridique',
+     'description': 'Vous allez signer un contrat important ? Ce type concerne les engagements contractuels : contrat de travail, bail, accord commercial, partenariat. Le moment de la signature influence la solidité de l\'engagement.'},
+    {'code': 'negociation_accord', 'label': 'Négociation / Accord formel', 'category': 'Juridique',
+     'description': 'Vous êtes en phase de négociation ? Ce type couvre les pourparlers formels : négociation salariale, médiation, accord amiable, arrangement familial, traité commercial.'},
     // Business
-    {'code': 'lancement_business', 'label': 'Lancement business', 'category': 'Business'},
-    {'code': 'partenariat', 'label': 'Partenariat / Association', 'category': 'Business'},
+    {'code': 'lancement_business', 'label': 'Lancement business', 'category': 'Business',
+     'description': 'Vous allez lancer une activité commerciale ? Ce type concerne la création d\'entreprise, le lancement d\'un produit ou service, l\'ouverture d\'un commerce. Le timing du lancement influence la réussite.'},
+    {'code': 'partenariat', 'label': 'Partenariat / Association', 'category': 'Business',
+     'description': 'Vous envisagez un partenariat ou une association ? Ce type couvre les alliances professionnelles : co-fondation, joint-venture, accord de partenariat, association commerciale.'},
     // Commerce
-    {'code': 'campagne_pub', 'label': 'Campagne publicitaire', 'category': 'Commerce'},
-    {'code': 'vente_bien', 'label': 'Vente d\'un bien', 'category': 'Commerce'},
+    {'code': 'campagne_pub', 'label': 'Campagne publicitaire', 'category': 'Commerce',
+     'description': 'Vous allez lancer une campagne de communication ? Ce type concerne les actions promotionnelles : publicité, réseaux sociaux, prospectus, lancement de site web. Le timing influence la réception du message.'},
+    {'code': 'vente_bien', 'label': 'Vente d\'un bien', 'category': 'Commerce',
+     'description': 'Vous souhaitez vendre un bien important ? Ce type concerne la mise en vente : terrain, voiture, stock de marchandises. Le moment de la vente peut influencer le prix obtenu.'},
     // Carrière
-    {'code': 'entretien_embauche', 'label': 'Entretien d\'embauche', 'category': 'Carrière'},
-    {'code': 'demande_promotion', 'label': 'Demande de promotion', 'category': 'Carrière'},
-    {'code': 'demission', 'label': 'Démission / Changement', 'category': 'Carrière'},
+    {'code': 'entretien_embauche', 'label': 'Entretien d\'embauche', 'category': 'Carrière',
+     'description': 'Vous passez un entretien d\'embauche ? Ce type concerne les rendez-vous professionnels décisifs : entretien, audition, présentation de projet. Le moment choisi peut influencer l\'issue.'},
+    {'code': 'demande_promotion', 'label': 'Demande de promotion', 'category': 'Carrière',
+     'description': 'Vous souhaitez demander une promotion ou une augmentation ? Ce type couvre les demandes d\'évolution professionnelle. Le bon moment peut favoriser une réponse positive.'},
+    {'code': 'demission', 'label': 'Démission / Changement', 'category': 'Carrière',
+     'description': 'Vous envisagez de quitter votre emploi actuel ? Ce type concerne la démission, le changement de poste ou la reconversion professionnelle. Le timing influence la transition.'},
     // Éducation
-    {'code': 'inscription_formation', 'label': 'Inscription à formation / école', 'category': 'Éducation'},
+    {'code': 'inscription_formation', 'label': 'Inscription à formation / école', 'category': 'Éducation',
+     'description': 'Vous allez vous inscrire à une formation ou un programme éducatif ? Ce type concerne tout engagement éducatif : inscription universitaire, formation professionnelle, cours en ligne, certification.'},
     // Personnel
-    {'code': 'voyage', 'label': 'Voyage', 'category': 'Personnel'},
-    {'code': 'mariage', 'label': 'Mariage / Engagement', 'category': 'Personnel'},
-    {'code': 'debut_relation', 'label': 'Début de relation', 'category': 'Personnel'},
+    {'code': 'voyage', 'label': 'Voyage', 'category': 'Personnel',
+     'description': 'Vous planifiez un voyage important ? Ce type couvre les déplacements significatifs : vacances, voyage d\'affaires, expatriation, visite familiale. Le moment du départ influence l\'expérience.'},
+    {'code': 'mariage', 'label': 'Mariage / Engagement', 'category': 'Personnel',
+     'description': 'Vous envisagez un mariage ou un engagement formel ? Ce type concerne les unions officielles : mariage civil, religieux, PACS. La date choisie influence l\'harmonie du couple.'},
+    {'code': 'debut_relation', 'label': 'Début de relation', 'category': 'Personnel',
+     'description': 'Vous vous apprêtez à démarrer une nouvelle relation amoureuse ? Ce type concerne le commencement d\'une relation : premier rendez-vous, déclaration de sentiments, officialisation.'},
     // Santé  
-    {'code': 'operation_medicale', 'label': 'Opération médicale', 'category': 'Santé'},
-    {'code': 'debut_traitement', 'label': 'Début de traitement', 'category': 'Santé'},
-    {'code': 'changement_habitudes', 'label': 'Changement d\'habitudes de vie', 'category': 'Santé'},
+    {'code': 'operation_medicale', 'label': 'Opération médicale', 'category': 'Santé',
+     'description': 'Vous devez planifier une opération ou intervention médicale ? Ce type concerne les actes médicaux programmés : chirurgie, intervention dentaire, procédure esthétique.'},
+    {'code': 'debut_traitement', 'label': 'Début de traitement', 'category': 'Santé',
+     'description': 'Vous allez commencer un nouveau traitement médical ? Ce type couvre le démarrage de soins : début de médicaments, thérapie, rééducation, cure thermale.'},
+    {'code': 'changement_habitudes', 'label': 'Changement d\'habitudes de vie', 'category': 'Santé',
+     'description': 'Vous souhaitez changer vos habitudes de vie ? Ce type concerne les transformations personnelles : régime alimentaire, programme sportif, arrêt du tabac, méditation.'},
     // Spirituel
-    {'code': 'pelerinage_retraite', 'label': 'Pèlerinage / Retraite spirituelle', 'category': 'Spirituel'},
+    {'code': 'pelerinage_retraite', 'label': 'Pèlerinage / Retraite spirituelle', 'category': 'Spirituel',
+     'description': 'Vous envisagez un pèlerinage ou une retraite spirituelle ? Ce type concerne les déplacements à vocation spirituelle : pèlerinage religieux, retraite de méditation, voyage initiatique.'},
     // Autre
-    {'code': 'autre', 'label': 'Autre décision importante', 'category': 'Autre'},
+    {'code': 'autre', 'label': 'Autre décision importante', 'category': 'Autre',
+     'description': 'Votre décision ne correspond à aucune des catégories proposées ? Ce type convient à toute décision majeure qui ne trouve pas sa place ailleurs.'},
   ];
 
   @override
@@ -474,7 +501,7 @@ class _DecisionAdvicePurchaseScreenState extends State<DecisionAdvicePurchaseScr
         ),
         const SizedBox(height: 8),
         Text(
-          'Pour calculer votre période personnelle actuelle',
+          'Pour affiner votre lecture cosmique personnelle',
           style: TextStyle(color: AppColors.textMuted, fontSize: 13),
         ),
         const SizedBox(height: 12),
@@ -578,11 +605,13 @@ class _DecisionAdvicePurchaseScreenState extends State<DecisionAdvicePurchaseScr
                 children: [
                   Icon(Icons.person, color: AppColors.primary, size: 20),
                   const SizedBox(width: 10),
-                  Text(
-                    'Vous avez $_currentAge ans → Période $_currentPeriodNumber',
-                    style: TextStyle(
-                      color: AppColors.textLight,
-                      fontWeight: FontWeight.w500,
+                  Expanded(
+                    child: Text(
+                      'Votre âge : $_currentAge ans — Profil cosmique identifié ✓',
+                      style: TextStyle(
+                        color: AppColors.textLight,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],
@@ -854,11 +883,14 @@ class _DecisionAdvicePurchaseScreenState extends State<DecisionAdvicePurchaseScr
                 children: [
                   const Icon(Icons.payment, size: 22),
                   const SizedBox(width: 10),
-                  Text(
-                    canPay 
-                      ? 'Payer ${CurrencyService.instance.formatAmount(widget.plan.priceFcfa)}'
-                      : 'Remplissez le formulaire',
-                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
+                  Flexible(
+                    child: Text(
+                      canPay 
+                        ? 'Payer ${CurrencyService.instance.formatAmount(widget.plan.priceFcfa)}'
+                        : 'Remplissez le formulaire',
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 16),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),

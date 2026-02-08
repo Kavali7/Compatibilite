@@ -43,9 +43,9 @@ class _LunarTimingReportScreenState extends State<LunarTimingReportScreen> {
   }
 
   Future<void> _loadData() async {
-    // If frozen report provided, just mark as not loading (UI will show minimal frozen data)
+    // If frozen report provided, rebuild from stored data
     if (widget.frozenReport != null) {
-      setState(() => _isLoading = false);
+      _loadFromFrozenReport();
       return;
     }
     
@@ -85,31 +85,88 @@ class _LunarTimingReportScreenState extends State<LunarTimingReportScreen> {
     }
   }
 
+  /// Load data from frozen report (for Mes Achats viewing)
+  void _loadFromFrozenReport() {
+    final data = widget.frozenReport!.reportData;
+    
+    try {
+      // Rebuild phases from stored data
+      final phasesData = data['phases'] as List<dynamic>? ?? [];
+      final phases = phasesData.map((p) {
+        final m = Map<String, dynamic>.from(p);
+        return LunarPhase(
+          id: m['id'] ?? '',
+          phaseNumber: m['phase_number'] ?? 0,
+          phaseName: m['phase_name'] ?? '',
+          phaseKey: m['phase_key'] ?? '',
+          theme: m['theme'] ?? '',
+          energyType: m['energy_type'] ?? '',
+          fullContent: m['full_content'] ?? '',
+          activitiesFavorables: List<String>.from(m['activities_favorables'] ?? []),
+          activitiesEviter: List<String>.from(m['activities_eviter'] ?? []),
+          conseil: m['conseil'],
+          durationDays: m['duration_days'] ?? 3,
+        );
+      }).toList();
+
+      // Rebuild current phase info
+      CurrentLunarPhaseInfo? currentInfo;
+      final currentNum = data['current_phase_number'];
+      if (currentNum != null && phases.isNotEmpty) {
+        final phase = phases.firstWhere(
+          (p) => p.phaseNumber == currentNum,
+          orElse: () => phases.first,
+        );
+        currentInfo = CurrentLunarPhaseInfo(
+          phase: phase,
+          phaseStartDate: DateTime.tryParse(data['phase_start_date'] ?? '') ?? DateTime.now(),
+          phaseEndDate: DateTime.tryParse(data['phase_end_date'] ?? '') ?? DateTime.now(),
+          daysIntoPhase: data['days_into_phase'] ?? 0,
+          daysRemaining: data['days_remaining'] ?? 0,
+          progressPercentage: (data['progress_percentage'] ?? 0).toDouble(),
+        );
+      }
+
+      setState(() {
+        _phases = phases;
+        _currentPhaseInfo = currentInfo;
+        _selectedPhase = currentInfo?.phase ?? (phases.isNotEmpty ? phases.first : null);
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading frozen lunar report: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
   void _storeReportForHistory() async {
     try {
       final user = AuthService.instance.currentUser;
       if (user == null) return;
 
-      // Check if report already exists
-      final exists = await StoredReportService.instance.hasStoredReport(
-        userId: user.id,
-        serviceType: StoredReport.typeTimingLunaire,
-      );
+      // Serialize ALL phase data so frozen viewing shows full report
+      final phasesData = _phases.map((p) => {
+        'id': p.id,
+        'phase_number': p.phaseNumber,
+        'phase_name': p.phaseName,
+        'phase_key': p.phaseKey,
+        'theme': p.theme,
+        'energy_type': p.energyType,
+        'full_content': p.fullContent,
+        'activities_favorables': p.activitiesFavorables,
+        'activities_eviter': p.activitiesEviter,
+        'conseil': p.conseil,
+        'duration_days': p.durationDays,
+      }).toList();
 
-      if (exists) {
-        debugPrint('Lunar Timing report already exists, skipping');
-        return;
-      }
-
-      // Prepare report data
       final reportData = <String, dynamic>{
         'user_name': widget.userName,
+        'phases': phasesData,
         if (_currentPhaseInfo != null) ...{
-          'phase_number': _currentPhaseInfo!.phase.phaseNumber,
-          'phase_name': _currentPhaseInfo!.phase.phaseName,
-          'theme': _currentPhaseInfo!.phase.theme,
-          'energy_type': _currentPhaseInfo!.phase.energyType,
-          'emoji': _currentPhaseInfo!.phase.emoji,
+          'current_phase_number': _currentPhaseInfo!.phase.phaseNumber,
+          'phase_start_date': _currentPhaseInfo!.phaseStartDate.toIso8601String(),
+          'phase_end_date': _currentPhaseInfo!.phaseEndDate.toIso8601String(),
+          'days_into_phase': _currentPhaseInfo!.daysIntoPhase,
           'days_remaining': _currentPhaseInfo!.daysRemaining,
           'progress_percentage': _currentPhaseInfo!.progressPercentage,
         },

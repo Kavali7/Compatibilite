@@ -132,18 +132,7 @@ class _BusinessCycleReportScreenState extends State<BusinessCycleReportScreen> {
       final user = AuthService.instance.currentUser;
       if (user == null) return;
 
-      // Check if report already exists
-      final exists = await StoredReportService.instance.hasStoredReport(
-        userId: user.id,
-        serviceType: StoredReport.typeCycleBusiness,
-      );
-
-      if (exists) {
-        debugPrint('Business Cycle report already exists, skipping');
-        return;
-      }
-
-      // Prepare report data
+      // Prepare FULL report data so frozen viewing shows all sections
       final reportData = <String, dynamic>{
         'company_name': widget.companyName,
         'reference_date': widget.referenceDate.toIso8601String(),
@@ -155,6 +144,15 @@ class _BusinessCycleReportScreenState extends State<BusinessCycleReportScreen> {
           'focus_strategique': _currentPeriod!.focusStrategique,
           'period_start_date': _currentPeriod!.periodStartDate.toIso8601String(),
           'period_end_date': _currentPeriod!.periodEndDate.toIso8601String(),
+          'day_in_period': _currentPeriod!.dayInPeriod,
+          'days_remaining': _currentPeriod!.daysRemaining,
+          'fenetre_strategique': _currentPeriod!.fenetreStrategique,
+          'actions_recommandees': _currentPeriod!.actionsRecommandees,
+          'risques_eviter': _currentPeriod!.risquesEviter,
+          'indicateurs_cles': _currentPeriod!.indicateursCles,
+          'decisions_favorables': _currentPeriod!.decisionsFavorables,
+          'decisions_defavorables': _currentPeriod!.decisionsDefavorables,
+          'astuce_strategique': _currentPeriod!.astuceStrategique,
         },
         'stored_at': DateTime.now().toIso8601String(),
       };

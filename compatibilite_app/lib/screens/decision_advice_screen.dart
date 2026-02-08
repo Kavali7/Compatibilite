@@ -428,7 +428,7 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Selon votre cycle ${widget.cycleType}, période ${widget.currentPeriodNumber}',
+                  'Lecture personnalisée selon votre thème astral',
                   style: TextStyle(
                     color: AppColors.textMuted,
                     fontSize: 13,
@@ -972,7 +972,7 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
                       ),
                     ),
                     Text(
-                      '7 périodes cosmiques pour cette journée',
+                      'Vos influences cosmiques du jour',
                       style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                     ),
                   ],
@@ -995,8 +995,8 @@ class _DecisionAdviceScreenState extends State<DecisionAdviceScreen>
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'Chaque jour est divisé en 7 périodes de ~3h25, '
-                    'dont les énergies varient selon le jour de la semaine.',
+                    'Les astres influencent votre journée par vagues successives. '
+                    'Découvrez les moments clés et leurs énergies.',
                     style: TextStyle(
                       color: AppColors.textLight,
                       fontSize: 12,

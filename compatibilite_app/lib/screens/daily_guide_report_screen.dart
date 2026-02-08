@@ -9,7 +9,7 @@ import '../core/constants.dart';
 import '../core/navigation_helper.dart';
 import '../models/stored_report_model.dart';
 import '../services/auth_service.dart';
-import '../services/cycles_vie_service.dart';
+import '../services/cycles_vie_service.dart' hide DailyPeriod;
 import '../services/daily_guide_service.dart';
 import '../services/stored_report_service.dart';
 import '../widgets/animated_background.dart';
@@ -51,9 +51,9 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
   }
 
   Future<void> _loadData() async {
-    // If frozen report provided, skip fresh loading
+    // If frozen report provided, rebuild from stored data
     if (widget.frozenReport != null) {
-      setState(() => _isLoading = false);
+      _loadFromFrozenReport();
       return;
     }
     
@@ -92,27 +92,81 @@ class _DailyGuideReportScreenState extends State<DailyGuideReportScreen> {
     }
   }
 
+  /// Load data from frozen report (for Mes Achats viewing)
+  void _loadFromFrozenReport() {
+    final data = widget.frozenReport!.reportData;
+    
+    try {
+      // Rebuild periods from stored data
+      final periodsData = data['periods'] as List<dynamic>? ?? [];
+      final periods = <DailyPeriodWithSlot>[];
+      
+      for (int i = 0; i < periodsData.length; i++) {
+        final m = Map<String, dynamic>.from(periodsData[i]);
+        final period = DailyPeriod(
+          id: m['id'] ?? '',
+          periodLetter: m['period_letter'] ?? '',
+          periodName: m['period_name'] ?? '',
+          keyword: m['keyword'] ?? '',
+          description: m['description'] ?? '',
+          activitiesFavorables: m['activites_favorables'],
+          activitiesEviter: m['activites_eviter'],
+          colorCode: m['color_code'],
+          energyLevel: m['energy_level'],
+        );
+        final slotIndex = i < kDailyTimeSlots.length ? i : 0;
+        periods.add(DailyPeriodWithSlot(
+          period: period,
+          periodNumber: m['period_number'] ?? (i + 1),
+          timeSlot: kDailyTimeSlots[slotIndex],
+        ));
+      }
+
+      // Find current period
+      DailyPeriodWithSlot? current;
+      final currentName = data['current_period_name'] ?? '';
+      if (currentName.isNotEmpty && periods.isNotEmpty) {
+        current = periods.cast<DailyPeriodWithSlot?>().firstWhere(
+          (p) => p!.periodName == currentName,
+          orElse: () => periods.first,
+        );
+      } else if (periods.isNotEmpty) {
+        current = periods.first;
+      }
+
+      setState(() {
+        _periods = periods;
+        _currentPeriod = current;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading frozen daily guide report: $e');
+      setState(() {
+        _error = 'Erreur lors du chargement du rapport';
+        _isLoading = false;
+      });
+    }
+  }
+
   /// Store the report for "Mes Achats" feature
   void _storeReportForHistory() async {
     try {
       final user = AuthService.instance.currentUser;
       if (user == null) return;
 
-      // Check if report already exists
-      final exists = await StoredReportService.instance.hasStoredReport(
-        userId: user.id,
-        serviceType: StoredReport.typeGuideHoraire,
-      );
-      if (exists) return;
-
-      // Prepare report data from periods
+      // Serialize ALL period data so frozen viewing shows full report
       final periodsData = (_periods ?? []).map((p) => {
+        'id': p.id,
         'period_name': p.periodName,
         'time_slot': p.timeSlotLabel,
         'keyword': p.keyword,
         'description': p.description,
         'period_letter': p.periodLetter,
         'period_number': p.periodNumber,
+        'activites_favorables': p.activitiesFavorables,
+        'activites_eviter': p.activitiesEviter,
+        'color_code': p.colorCode,
+        'energy_level': p.energyLevel,
         'favorables': p.favorablesList,
         'eviter': p.eviterList,
       }).toList();

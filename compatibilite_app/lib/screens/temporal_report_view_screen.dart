@@ -119,7 +119,7 @@ class TemporalReportViewScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () => NavigationHelper.goToMenu(context),
+                      onPressed: () => NavigationHelper.goToServices(context),
                       icon: const Icon(Icons.home),
                       label: const Text('Voir autres services'),
                       style: OutlinedButton.styleFrom(
