@@ -10,6 +10,7 @@ import 'services/supabase_manager.dart';
 import 'services/app_settings_service.dart';
 import 'services/currency_service.dart';
 import 'services/env_config.dart';
+import 'services/analytics_service.dart';
 import 'theme/app_theme.dart';
 
 Future<void> main() async {
@@ -80,6 +81,9 @@ Future<void> main() async {
   }
   
   runApp(const CompatibiliteApp());
+
+  // Track app open event (fire-and-forget)
+  AnalyticsService.instance.logAppOpen();
 }
 
 class CompatibiliteApp extends StatelessWidget {

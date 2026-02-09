@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'analytics_service.dart';
 import 'supabase_manager.dart';
 
 /// User model for local use
@@ -76,6 +77,7 @@ class AuthService {
       return _currentUser;
     } catch (e) {
       debugPrint('AuthService signUp error: $e');
+      AnalyticsService.instance.logSignupError(email, e.toString());
       rethrow;
     }
   }
@@ -116,6 +118,7 @@ class AuthService {
       return await _checkAndUpdateSubscription(_currentUser!);
     } catch (e) {
       debugPrint('AuthService signIn error: $e');
+      AnalyticsService.instance.logLoginError(email, e.toString());
       rethrow;
     }
   }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:kkiapay_flutter_sdk/kkiapay_flutter_sdk.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
+import 'analytics_service.dart';
 import 'supabase_manager.dart';
 import 'auth_service.dart';
 import 'pricing_service.dart';
@@ -144,6 +145,11 @@ class KkiapayService {
     switch (status) {
       case PAYMENT_SUCCESS:
         final transactionId = response['transactionId'] as String?;
+        AnalyticsService.instance.logPaymentSuccess(
+          transactionId: transactionId ?? 'unknown',
+          amount: 0,
+          planType: 'unknown',
+        );
         if (context.mounted) {
           Navigator.of(context).pop();
         }
@@ -151,6 +157,7 @@ class KkiapayService {
         break;
 
       case PAYMENT_CANCELLED:
+        AnalyticsService.instance.logPaymentCancel();
         if (context.mounted) {
           Navigator.of(context).pop();
         }
@@ -184,6 +191,7 @@ class KkiapayService {
         if (context.mounted) {
           Navigator.of(context).pop();
         }
+        AnalyticsService.instance.logPaymentFailure(errorMessage);
         callback(false, null, 'Paiement échoué: $errorMessage');
         break;
 
