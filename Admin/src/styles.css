@@ -1287,11 +1287,11 @@ body {
   .kpi-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .module-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .payments-summary {
     flex-wrap: wrap;
   }
@@ -1306,13 +1306,13 @@ body {
   .detail-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .page-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
   }
-  
+
   .header-right {
     flex-wrap: wrap;
   }
@@ -1323,75 +1323,77 @@ body {
   :root {
     --sidebar-width: 280px;
   }
-  
+
   /* Show mobile menu button */
   .mobile-menu-toggle {
     display: flex;
     align-items: center;
     justify-content: center;
   }
-  
+
   /* Sidebar becomes overlay */
   .sidebar {
     transform: translateX(-100%);
     transition: transform 0.3s ease;
     box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
   }
-  
+
   .sidebar.open {
     transform: translateX(0);
   }
-  
+
   .sidebar-overlay.visible {
     display: block;
   }
-  
+
   .layout-main {
     margin-left: 0;
   }
-  
+
   .layout-content {
     padding: 16px;
-    padding-top: 70px; /* Space for mobile menu button */
+    padding-top: 70px;
+    /* Space for mobile menu button */
   }
-  
+
   /* Header adjustments */
   .header {
     padding: 0 16px;
-    padding-left: 60px; /* Space for menu button */
+    padding-left: 60px;
+    /* Space for menu button */
   }
-  
+
   .header-title {
     font-size: 16px;
   }
-  
+
   .projet-select {
     font-size: 12px;
     padding: 6px 10px;
   }
-  
+
   /* Page content */
   .page-title {
     font-size: 22px;
   }
-  
+
   .page-subtitle {
     font-size: 14px;
   }
-  
+
   /* Form layout */
   .form-row {
     flex-direction: column;
   }
-  
+
   .form-actions {
     flex-direction: column;
   }
-  
+
   .form-actions button {
     width: 100%;
   }
-  
+
   /* Grid adjustments */
   .detail-grid,
   .kpi-grid,
@@ -1399,29 +1401,28 @@ body {
   .legal-grid {
     grid-template-columns: 1fr;
   }
-  
+
   /* Tables - horizontal scroll */
   .table-container,
   .subs-table-container {
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
   }
-  
+
   table {
     min-width: 600px;
   }
-  
+
   /* Cards stack vertically */
   .payment-card {
     flex-direction: column;
     align-items: flex-start;
     gap: 12px;
   }
-  
+
   .payment-amount {
     align-self: flex-end;
   }
-  
+
   /* Touch-friendly buttons */
   .btn-primary,
   .btn-secondary,
@@ -1430,44 +1431,42 @@ body {
     min-height: 44px;
     padding: 12px 20px;
   }
-  
+
   /* Filter bar scrollable */
   .filter-bar {
     flex-wrap: nowrap;
     overflow-x: auto;
     padding-bottom: 8px;
-    -webkit-overflow-scrolling: touch;
   }
-  
+
   .filter-btn {
     white-space: nowrap;
     flex-shrink: 0;
   }
-  
+
   /* Stats cards */
   .stats-row {
     flex-direction: column;
   }
-  
+
   .stat-card {
     min-width: 100%;
   }
-  
+
   /* Service tabs scrollable */
   .service-tabs,
   .category-tabs {
     overflow-x: auto;
     flex-wrap: nowrap;
     padding-bottom: 8px;
-    -webkit-overflow-scrolling: touch;
   }
-  
+
   .service-tab,
   .tab-btn {
     white-space: nowrap;
     flex-shrink: 0;
   }
-  
+
   /* Login adjustments */
   .login-card {
     padding: 32px 24px;
@@ -1475,11 +1474,11 @@ body {
     width: calc(100% - 32px);
     max-width: 360px;
   }
-  
+
   .login-input {
     width: 100%;
   }
-  
+
   /* Modal adjustments */
   .modal-content {
     width: 95%;
@@ -1496,28 +1495,28 @@ body {
     padding: 12px;
     padding-top: 65px;
   }
-  
+
   .page-title {
     font-size: 20px;
   }
-  
+
   .kpi-card {
     padding: 16px;
   }
-  
+
   .kpi-value {
     font-size: 20px;
   }
-  
+
   .module-card {
     padding: 20px;
   }
-  
+
   /* Hide less important elements */
   .payment-date code {
     display: none;
   }
-  
+
   .section-key {
     display: none;
   }
@@ -1525,6 +1524,7 @@ body {
 
 /* Print styles */
 @media print {
+
   .sidebar,
   .header,
   .mobile-menu-toggle,
@@ -1533,12 +1533,626 @@ body {
   button {
     display: none !important;
   }
-  
+
   .layout-main {
     margin-left: 0;
   }
-  
+
   .page {
     max-width: 100%;
   }
+}
+
+/* ============================================
+   LOADING & ERROR STATES
+   ============================================ */
+
+.loading-message {
+  padding: 40px;
+  text-align: center;
+  color: #aaa;
+}
+
+.loading-message--compact {
+  padding: 2rem;
+  text-align: center;
+}
+
+.error-banner {
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  font-size: 13px;
+}
+
+.error-inline {
+  color: red;
+  margin-bottom: 1rem;
+}
+
+.empty-state {
+  padding: 40px;
+  text-align: center;
+  color: #666;
+}
+
+.summary-stat--clickable {
+  cursor: pointer;
+}
+
+.page-placeholder {
+  padding: 2rem;
+}
+
+/* ============================================
+   STAT GRID (Prospects pipeline + Sessions)
+   ============================================ */
+
+.stat-grid {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.stat-card {
+  flex: 1;
+  min-width: 120px;
+  padding: 14px 20px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.stat-card--wide {
+  min-width: 140px;
+}
+
+.stat-card--active {
+  border: 2px solid currentColor;
+}
+
+.stat-card--active-new {
+  background: rgba(102, 126, 234, 0.2);
+  border-color: #667eea;
+}
+
+.stat-card--active-warm {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: #f59e0b;
+}
+
+.stat-card--active-contacted {
+  background: rgba(34, 197, 94, 0.2);
+  border-color: #22c55e;
+}
+
+.stat-card--active-lost {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+}
+
+.stat-card__value {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.stat-card__value--new {
+  color: #667eea;
+}
+
+.stat-card__value--warm {
+  color: #f59e0b;
+}
+
+.stat-card__value--contacted {
+  color: #22c55e;
+}
+
+.stat-card__value--lost {
+  color: #ef4444;
+}
+
+.stat-card__value--primary {
+  color: #667eea;
+}
+
+.stat-card__value--success {
+  color: #22c55e;
+}
+
+.stat-card__value--warning {
+  color: #f59e0b;
+}
+
+.stat-card__value--purple {
+  color: #9f7aea;
+}
+
+.stat-card__label {
+  font-size: 12px;
+  color: #aaa;
+  margin-top: 4px;
+}
+
+.stat-card__label--small {
+  font-size: 11px;
+  color: #888;
+}
+
+/* ============================================
+   SEARCH INPUT
+   ============================================ */
+
+.search-input {
+  width: 100%;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: white;
+  font-size: 14px;
+}
+
+/* ============================================
+   PROSPECTS CRM
+   ============================================ */
+
+.prospect-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.prospect-card {
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-left: 4px solid transparent;
+}
+
+.prospect-card--new {
+  border-left-color: #667eea;
+}
+
+.prospect-card--warm {
+  border-left-color: #f59e0b;
+}
+
+.prospect-card--contacted {
+  border-left-color: #22c55e;
+}
+
+.prospect-card--lost {
+  border-left-color: #ef4444;
+}
+
+.prospect-card__body {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.prospect-card__info {
+  flex: 1;
+}
+
+.prospect-card__name {
+  font-weight: 600;
+  font-size: 15px;
+  color: white;
+  margin-bottom: 4px;
+}
+
+.prospect-status-badge {
+  margin-left: 12px;
+  font-size: 11px;
+  padding: 2px 10px;
+  border-radius: 10px;
+  display: inline-block;
+}
+
+.prospect-status-badge--new {
+  background: rgba(102, 126, 234, 0.2);
+  color: #667eea;
+}
+
+.prospect-status-badge--warm {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+}
+
+.prospect-status-badge--contacted {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+
+.prospect-status-badge--lost {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.prospect-card__contact {
+  font-size: 13px;
+  color: #aaa;
+}
+
+.prospect-card__meta {
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.prospect-card__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.prospect-select {
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  color: white;
+  font-size: 12px;
+}
+
+.prospect-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 12px;
+}
+
+.prospect-btn--email {
+  background: #22c55e;
+}
+
+.prospect-btn--whatsapp {
+  background: #25d366;
+}
+
+.prospect-notes {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+}
+
+.prospect-notes__input {
+  flex: 1;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: white;
+  font-size: 13px;
+}
+
+/* ============================================
+   SESSIONS / ACTIVITY FEED
+   ============================================ */
+
+.session-filter-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.session-filter-select {
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: white;
+  font-size: 13px;
+}
+
+.activity-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  transition: background 0.2s;
+}
+
+.activity-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.activity-item__icon {
+  font-size: 18px;
+}
+
+.activity-item__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.activity-item__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.activity-item__name {
+  font-weight: 600;
+  font-size: 13px;
+  color: white;
+}
+
+.activity-service-badge {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 8px;
+  background: rgba(102, 126, 234, 0.2);
+  color: #a5b4fc;
+}
+
+.activity-status-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 6px;
+}
+
+.activity-status-badge--success,
+.activity-status-badge--completed,
+.activity-status-badge--active {
+  background: rgba(34, 197, 94, 0.13);
+  color: #22c55e;
+}
+
+.activity-status-badge--pending {
+  background: rgba(245, 158, 11, 0.13);
+  color: #f59e0b;
+}
+
+.activity-status-badge--failed,
+.activity-status-badge--cancelled,
+.activity-status-badge--expired {
+  background: rgba(239, 68, 68, 0.13);
+  color: #ef4444;
+}
+
+.activity-item__details {
+  font-size: 12px;
+  color: #888;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-item__amount {
+  font-weight: 600;
+  color: #22c55e;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.activity-item__time {
+  font-size: 11px;
+  color: #666;
+  white-space: nowrap;
+}
+
+/* ============================================
+   CYCLE EDITOR SHARED (Business, Health, Life, Lunar, Personal)
+   ============================================ */
+
+.cycle-summary-bar {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: var(--card-bg, var(--surface));
+  border-radius: 8px;
+}
+
+.cycle-card {
+  margin-bottom: 1.5rem;
+  padding: 1.25rem;
+  background: var(--card-bg, var(--surface));
+  border-radius: 8px;
+}
+
+.cycle-card--editing {
+  border: 2px solid var(--primary);
+}
+
+.cycle-card--inactive {
+  opacity: 0.6;
+}
+
+.cycle-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.cycle-card__title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cycle-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  color: white;
+  font-weight: bold;
+}
+
+.cycle-badge--business {
+  background: #f59e0b;
+}
+
+.cycle-badge--health {
+  background: #22c55e;
+}
+
+.cycle-badge--phase {
+  background: #9f7aea;
+}
+
+.cycle-badge--lunar {
+  background: #6366f1;
+  font-size: 0.85rem;
+}
+
+.cycle-badge--personal {
+  background: var(--primary);
+}
+
+.cycle-card__name {
+  font-weight: 600;
+}
+
+.cycle-card__theme {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.cycle-card__moon-icon {
+  font-size: 1.5rem;
+}
+
+.cycle-edit-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.cycle-edit-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.cycle-form-field label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+}
+
+.cycle-form-field input[type="text"],
+.cycle-form-field textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-color, var(--border));
+}
+
+.cycle-form-field textarea {
+  min-height: 80px;
+}
+
+.cycle-form-field textarea.short {
+  min-height: 60px;
+}
+
+.cycle-form-field textarea.tall {
+  min-height: 100px;
+}
+
+.cycle-form-field textarea.very-tall {
+  min-height: 120px;
+}
+
+.cycle-form-field textarea.compact {
+  min-height: 40px;
+}
+
+.cycle-checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cycle-view-grid {
+  display: grid;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.cycle-view-activities {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.cycle-view-favorable {
+  color: #22c55e;
+}
+
+.cycle-view-avoid {
+  color: #ef4444;
+}
+
+/* Cycle action buttons */
+.btn-cycle-save {
+  margin-right: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-cycle-cancel {
+  padding: 0.25rem 0.75rem;
+  background: #6b7280;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-cycle-edit {
+  padding: 0.25rem 0.75rem;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-cycle-edit--business {
+  background: #f59e0b;
+}
+
+.btn-cycle-edit--health {
+  background: #22c55e;
+}
+
+.btn-cycle-edit--phase {
+  background: #9f7aea;
+}
+
+.btn-cycle-edit--lunar {
+  background: #6366f1;
+}
+
+.btn-cycle-edit--personal {
+  background: var(--primary);
 }

@@ -1,35 +1,33 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../supabaseClient';
 
-type ProspectStatus = 'to_contact' | 'contacted' | 'converted' | 'lost';
-
 type Prospect = {
     id: string;
-    email: string | null;
+    email: string;
+    name: string | null;
     phone: string | null;
-    source: string;
-    last_action: string;
-    status: ProspectStatus;
-    notes: string | null;
-    captured_at: string;
-    updated_at: string;
+    created_at: string;
+    last_sign_in_at: string | null;
+    days_since_signup: number;
+    status: 'new' | 'warm' | 'contacted' | 'lost';
+    notes: string;
 };
 
-const STATUS_OPTIONS: { value: ProspectStatus; label: string; color: string }[] = [
-    { value: 'to_contact', label: '📞 À contacter', color: '#ef4444' },
-    { value: 'contacted', label: '💬 Contacté', color: '#f59e0b' },
-    { value: 'converted', label: '✅ Converti', color: '#22c55e' },
-    { value: 'lost', label: '❌ Perdu', color: '#6b7280' },
-];
+const STATUS_OPTIONS = [
+    { value: 'new', label: '🆕 Nouveau', color: '#667eea' },
+    { value: 'warm', label: '🔥 Chaud', color: '#f59e0b' },
+    { value: 'contacted', label: '📞 Contacté', color: '#22c55e' },
+    { value: 'lost', label: '💤 Perdu', color: '#ef4444' },
+] as const;
 
 export default function Prospects() {
     const [prospects, setProspects] = useState<Prospect[]>([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState<'all' | ProspectStatus>('all');
-    const [search, setSearch] = useState('');
-    const [editingNote, setEditingNote] = useState<string | null>(null);
-    const [noteText, setNoteText] = useState('');
-    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [filterStatus, setFilterStatus] = useState<string>('');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [localNotes, setLocalNotes] = useState<Record<string, string>>({});
+    const [localStatuses, setLocalStatuses] = useState<Record<string, string>>({});
 
     useEffect(() => {
         loadProspects();
@@ -37,106 +35,105 @@ export default function Prospects() {
 
     async function loadProspects() {
         setLoading(true);
-        try {
-            const { data, error } = await supabase
-                .from('marketing_prospects')
-                .select('*')
-                .order('updated_at', { ascending: false });
+        setError(null);
 
-            if (error) throw error;
-            setProspects(data || []);
-        } catch (e) {
-            console.error('Error loading prospects:', e);
+        try {
+            // 1. Get all auth users
+            const { data: authData, error: authError } = await supabase.auth.admin.listUsers({
+                perPage: 1000,
+            });
+
+            if (authError) throw authError;
+            const authUsers = authData?.users || [];
+
+            // 2. Get all successful payments to identify paying users
+            const { data: paymentsData } = await supabase
+                .from('payments')
+                .select('user_id')
+                .eq('status', 'success');
+
+            const payingUserIds = new Set(paymentsData?.map(p => p.user_id) || []);
+
+            // 3. Filter to non-paying users (= prospects)
+            const now = new Date();
+
+            const prospectUsers: Prospect[] = authUsers
+                .filter(u => !payingUserIds.has(u.id))
+                .map(u => {
+                    const createdAt = new Date(u.created_at);
+                    const daysSinceSignup = Math.floor((now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24));
+
+                    // Load saved CRM data from localStorage
+                    const savedStatus = localStorage.getItem(`prospect_status_${u.id}`);
+                    const savedNotes = localStorage.getItem(`prospect_notes_${u.id}`);
+
+                    let status: 'new' | 'warm' | 'contacted' | 'lost' = 'new';
+                    if (savedStatus) {
+                        status = savedStatus as any;
+                    } else if (daysSinceSignup <= 3) {
+                        status = 'new';
+                    } else if (daysSinceSignup <= 14) {
+                        status = 'warm';
+                    } else {
+                        status = 'lost';
+                    }
+
+                    return {
+                        id: u.id,
+                        email: u.email || '',
+                        name: u.user_metadata?.name || u.user_metadata?.display_name || null,
+                        phone: u.phone || u.user_metadata?.phone || null,
+                        created_at: u.created_at,
+                        last_sign_in_at: u.last_sign_in_at || null,
+                        days_since_signup: daysSinceSignup,
+                        status,
+                        notes: savedNotes || '',
+                    };
+                })
+                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+            setProspects(prospectUsers);
+
+            // Initialize local state
+            const notes: Record<string, string> = {};
+            const statuses: Record<string, string> = {};
+            prospectUsers.forEach(p => {
+                notes[p.id] = p.notes;
+                statuses[p.id] = p.status;
+            });
+            setLocalNotes(notes);
+            setLocalStatuses(statuses);
+
+        } catch (e: any) {
+            console.error('Prospects load error:', e);
+            setError(e.message || 'Erreur au chargement');
         }
         setLoading(false);
     }
 
-    async function updateStatus(id: string, newStatus: ProspectStatus) {
-        setSaving(true);
-        try {
-            const { error } = await supabase
-                .from('marketing_prospects')
-                .update({ status: newStatus, updated_at: new Date().toISOString() })
-                .eq('id', id);
-
-            if (error) throw error;
-            setProspects(prev => prev.map(p =>
-                p.id === id ? { ...p, status: newStatus, updated_at: new Date().toISOString() } : p
-            ));
-        } catch (e) {
-            console.error('Error updating status:', e);
-        }
-        setSaving(false);
+    function updateStatus(prospectId: string, newStatus: string) {
+        localStorage.setItem(`prospect_status_${prospectId}`, newStatus);
+        setLocalStatuses(prev => ({ ...prev, [prospectId]: newStatus }));
+        setProspects(prev => prev.map(p =>
+            p.id === prospectId ? { ...p, status: newStatus as any } : p
+        ));
     }
 
-    async function saveNote(id: string) {
-        setSaving(true);
-        try {
-            const { error } = await supabase
-                .from('marketing_prospects')
-                .update({ notes: noteText, updated_at: new Date().toISOString() })
-                .eq('id', id);
-
-            if (error) throw error;
-            setProspects(prev => prev.map(p =>
-                p.id === id ? { ...p, notes: noteText } : p
-            ));
-            setEditingNote(null);
-            setNoteText('');
-        } catch (e) {
-            console.error('Error saving note:', e);
-        }
-        setSaving(false);
-    }
-
-    function formatDate(dateStr: string) {
-        return new Date(dateStr).toLocaleString('fr-FR', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-        });
-    }
-
-    function exportCSV() {
-        const headers = ['Date', 'Email', 'Téléphone', 'Source', 'Dernière Action', 'Statut', 'Notes'];
-        const rows = filteredProspects.map(p => [
-            formatDate(p.updated_at),
-            p.email || '',
-            p.phone || '',
-            p.source,
-            p.last_action,
-            p.status,
-            (p.notes || '').replace(/,/g, ';'),
-        ]);
-
-        const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `prospects_${new Date().toISOString().split('T')[0]}.csv`;
-        a.click();
-    }
-
-    function openWhatsApp(phone: string) {
-        const cleanPhone = phone.replace(/[^0-9+]/g, '');
-        window.open(`https://wa.me/${cleanPhone}`, '_blank');
-    }
-
-    function openEmail(email: string) {
-        window.open(`mailto:${email}?subject=Suivi%20Kbal&body=Bonjour,%0A%0A`, '_blank');
+    function saveNote(prospectId: string) {
+        const note = localNotes[prospectId] || '';
+        localStorage.setItem(`prospect_notes_${prospectId}`, note);
+        setProspects(prev => prev.map(p =>
+            p.id === prospectId ? { ...p, notes: note } : p
+        ));
     }
 
     const filteredProspects = prospects.filter(p => {
-        if (filter !== 'all' && p.status !== filter) return false;
-        if (search) {
-            const searchLower = search.toLowerCase();
+        if (filterStatus && p.status !== filterStatus) return false;
+        if (searchTerm) {
+            const term = searchTerm.toLowerCase();
             return (
-                p.email?.toLowerCase().includes(searchLower) ||
-                p.phone?.includes(search) ||
-                p.source.toLowerCase().includes(searchLower)
+                p.email.toLowerCase().includes(term) ||
+                (p.name?.toLowerCase().includes(term) ?? false)
             );
         }
         return true;
@@ -144,318 +141,148 @@ export default function Prospects() {
 
     const stats = {
         total: prospects.length,
-        to_contact: prospects.filter(p => p.status === 'to_contact').length,
+        new: prospects.filter(p => p.status === 'new').length,
+        warm: prospects.filter(p => p.status === 'warm').length,
         contacted: prospects.filter(p => p.status === 'contacted').length,
-        converted: prospects.filter(p => p.status === 'converted').length,
         lost: prospects.filter(p => p.status === 'lost').length,
     };
 
+    function formatDate(dateStr: string) {
+        return new Date(dateStr).toLocaleDateString('fr-FR', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+        });
+    }
+
+    function getStatusInfo(status: string) {
+        return STATUS_OPTIONS.find(s => s.value === status) || STATUS_OPTIONS[0];
+    }
+
     if (loading) {
-        return <div className="page-loading">Chargement...</div>;
+        return <div className="loading-message">Chargement des prospects...</div>;
     }
 
     return (
         <div className="page prospects-crm">
-            <header className="page-header">
+            <div className="page-header">
                 <div>
-                    <h2 className="page-title">🎯 Prospects & Relances CRM</h2>
-                    <p className="page-subtitle">Gérez vos leads et suivez vos relances</p>
+                    <h2 className="page-title">🎯 Prospects (CRM)</h2>
+                    <p className="page-subtitle">
+                        Utilisateurs inscrits sans achat — {stats.total} prospects
+                    </p>
                 </div>
-                <button className="btn-primary" onClick={exportCSV}>
-                    📥 Export CSV
-                </button>
-            </header>
-
-            {/* Stats Cards */}
-            <div className="prospects-stats">
-                <div className="stat-card" onClick={() => setFilter('all')}>
-                    <span className="stat-value">{stats.total}</span>
-                    <span className="stat-label">Total</span>
-                </div>
-                <div className="stat-card to_contact" onClick={() => setFilter('to_contact')}>
-                    <span className="stat-value">{stats.to_contact}</span>
-                    <span className="stat-label">À contacter</span>
-                </div>
-                <div className="stat-card contacted" onClick={() => setFilter('contacted')}>
-                    <span className="stat-value">{stats.contacted}</span>
-                    <span className="stat-label">Contactés</span>
-                </div>
-                <div className="stat-card converted" onClick={() => setFilter('converted')}>
-                    <span className="stat-value">{stats.converted}</span>
-                    <span className="stat-label">Convertis</span>
-                </div>
+                <button className="btn-primary" onClick={loadProspects}>🔄 Rafraîchir</button>
             </div>
 
-            {/* Filters */}
-            <div className="filter-bar">
-                <input
-                    type="text"
-                    placeholder="🔍 Rechercher email, téléphone, source..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="search-input"
-                    aria-label="Rechercher"
-                />
-                <div className="filter-buttons">
-                    {STATUS_OPTIONS.map(opt => (
-                        <button
-                            key={opt.value}
-                            className={`filter-btn ${filter === opt.value ? 'active' : ''}`}
-                            onClick={() => setFilter(filter === opt.value ? 'all' : opt.value)}
+            {error && (
+                <div className="error-banner">{error}</div>
+            )}
+
+            {/* Pipeline overview */}
+            <div className="stat-grid">
+                {STATUS_OPTIONS.map(s => {
+                    const count = stats[s.value as keyof typeof stats] as number;
+                    return (
+                        <div
+                            key={s.value}
+                            onClick={() => setFilterStatus(filterStatus === s.value ? '' : s.value)}
+                            className={`stat-card${filterStatus === s.value ? ` stat-card--active stat-card--active-${s.value}` : ''}`}
                         >
-                            {opt.label}
-                        </button>
-                    ))}
-                </div>
+                            <div className={`stat-card__value stat-card__value--${s.value}`}>{count}</div>
+                            <div className="stat-card__label">{s.label}</div>
+                        </div>
+                    );
+                })}
             </div>
 
-            {/* Prospects List */}
-            <div className="prospects-list">
+            {/* Search */}
+            <input
+                type="text"
+                placeholder="🔍 Rechercher un prospect..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="search-input"
+                title="Rechercher un prospect par nom ou email"
+            />
+
+            {/* Prospects list */}
+            <div className="prospect-list">
                 {filteredProspects.length === 0 ? (
-                    <div className="empty-state">Aucun prospect trouvé</div>
+                    <div className="empty-state">
+                        {prospects.length === 0 ? '🎉 Tous vos utilisateurs ont fait un achat !' : 'Aucun prospect trouvé pour ce filtre'}
+                    </div>
                 ) : (
-                    filteredProspects.map((p) => (
-                        <div key={p.id} className={`prospect-card status-${p.status}`}>
-                            <div className="prospect-main">
-                                <div className="prospect-contact">
-                                    {p.email && (
-                                        <div className="contact-row">
-                                            <span>✉️ {p.email}</span>
-                                            <button
-                                                className="action-btn email"
-                                                onClick={() => openEmail(p.email!)}
-                                                title="Envoyer email"
+                    filteredProspects.map(prospect => {
+                        const statusInfo = getStatusInfo(localStatuses[prospect.id] || prospect.status);
+                        return (
+                            <div key={prospect.id} className={`prospect-card prospect-card--${localStatuses[prospect.id] || prospect.status}`}>
+                                <div className="prospect-card__body">
+                                    <div className="prospect-card__info">
+                                        <div className="prospect-card__name">
+                                            {prospect.name || 'Sans nom'}
+                                            <span
+                                                className={`prospect-status-badge prospect-status-badge--${localStatuses[prospect.id] || prospect.status}`}
                                             >
-                                                📧
-                                            </button>
+                                                {statusInfo.label}
+                                            </span>
                                         </div>
-                                    )}
-                                    {p.phone && (
-                                        <div className="contact-row">
-                                            <span>📞 {p.phone}</span>
-                                            <button
-                                                className="action-btn whatsapp"
-                                                onClick={() => openWhatsApp(p.phone!)}
-                                                title="Ouvrir WhatsApp"
-                                            >
-                                                💬
-                                            </button>
+                                        <div className="prospect-card__contact">
+                                            📧 {prospect.email}
+                                            {prospect.phone && ` • 📱 ${prospect.phone}`}
                                         </div>
-                                    )}
-                                    {!p.email && !p.phone && <span className="muted">Anonyme</span>}
-                                </div>
-                                <div className="prospect-meta">
-                                    <span className="badge source-badge">{p.source}</span>
-                                    <span className="badge action-badge">{p.last_action}</span>
-                                    <span className="date-text">{formatDate(p.updated_at)}</span>
-                                </div>
-                            </div>
-
-                            <div className="prospect-status">
-                                <select
-                                    value={p.status}
-                                    onChange={(e) => updateStatus(p.id, e.target.value as ProspectStatus)}
-                                    disabled={saving}
-                                    className={`status-select ${p.status}`}
-                                    aria-label="Changer le statut"
-                                >
-                                    {STATUS_OPTIONS.map(opt => (
-                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="prospect-notes">
-                                {editingNote === p.id ? (
-                                    <div className="note-editor">
-                                        <textarea
-                                            value={noteText}
-                                            onChange={(e) => setNoteText(e.target.value)}
-                                            placeholder="Ajouter une note..."
-                                            rows={2}
-                                            aria-label="Note"
-                                        />
-                                        <div className="note-actions">
-                                            <button className="btn-cancel" onClick={() => setEditingNote(null)}>
-                                                Annuler
-                                            </button>
-                                            <button
-                                                className="btn-save"
-                                                onClick={() => saveNote(p.id)}
-                                                disabled={saving}
-                                            >
-                                                {saving ? '...' : 'Sauver'}
-                                            </button>
+                                        <div className="prospect-card__meta">
+                                            Inscrit le {formatDate(prospect.created_at)}
+                                            {' • '} {prospect.days_since_signup} jour{prospect.days_since_signup > 1 ? 's' : ''} depuis inscription
                                         </div>
                                     </div>
-                                ) : (
-                                    <div
-                                        className="note-display"
-                                        onClick={() => {
-                                            setEditingNote(p.id);
-                                            setNoteText(p.notes || '');
-                                        }}
-                                    >
-                                        {p.notes ? (
-                                            <span className="note-text">📝 {p.notes}</span>
-                                        ) : (
-                                            <span className="note-placeholder">+ Ajouter une note</span>
+                                    <div className="prospect-card__actions">
+                                        <select
+                                            value={localStatuses[prospect.id] || prospect.status}
+                                            onChange={e => updateStatus(prospect.id, e.target.value)}
+                                            className="prospect-select"
+                                            title="Statut du prospect"
+                                        >
+                                            {STATUS_OPTIONS.map(s => (
+                                                <option key={s.value} value={s.value}>{s.label}</option>
+                                            ))}
+                                        </select>
+                                        <a
+                                            href={`mailto:${prospect.email}?subject=Découvrez nos services Kbal&body=Bonjour ${prospect.name || ''},`}
+                                            onClick={() => updateStatus(prospect.id, 'contacted')}
+                                            className="prospect-btn prospect-btn--email"
+                                        >
+                                            📧 Email
+                                        </a>
+                                        {prospect.phone && (
+                                            <a
+                                                href={`https://wa.me/${prospect.phone.replace(/\s/g, '')}`}
+                                                target="_blank" rel="noopener noreferrer"
+                                                onClick={() => updateStatus(prospect.id, 'contacted')}
+                                                className="prospect-btn prospect-btn--whatsapp"
+                                            >
+                                                💬 WhatsApp
+                                            </a>
                                         )}
                                     </div>
-                                )}
+                                </div>
+
+                                {/* Notes */}
+                                <div className="prospect-notes">
+                                    <input
+                                        type="text"
+                                        placeholder="Ajouter une note..."
+                                        value={localNotes[prospect.id] || ''}
+                                        onChange={e => setLocalNotes(prev => ({ ...prev, [prospect.id]: e.target.value }))}
+                                        onBlur={() => saveNote(prospect.id)}
+                                        onKeyDown={e => e.key === 'Enter' && saveNote(prospect.id)}
+                                        className="prospect-notes__input"
+                                        title="Notes sur le prospect"
+                                    />
+                                </div>
                             </div>
-                        </div>
-                    ))
+                        );
+                    })
                 )}
             </div>
-
-            <style>{`
-                .prospects-crm { max-width: 1200px; }
-                
-                .prospects-stats {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-                    gap: 12px;
-                    margin-bottom: 24px;
-                }
-                .stat-card {
-                    background: rgba(255,255,255,0.05);
-                    border-radius: 12px;
-                    padding: 16px;
-                    text-align: center;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                    border: 2px solid transparent;
-                }
-                .stat-card:hover { background: rgba(255,255,255,0.1); }
-                .stat-card.to_contact { border-color: #ef4444; }
-                .stat-card.contacted { border-color: #f59e0b; }
-                .stat-card.converted { border-color: #22c55e; }
-                .stat-value { display: block; font-size: 2rem; font-weight: bold; color: white; }
-                .stat-label { display: block; font-size: 0.8rem; color: #aaa; margin-top: 4px; }
-
-                .filter-bar {
-                    display: flex;
-                    gap: 12px;
-                    margin-bottom: 20px;
-                    flex-wrap: wrap;
-                }
-                .search-input {
-                    flex: 1;
-                    min-width: 200px;
-                    padding: 12px 16px;
-                    background: rgba(255,255,255,0.1);
-                    border: 1px solid rgba(255,255,255,0.2);
-                    border-radius: 8px;
-                    color: white;
-                    font-size: 14px;
-                }
-                .filter-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
-                .filter-btn {
-                    padding: 8px 16px;
-                    background: rgba(255,255,255,0.05);
-                    border: 1px solid rgba(255,255,255,0.1);
-                    border-radius: 20px;
-                    color: #aaa;
-                    cursor: pointer;
-                    font-size: 12px;
-                    transition: all 0.2s;
-                }
-                .filter-btn:hover { background: rgba(255,255,255,0.1); }
-                .filter-btn.active { background: #667eea; color: white; border-color: #667eea; }
-
-                .prospects-list { display: flex; flex-direction: column; gap: 12px; }
-                .prospect-card {
-                    background: rgba(255,255,255,0.03);
-                    border-radius: 12px;
-                    padding: 16px;
-                    border-left: 4px solid #666;
-                    transition: all 0.2s;
-                }
-                .prospect-card:hover { background: rgba(255,255,255,0.05); }
-                .prospect-card.status-to_contact { border-left-color: #ef4444; }
-                .prospect-card.status-contacted { border-left-color: #f59e0b; }
-                .prospect-card.status-converted { border-left-color: #22c55e; }
-                .prospect-card.status-lost { border-left-color: #6b7280; }
-
-                .prospect-main {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: flex-start;
-                    flex-wrap: wrap;
-                    gap: 12px;
-                    margin-bottom: 12px;
-                }
-                .prospect-contact { display: flex; flex-direction: column; gap: 6px; }
-                .contact-row { display: flex; align-items: center; gap: 8px; }
-                .action-btn {
-                    width: 28px;
-                    height: 28px;
-                    border: none;
-                    border-radius: 6px;
-                    cursor: pointer;
-                    font-size: 14px;
-                    transition: all 0.2s;
-                }
-                .action-btn.whatsapp { background: #25d366; }
-                .action-btn.email { background: #667eea; }
-                .action-btn:hover { transform: scale(1.1); }
-
-                .prospect-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-                .badge { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; }
-                .source-badge { background: rgba(102,126,234,0.2); color: #667eea; }
-                .action-badge { background: rgba(245,158,11,0.2); color: #f59e0b; }
-                .date-text { color: #666; font-size: 12px; }
-
-                .prospect-status { margin-bottom: 12px; }
-                .status-select {
-                    padding: 8px 12px;
-                    border-radius: 8px;
-                    border: 1px solid rgba(255,255,255,0.2);
-                    background: rgba(255,255,255,0.1);
-                    color: white;
-                    font-size: 13px;
-                    cursor: pointer;
-                    min-width: 150px;
-                }
-                .status-select.to_contact { border-color: #ef4444; }
-                .status-select.contacted { border-color: #f59e0b; }
-                .status-select.converted { border-color: #22c55e; }
-
-                .prospect-notes { border-top: 1px solid rgba(255,255,255,0.1); padding-top: 12px; }
-                .note-display { cursor: pointer; padding: 8px; border-radius: 6px; }
-                .note-display:hover { background: rgba(255,255,255,0.05); }
-                .note-text { color: #aaa; font-size: 13px; }
-                .note-placeholder { color: #666; font-size: 12px; font-style: italic; }
-
-                .note-editor textarea {
-                    width: 100%;
-                    padding: 10px;
-                    background: rgba(255,255,255,0.1);
-                    border: 1px solid rgba(255,255,255,0.2);
-                    border-radius: 8px;
-                    color: white;
-                    font-size: 13px;
-                    resize: vertical;
-                }
-                .note-actions { display: flex; gap: 8px; margin-top: 8px; justify-content: flex-end; }
-                .btn-cancel, .btn-save {
-                    padding: 6px 14px;
-                    border: none;
-                    border-radius: 6px;
-                    cursor: pointer;
-                    font-size: 12px;
-                }
-                .btn-cancel { background: rgba(255,255,255,0.1); color: white; }
-                .btn-save { background: #22c55e; color: white; }
-                .btn-save:disabled { opacity: 0.5; }
-
-                @media (max-width: 768px) {
-                    .prospects-stats { grid-template-columns: repeat(2, 1fr); }
-                    .filter-bar { flex-direction: column; }
-                    .search-input { min-width: 100%; }
-                }
-            `}</style>
         </div>
     );
 }

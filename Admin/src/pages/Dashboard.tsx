@@ -35,6 +35,9 @@ const SERVICE_LABELS: Record<string, { emoji: string; label: string }> = {
     'business_cycle_annual': { emoji: '💼', label: 'Cycle Business' },
     'health_cycle_annual': { emoji: '🏥', label: 'Cycle Santé' },
     'decision_credits': { emoji: '💡', label: 'Crédits' },
+    'daily_guide_day': { emoji: '⏰', label: 'Guide Horaire' },
+    'life_phase_report': { emoji: '🔮', label: 'Phases de Vie' },
+    'lunar_timing_monthly': { emoji: '🌙', label: 'Timing Lunaire' },
 };
 
 export default function Dashboard() {
@@ -75,10 +78,18 @@ export default function Dashboard() {
             .select('amount_fcfa, status, created_at')
             .eq('status', 'success');
 
-        // Get users count
-        const { count: usersCount } = await supabase
-            .from('users')
-            .select('id', { count: 'exact', head: true });
+        // Get users count from auth.admin (replaces obsolete 'users' table)
+        let usersCount = 0;
+        try {
+            const { data: authData } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+            usersCount = authData?.users?.length || 0;
+        } catch {
+            // Fallback to users table if admin API fails
+            const { count } = await supabase
+                .from('users')
+                .select('id', { count: 'exact', head: true });
+            usersCount = count || 0;
+        }
 
         const today = new Date().toISOString().split('T')[0];
         const todayPayments = payments?.filter(p => p.created_at.startsWith(today)) || [];
@@ -86,7 +97,7 @@ export default function Dashboard() {
         setGlobalStats({
             totalRevenue: payments?.reduce((sum, p) => sum + (p.amount_fcfa || 0), 0) || 0,
             totalPurchases: payments?.length || 0,
-            totalUsers: usersCount || 0,
+            totalUsers: usersCount,
             todayRevenue: todayPayments.reduce((sum, p) => sum + (p.amount_fcfa || 0), 0),
         });
     }
@@ -176,14 +187,25 @@ export default function Dashboard() {
             return;
         }
 
-        // Fetch user details
-        const userIds = sorted.map(([id]) => id);
-        const { data: users } = await supabase
-            .from('users')
-            .select('id, email, name')
-            .in('id', userIds);
-
-        const userMap = new Map(users?.map(u => [u.id, u]) || []);
+        // Fetch user details from auth.admin (replaces obsolete 'users' table)
+        let userMap = new Map<string, { email: string; name: string | null }>();
+        try {
+            const { data: authData } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+            authData?.users?.forEach(u => {
+                userMap.set(u.id, {
+                    email: u.email || 'N/A',
+                    name: u.user_metadata?.name || u.user_metadata?.display_name || null,
+                });
+            });
+        } catch {
+            // Fallback to users table if admin API fails
+            const userIds = sorted.map(([id]) => id);
+            const { data: users } = await supabase
+                .from('users')
+                .select('id, email, name')
+                .in('id', userIds);
+            users?.forEach((u: any) => { userMap.set(u.id, { email: u.email, name: u.name }); });
+        }
 
         const clients: TopClient[] = sorted.map(([id, stats]) => {
             const user = userMap.get(id);

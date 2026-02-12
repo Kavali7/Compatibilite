@@ -1,7 +1,21 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../supabaseClient';
 
-// Types matching existing payments table
+const SERVICE_LABELS: Record<string, { emoji: string; label: string }> = {
+    'consultation': { emoji: '💑', label: 'Compatibilité' },
+    'portrait_ame': { emoji: '✨', label: 'Portrait Âme' },
+    'annee': { emoji: '📆', label: 'Prévision An' },
+    'mois': { emoji: '📅', label: 'Prévision Mois' },
+    'jour': { emoji: '📌', label: 'Prévision Jour' },
+    'personal_cycle_annual': { emoji: '🔄', label: 'Cycle Perso' },
+    'business_cycle_annual': { emoji: '💼', label: 'Cycle Business' },
+    'health_cycle_annual': { emoji: '🏥', label: 'Cycle Santé' },
+    'decision_credits': { emoji: '💡', label: 'Crédits' },
+    'daily_guide_day': { emoji: '⏰', label: 'Guide Horaire' },
+    'life_phase_report': { emoji: '🔮', label: 'Phases de Vie' },
+    'lunar_timing_monthly': { emoji: '🌙', label: 'Timing Lunaire' },
+};
+
 type Payment = {
     id: string;
     user_id: string | null;
@@ -12,7 +26,7 @@ type Payment = {
     status: 'pending' | 'success' | 'failed' | 'cancelled';
     plan_type: string;
     created_at: string;
-    // User info from join
+    notes: string | null;
     user_email?: string;
     user_name?: string;
 };
@@ -30,29 +44,50 @@ export default function Payments() {
     async function loadPayments() {
         setLoading(true);
         try {
-            // Query payments with user info via join
+            // Query payments (no JOIN with obsolete users table)
             const { data, error } = await supabase
                 .from('payments')
-                .select(`
-                    *,
-                    users:user_id (
-                        email,
-                        display_name
-                    )
-                `)
+                .select('*')
                 .order('created_at', { ascending: false })
                 .limit(200);
 
             if (error) throw error;
 
-            // Transform data to flatten user info
-            const paymentsWithUserInfo = (data || []).map((p: any) => ({
-                ...p,
-                user_email: p.users?.email || null,
-                user_name: p.users?.display_name || null,
-            }));
+            // Resolve user emails/names from auth.admin
+            let userMap = new Map<string, { email: string; name: string | null }>();
+            try {
+                const { data: authData } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+                authData?.users?.forEach(u => {
+                    userMap.set(u.id, {
+                        email: u.email || '',
+                        name: u.user_metadata?.name || u.user_metadata?.display_name || null,
+                    });
+                });
+            } catch {
+                // Fallback: try users table
+                const userIds = [...new Set((data || []).map((p: any) => p.user_id).filter(Boolean))];
+                if (userIds.length > 0) {
+                    const { data: users } = await supabase
+                        .from('users')
+                        .select('id, email, name, display_name')
+                        .in('id', userIds);
+                    users?.forEach((u: any) => {
+                        userMap.set(u.id, { email: u.email, name: u.name || u.display_name || null });
+                    });
+                }
+            }
 
-            setPayments(paymentsWithUserInfo as Payment[]);
+            // Enrich payments with user info
+            const enriched = (data || []).map((p: any) => {
+                const user = p.user_id ? userMap.get(p.user_id) : null;
+                return {
+                    ...p,
+                    user_email: user?.email || null,
+                    user_name: user?.name || null,
+                };
+            });
+
+            setPayments(enriched as Payment[]);
         } catch (e) {
             console.error('Payments load error:', e);
             setPayments([]);
@@ -225,7 +260,8 @@ export default function Payments() {
                                 </div>
                                 <div className="payment-date">
                                     {new Date(payment.created_at).toLocaleString('fr-FR')} •{' '}
-                                    {payment.payment_method || 'N/A'} • {payment.plan_type}
+                                    {payment.payment_method || 'N/A'} •{' '}
+                                    {SERVICE_LABELS[payment.plan_type]?.emoji || '📋'} {SERVICE_LABELS[payment.plan_type]?.label || payment.plan_type}
                                 </div>
                             </div>
                             <div className="payment-amount">
