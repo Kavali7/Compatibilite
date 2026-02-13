@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
 import Payments from './pages/Payments';
 import Settings from './pages/Settings';
+import TrackingPixels from './pages/TrackingPixels';
 
 // Compatibilité pages
 import CompatibiliteIndex from './pages/compatibilite/index';
@@ -48,6 +49,7 @@ const router = createBrowserRouter([
       { path: 'users', element: <Users /> },
       { path: 'payments', element: <Payments /> },
       { path: 'settings', element: <Settings /> },
+      { path: 'tracking', element: <TrackingPixels /> },
       { path: 'compatibility-text-settings', element: <TextTypeSettings /> },
 
       // Compatibilité group
