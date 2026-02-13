@@ -48,6 +48,7 @@ export default function ServiceCatalogEditor() {
             emoji: service.emoji,
             advantages: [...service.advantages],
             enabled: service.enabled,
+            display_order: service.display_order,
         });
     }
 
@@ -67,6 +68,7 @@ export default function ServiceCatalogEditor() {
                     emoji: editForm.emoji,
                     advantages: editForm.advantages,
                     enabled: editForm.enabled,
+                    display_order: editForm.display_order,
                 })
                 .eq('id', id);
 
@@ -88,6 +90,35 @@ export default function ServiceCatalogEditor() {
         const newAdvantages = [...(editForm.advantages || [])];
         newAdvantages[index] = value;
         setEditForm({ ...editForm, advantages: newAdvantages });
+    }
+
+    async function moveService(serviceId: string, direction: 'up' | 'down') {
+        const idx = services.findIndex(s => s.id === serviceId);
+        if (idx < 0) return;
+        const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+        if (swapIdx < 0 || swapIdx >= services.length) return;
+
+        const currentOrder = services[idx].display_order;
+        const swapOrder = services[swapIdx].display_order;
+
+        setSaving(true);
+        try {
+            // Swap display_order values between the two services
+            const { error: e1 } = await supabase
+                .from('service_catalog')
+                .update({ display_order: swapOrder })
+                .eq('id', services[idx].id);
+            const { error: e2 } = await supabase
+                .from('service_catalog')
+                .update({ display_order: currentOrder })
+                .eq('id', services[swapIdx].id);
+            if (e1 || e2) throw e1 || e2;
+            await loadServices();
+        } catch (err) {
+            console.error('Error reordering:', err);
+        } finally {
+            setSaving(false);
+        }
     }
 
     if (loading) {
@@ -136,6 +167,16 @@ export default function ServiceCatalogEditor() {
                                         onChange={(e) => setEditForm({ ...editForm, enabled: e.target.checked })}
                                     />
                                 </div>
+                                <div className="form-row">
+                                    <label>Ordre:</label>
+                                    <input
+                                        type="number"
+                                        value={editForm.display_order ?? 0}
+                                        onChange={(e) => setEditForm({ ...editForm, display_order: parseInt(e.target.value) || 0 })}
+                                        className="order-input"
+                                        min={0}
+                                    />
+                                </div>
                                 <div className="advantages-edit">
                                     <label>Avantages (5 max):</label>
                                     {(editForm.advantages || []).map((adv, i) => (
@@ -166,6 +207,7 @@ export default function ServiceCatalogEditor() {
                             // View mode
                             <div className="service-view">
                                 <div className="service-header">
+                                    <span className="order-badge">#{service.display_order}</span>
                                     <span className="service-emoji">{service.emoji}</span>
                                     <span className="service-name">{service.name}</span>
                                     <span className={`service-status ${service.enabled ? 'enabled' : 'disabled'}`}>
@@ -180,9 +222,25 @@ export default function ServiceCatalogEditor() {
                                         <span className="more">+{service.advantages.length - 3} autres</span>
                                     )}
                                 </div>
-                                <button onClick={() => startEdit(service)} className="edit-btn">
-                                    ✏️ Modifier
-                                </button>
+                                <div className="service-actions">
+                                    <div className="reorder-buttons">
+                                        <button
+                                            onClick={() => moveService(service.id, 'up')}
+                                            disabled={saving || services.indexOf(service) === 0}
+                                            className="reorder-btn"
+                                            title="Monter"
+                                        >▲</button>
+                                        <button
+                                            onClick={() => moveService(service.id, 'down')}
+                                            disabled={saving || services.indexOf(service) === services.length - 1}
+                                            className="reorder-btn"
+                                            title="Descendre"
+                                        >▼</button>
+                                    </div>
+                                    <button onClick={() => startEdit(service)} className="edit-btn">
+                                        ✏️ Modifier
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -350,6 +408,53 @@ export default function ServiceCatalogEditor() {
                     text-align: center;
                     padding: 40px;
                     color: rgba(255, 255, 255, 0.6);
+                }
+                .order-badge {
+                    background: rgba(159, 122, 234, 0.3);
+                    color: #c4b5fd;
+                    padding: 2px 8px;
+                    border-radius: 4px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    min-width: 28px;
+                    text-align: center;
+                }
+                .order-input {
+                    width: 70px;
+                    background: rgba(0, 0, 0, 0.3);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    border-radius: 6px;
+                    color: white;
+                    padding: 8px 12px;
+                    font-size: 14px;
+                    text-align: center;
+                }
+                .service-actions {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                }
+                .reorder-buttons {
+                    display: flex;
+                    gap: 4px;
+                }
+                .reorder-btn {
+                    background: rgba(255, 255, 255, 0.08);
+                    border: 1px solid rgba(255, 255, 255, 0.15);
+                    color: rgba(255, 255, 255, 0.7);
+                    padding: 4px 10px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-size: 12px;
+                    transition: all 0.2s;
+                }
+                .reorder-btn:hover:not(:disabled) {
+                    background: rgba(159, 122, 234, 0.2);
+                    color: white;
+                }
+                .reorder-btn:disabled {
+                    opacity: 0.3;
+                    cursor: not-allowed;
                 }
             `}</style>
         </div>
