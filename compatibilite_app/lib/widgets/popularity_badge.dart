@@ -3,20 +3,30 @@ import '../theme/app_theme.dart';
 import '../services/social_proof_service.dart';
 
 /// A compact popularity badge displayed on service catalog cards.
-/// Shows text like "🔥 Populaire" or a counter like "2 847 analyses cette semaine".
-/// Data is loaded from SocialProofService (backend).
+/// Shows text like "🔥 Populaire" or a counter like "423 consultations".
+/// When serviceId is provided, shows the badge specific to that service.
 class PopularityBadge extends StatelessWidget {
-  final String? serviceId; // optionally filter badge by service
+  final String? serviceId;
   
   const PopularityBadge({super.key, this.serviceId});
 
   @override
   Widget build(BuildContext context) {
-    final badges = SocialProofService.instance.badgeConfigs;
-    if (badges.isEmpty) return const SizedBox.shrink();
+    SocialProofEntry? badge;
     
-    // Use first available badge (can be refined with serviceId later)
-    final badge = badges.first;
+    if (serviceId != null) {
+      // Get badge for this specific service
+      badge = SocialProofService.instance.badgeForService(serviceId!);
+    } else {
+      // Get global badge (first without service_key)
+      badge = SocialProofService.instance.globalBadge;
+      if (badge == null) {
+        final badges = SocialProofService.instance.badgeConfigs;
+        if (badges.isNotEmpty) badge = badges.first;
+      }
+    }
+    
+    if (badge == null) return const SizedBox.shrink();
     
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -68,24 +78,36 @@ class PopularityBadge extends StatelessWidget {
 
   String _formatCounter(int count) {
     if (count >= 1000) {
-      return '${(count / 1000).toStringAsFixed(1).replaceAll('.0', '')} k';
+      final str = count.toString();
+      final buffer = StringBuffer();
+      for (int i = 0; i < str.length; i++) {
+        if (i > 0 && (str.length - i) % 3 == 0) buffer.write(' ');
+        buffer.write(str[i]);
+      }
+      return buffer.toString();
     }
     return count.toString();
   }
 }
 
 /// A large counter banner for the top of the catalog screen.
-/// Shows "X analyses réalisées cette semaine" with an animated feel.
+/// Shows total analyses across all services.
 class PopularityCounterBanner extends StatelessWidget {
   const PopularityCounterBanner({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final badges = SocialProofService.instance.badgeConfigs;
-    if (badges.isEmpty) return const SizedBox.shrink();
+    // Try total from per-service badges first
+    int totalCounter = SocialProofService.instance.totalBadgeCounter;
+    String label = 'consultations réalisées';
     
-    final badge = badges.first;
-    if (badge.badgeCounter == null) return const SizedBox.shrink();
+    // If no per-service badges, fall back to global badge
+    if (totalCounter == 0) {
+      final global = SocialProofService.instance.globalBadge;
+      if (global == null || global.badgeCounter == null) return const SizedBox.shrink();
+      totalCounter = global.badgeCounter!;
+      label = global.badgeCounterLabel ?? label;
+    }
     
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -124,7 +146,7 @@ class PopularityCounterBanner extends StatelessWidget {
               text: TextSpan(
                 children: [
                   TextSpan(
-                    text: '${_formatBig(badge.badgeCounter!)} ',
+                    text: '${_formatBig(totalCounter)} ',
                     style: const TextStyle(
                       color: AppColors.primary,
                       fontSize: 18,
@@ -132,7 +154,7 @@ class PopularityCounterBanner extends StatelessWidget {
                     ),
                   ),
                   TextSpan(
-                    text: badge.badgeCounterLabel ?? 'analyses réalisées',
+                    text: label,
                     style: TextStyle(
                       color: AppColors.textLight.withValues(alpha: 0.8),
                       fontSize: 13,

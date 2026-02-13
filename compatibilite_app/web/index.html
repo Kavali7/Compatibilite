@@ -92,27 +92,44 @@
       letter-spacing: 0.3px;
     }
 
-    /* Loading dots — teal color */
-    #splash-loader {
+    /* Progress bar */
+    #splash-progress-wrap {
       margin-top: 40px;
-      display: flex;
-      gap: 8px;
+      width: 220px;
+      text-align: center;
     }
 
-    #splash-loader span {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #14d5c2;
-      animation: dot-bounce 1.4s ease-in-out infinite;
+    #splash-progress-bar {
+      width: 100%;
+      height: 6px;
+      background: rgba(20, 213, 194, 0.15);
+      border-radius: 3px;
+      overflow: hidden;
     }
 
-    #splash-loader span:nth-child(2) {
-      animation-delay: 0.16s;
+    #splash-progress-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #14d5c2, #1af0db);
+      border-radius: 3px;
+      transition: width 0.3s ease-out;
     }
 
-    #splash-loader span:nth-child(3) {
-      animation-delay: 0.32s;
+    #splash-percent {
+      margin-top: 10px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 13px;
+      color: #14d5c2;
+      font-weight: 600;
+      letter-spacing: 1px;
+    }
+
+    #splash-message {
+      margin-top: 6px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 12px;
+      color: rgba(178, 196, 204, 0.6);
+      letter-spacing: 0.3px;
     }
 
     @keyframes pulse-glow {
@@ -126,21 +143,6 @@
       50% {
         filter: drop-shadow(0 0 28px rgba(20, 213, 194, 0.45));
         transform: scale(1.03);
-      }
-    }
-
-    @keyframes dot-bounce {
-
-      0%,
-      80%,
-      100% {
-        transform: scale(0.6);
-        opacity: 0.4;
-      }
-
-      40% {
-        transform: scale(1);
-        opacity: 1;
       }
     }
 
@@ -232,10 +234,12 @@
     <img id="splash-logo" src="icons/Icon-192.png" alt="Compatibilité & Guidance" />
     <div id="splash-title">Compatibilité & Guidance</div>
     <div id="splash-subtitle">par Growpeak Agence</div>
-    <div id="splash-loader">
-      <span></span>
-      <span></span>
-      <span></span>
+    <div id="splash-progress-wrap">
+      <div id="splash-progress-bar">
+        <div id="splash-progress-fill"></div>
+      </div>
+      <div id="splash-percent">0%</div>
+      <div id="splash-message">Chargement de votre consultation...</div>
     </div>
   </div>
 
@@ -243,14 +247,44 @@
   <script src="flutter_bootstrap.js" async></script>
 
   <script>
-    // Remove splash once Flutter renders its first frame
-    window.addEventListener('flutter-first-frame', function () {
-      var splash = document.getElementById('splash-screen');
-      if (splash) {
-        splash.classList.add('hidden');
-        setTimeout(function () { splash.remove(); }, 500);
+    // Fake progress bar — organic acceleration
+    (function () {
+      var fill = document.getElementById('splash-progress-fill');
+      var pct = document.getElementById('splash-percent');
+      var progress = 0;
+      var done = false;
+
+      function tick() {
+        if (done) return;
+        // Fast at first, slows as it approaches 90
+        var speed;
+        if (progress < 30) speed = 2.5 + Math.random() * 2;
+        else if (progress < 60) speed = 1.5 + Math.random() * 1.5;
+        else if (progress < 85) speed = 0.5 + Math.random() * 0.8;
+        else speed = 0.1 + Math.random() * 0.2;
+
+        progress = Math.min(progress + speed, 92);
+        fill.style.width = progress + '%';
+        pct.textContent = Math.round(progress) + '%';
+        setTimeout(tick, 150 + Math.random() * 100);
       }
-    });
+      tick();
+
+      // Complete to 100% when Flutter is ready
+      window.addEventListener('flutter-first-frame', function () {
+        done = true;
+        progress = 100;
+        fill.style.width = '100%';
+        pct.textContent = '100%';
+        var splash = document.getElementById('splash-screen');
+        if (splash) {
+          setTimeout(function () {
+            splash.classList.add('hidden');
+            setTimeout(function () { splash.remove(); }, 500);
+          }, 300);
+        }
+      });
+    })();
   </script>
 </body>
 

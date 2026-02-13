@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
+import 'popularity_badge.dart';
 
 /// A card widget displaying a service in the catalog
 class ServiceCatalogCard extends StatefulWidget {
@@ -8,6 +9,7 @@ class ServiceCatalogCard extends StatefulWidget {
   final String name;
   final List<String> advantages;
   final String? priceLabel;
+  final String? serviceId;
   final VoidCallback onTap;
   final int animationDelay;
 
@@ -17,6 +19,7 @@ class ServiceCatalogCard extends StatefulWidget {
     required this.name,
     required this.advantages,
     this.priceLabel,
+    this.serviceId,
     required this.onTap,
     this.animationDelay = 0,
   });
@@ -133,7 +136,13 @@ class _ServiceCatalogCardState extends State<ServiceCatalogCard>
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
+
+                    // Per-service popularity badge
+                    if (widget.serviceId != null)
+                      PopularityBadge(serviceId: widget.serviceId),
+
+                    const SizedBox(height: 8),
                     
                     // Advantages list - compact, no Expanded
                     ...widget.advantages.take(5).map((advantage) {

@@ -11,6 +11,7 @@ class SocialProofEntry {
   final bool enabled;
   final int displayOrder;
   final String region;       // 'all', 'africa', 'europe'
+  final String? serviceKey;  // optional: links badge to a specific service
 
   // Toast fields
   final List<String> firstNames;
@@ -53,6 +54,7 @@ class SocialProofEntry {
     this.testimonialText,
     this.testimonialRating,
     this.testimonialPhotoUrl,
+    this.serviceKey,
   });
 
   factory SocialProofEntry.fromJson(Map<String, dynamic> json) {
@@ -77,6 +79,7 @@ class SocialProofEntry {
       testimonialText: json['testimonial_text'] as String?,
       testimonialRating: json['testimonial_rating'] as int?,
       testimonialPhotoUrl: json['testimonial_photo_url'] as String?,
+      serviceKey: json['service_key'] as String?,
     );
   }
 
@@ -208,6 +211,38 @@ class SocialProofService {
 
   /// Get badge configs for the catalog  
   List<SocialProofEntry> get badgeConfigs => _filtered('badge', 'catalog');
+
+  /// Get badge for a specific service (by service_key)
+  SocialProofEntry? badgeForService(String serviceId) {
+    final badges = badgeConfigs;
+    try {
+      return badges.firstWhere((b) => b.serviceKey == serviceId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Sum all per-service badge counters for the total banner
+  int get totalBadgeCounter {
+    int total = 0;
+    for (final b in badgeConfigs) {
+      if (b.serviceKey != null && b.badgeCounter != null) {
+        total += b.badgeCounter!;
+      }
+    }
+    return total;
+  }
+
+  /// Get the global badge (no service_key) or build one from totals
+  SocialProofEntry? get globalBadge {
+    final badges = badgeConfigs;
+    // First try to find a badge without service_key (global badge)
+    try {
+      return badges.firstWhere((b) => b.serviceKey == null || b.serviceKey!.isEmpty);
+    } catch (_) {
+      return null;
+    }
+  }
 
   /// Get testimonials for the welcome screen
   List<SocialProofEntry> get testimonialConfigs => _filtered('testimonial', 'welcome');

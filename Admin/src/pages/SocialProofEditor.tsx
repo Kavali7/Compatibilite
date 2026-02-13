@@ -22,6 +22,7 @@ type SocialProofEntry = {
     testimonial_text: string | null;
     testimonial_rating: number | null;
     testimonial_photo_url: string | null;
+    service_key: string | null;
 };
 
 const TABS = [
@@ -34,6 +35,23 @@ const REGIONS = [
     { value: 'all', label: '🌍 Tous' },
     { value: 'africa', label: '🌍 Afrique' },
     { value: 'europe', label: '🇪🇺 Europe' },
+];
+
+const SERVICE_KEYS = [
+    { value: '', label: '— Global (aucun service)' },
+    { value: 'compatibilite_couple', label: '❤️ Compatibilité Couple' },
+    { value: 'previsions_temporelles', label: '🔮 Prévisions Temporelles' },
+    { value: 'guidance_quotidienne', label: '☀️ Guidance Quotidienne' },
+    { value: 'mois_decrypte', label: '📅 Mois Décrypté' },
+    { value: 'avenir_annee', label: '🔮 Avenir Année' },
+    { value: 'portrait_ame', label: '✨ Portrait de l\'Âme' },
+    { value: 'cycle_personnel', label: '📅 Cycle Personnel' },
+    { value: 'cycle_business', label: '💼 Cycle Business' },
+    { value: 'cycle_sante', label: '💚 Cycle Santé' },
+    { value: 'guide_horaire', label: '⏰ Guide Horaire' },
+    { value: 'eclairage_decision', label: '💡 Éclairage Décision' },
+    { value: 'phases_vie', label: '🛤️ Phases de Vie' },
+    { value: 'timing_lunaire', label: '🌙 Timing Lunaire' },
 ];
 
 export default function SocialProofEditor() {
@@ -97,6 +115,7 @@ export default function SocialProofEditor() {
                 updateData.badge_text = editForm.badge_text;
                 updateData.badge_counter = editForm.badge_counter;
                 updateData.badge_counter_label = editForm.badge_counter_label;
+                updateData.service_key = editForm.service_key || null;
             } else if (activeTab === 'testimonial') {
                 updateData.testimonial_name = editForm.testimonial_name;
                 updateData.testimonial_text = editForm.testimonial_text;
@@ -278,6 +297,14 @@ export default function SocialProofEditor() {
                             className="sp-input" placeholder="analyses cette semaine" />
                     </div>
                 </div>
+                <div className="sp-field">
+                    <label htmlFor="sp-badge-service">Service associé :</label>
+                    <select id="sp-badge-service" value={editForm.service_key ?? ''}
+                        onChange={(e) => setEditForm({ ...editForm, service_key: e.target.value || null })}
+                        className="sp-select">
+                        {SERVICE_KEYS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                    </select>
+                </div>
             </>
         );
     }
@@ -390,7 +417,10 @@ export default function SocialProofEditor() {
                                         </span>
                                     )}
                                     {activeTab === 'badge' && (
-                                        <span className="sp-summary">{entry.badge_text} — {entry.badge_counter} {entry.badge_counter_label}</span>
+                                        <span className="sp-summary">
+                                            {entry.badge_text} — {entry.badge_counter} {entry.badge_counter_label}
+                                            {(entry as any).service_key && <span className="sp-service-tag"> 🏷️ {(entry as any).service_key}</span>}
+                                        </span>
                                     )}
                                     {activeTab === 'testimonial' && (
                                         <span className="sp-summary">
@@ -446,6 +476,7 @@ export default function SocialProofEditor() {
                 .sp-order { color: #c4b5fd; font-size: 12px; font-weight: 600; }
                 .sp-summary { flex: 1; color: rgba(255,255,255,0.8); font-size: 14px; }
                 .sp-toggle { cursor: pointer; font-size: 16px; }
+                .sp-service-tag { background: rgba(159,122,234,0.2); color: #c4b5fd; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 6px; }
 
                 .sp-view-actions { display: flex; gap: 8px; margin-top: 10px; }
                 .sp-edit-btn {

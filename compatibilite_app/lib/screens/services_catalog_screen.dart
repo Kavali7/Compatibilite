@@ -309,6 +309,7 @@ class _ServicesCatalogScreenState extends State<ServicesCatalogScreen> {
                                       name: service['name'] as String,
                                       advantages: List<String>.from(service['advantages'] as List),
                                       priceLabel: _getPriceLabel(service['planType'] as String),
+                                      serviceId: service['id'] as String,
                                       onTap: () => _navigateToService(service),
                                       animationDelay: index * 100,
                                     );
