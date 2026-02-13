@@ -110,6 +110,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   
   bool _isCheckingEmail = false;
   bool _emailExists = false;
+  bool _manualLoginToggle = false;
   String? _emailCheckError;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -1195,6 +1196,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
               onPressed: () {
                 setState(() {
                   _emailExists = !_emailExists;
+                  _manualLoginToggle = _emailExists;
                 });
               },
               icon: Icon(
@@ -2122,6 +2124,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
               onPressed: () {
                 setState(() {
                   _emailExists = !_emailExists;
+                  _manualLoginToggle = _emailExists;
                 });
               },
               icon: Icon(
@@ -2173,32 +2176,21 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
       _emailCheckError = null;
     });
     
+    // If user manually toggled login mode, respect their choice
+    if (_manualLoginToggle) return;
+    
     // Debounce: only check after user stops typing
     Future.delayed(const Duration(milliseconds: 800), () async {
       if (_emailController.text.trim() != email) return; // User still typing
+      if (_manualLoginToggle) return; // User toggled while waiting
       if (!_isValidEmail(email)) {
-        setState(() => _emailExists = false);
+        if (mounted) setState(() => _emailExists = false);
         return;
       }
       
-      setState(() => _isCheckingEmail = true);
-      
-      try {
-        final exists = await AuthService.instance.emailExists(email);
-        if (mounted && _emailController.text.trim() == email) {
-          setState(() {
-            _emailExists = exists;
-            _isCheckingEmail = false;
-          });
-        }
-      } catch (e) {
-        if (mounted) {
-          setState(() {
-            _isCheckingEmail = false;
-            _emailCheckError = 'Vérification impossible. Continuez quand même.';
-          });
-        }
-      }
+      // emailExists() currently always returns false (client-side limitation)
+      // So we don't touch _emailExists here — let the manual toggle or
+      // the signUp fallback handle it
     });
   }
 
@@ -2256,7 +2248,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
       if (errorStr.contains('invalid_credentials') || errorStr.contains('invalid login')) {
         errorMessage = 'Mot de passe incorrect pour ce compte.';
       } else if (errorStr.contains('email_not_confirmed')) {
-        errorMessage = 'Veuillez confirmer votre email avant de vous connecter.';
+        errorMessage = 'Ce compte n\'a pas encore été confirmé. Veuillez réessayer ou créer un nouveau compte.';
       } else if (errorStr.contains('too_many_requests')) {
         errorMessage = 'Trop de tentatives. Attendez quelques minutes.';
       } else {

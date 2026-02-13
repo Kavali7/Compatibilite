@@ -141,8 +141,9 @@ export default function ServiceCatalogEditor() {
                             // Edit mode
                             <div className="edit-form">
                                 <div className="form-row">
-                                    <label>Emoji:</label>
+                                    <label htmlFor="edit-emoji">Emoji:</label>
                                     <input
+                                        id="edit-emoji"
                                         type="text"
                                         value={editForm.emoji || ''}
                                         onChange={(e) => setEditForm({ ...editForm, emoji: e.target.value })}
@@ -151,8 +152,9 @@ export default function ServiceCatalogEditor() {
                                     />
                                 </div>
                                 <div className="form-row">
-                                    <label>Nom:</label>
+                                    <label htmlFor="edit-name">Nom:</label>
                                     <input
+                                        id="edit-name"
                                         type="text"
                                         value={editForm.name || ''}
                                         onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
@@ -160,16 +162,18 @@ export default function ServiceCatalogEditor() {
                                     />
                                 </div>
                                 <div className="form-row">
-                                    <label>Activé:</label>
+                                    <label htmlFor="edit-enabled">Activé:</label>
                                     <input
+                                        id="edit-enabled"
                                         type="checkbox"
                                         checked={editForm.enabled}
                                         onChange={(e) => setEditForm({ ...editForm, enabled: e.target.checked })}
                                     />
                                 </div>
                                 <div className="form-row">
-                                    <label>Ordre:</label>
+                                    <label htmlFor="edit-order">Ordre:</label>
                                     <input
+                                        id="edit-order"
                                         type="number"
                                         value={editForm.display_order ?? 0}
                                         onChange={(e) => setEditForm({ ...editForm, display_order: parseInt(e.target.value) || 0 })}

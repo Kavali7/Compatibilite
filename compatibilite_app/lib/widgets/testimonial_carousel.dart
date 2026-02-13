@@ -18,11 +18,21 @@ class _TestimonialCarouselState extends State<TestimonialCarousel> {
   Timer? _autoScrollTimer;
   int _currentPage = 0;
 
+  bool _loaded = false;
+
   @override
   void initState() {
     super.initState();
     _pageController = PageController(viewportFraction: 0.88);
     _startAutoScroll();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    await SocialProofService.instance.fetchEntries();
+    if (mounted && !_loaded) {
+      setState(() => _loaded = true);
+    }
   }
 
   @override

@@ -79,7 +79,7 @@ export default function TrackingPixels() {
     return (
         <div className="page tracking-pixels">
             <h2 className="page-title">📊 Tracking & Pixels</h2>
-            <p className="muted" style={{ marginBottom: 24 }}>
+            <p className="muted tracking-description">
                 Configurez vos pixels de tracking pour analyser vos campagnes publicitaires et retargeter vos visiteurs.
                 Les pixels sont chargés automatiquement sur l'app web lorsqu'un ID est renseigné.
             </p>
@@ -244,6 +244,9 @@ export default function TrackingPixels() {
             <style>{`
                 .tracking-pixels {
                     max-width: 800px;
+                }
+                .tracking-description {
+                    margin-bottom: 24px;
                 }
                 .tracking-section {
                     margin-bottom: 20px;
