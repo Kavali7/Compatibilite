@@ -29,6 +29,7 @@ import '../widgets/animated_background.dart';
 import '../widgets/hamburger_menu_overlay.dart';
 import '../widgets/selectable_card.dart';
 import '../widgets/temporal_report_card.dart';
+import '../widgets/social_proof_banner.dart';
 import 'dynamic_legal_page.dart'; // Added
 // legal_page.dart removed - using dynamic_legal_page.dart and legal_models.dart instead
 
@@ -60,6 +61,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   final TemporalReportService _reportService = TemporalReportService.instance;
   CompatibilityRepository? _repository;
 
@@ -109,6 +111,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   bool _emailExists = false;
   String? _emailCheckError;
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
   
   // Multi-consultations: track current payment and profile IDs
   String? _lastPaymentId;
@@ -119,7 +122,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   String get _supportEmail => AppSettingsService.instance.contactEmail;
   String get _supportPhone => AppSettingsService.instance.contactWhatsApp;
 
-  static const _totalSteps = 7; // Welcome, Names, BirthA, BirthB, Context, Contact, Results
+  static const _totalSteps = 8; // Auth, Welcome, Names, BirthA, BirthB, Context, Payment, Results
   static const _challengeOptions = [
     'Communication',
     'Confiance',
@@ -277,6 +280,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -284,28 +288,24 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     if (_isSaving || _isProcessingPayment) return;
     if (!_validateCurrentStep()) return;
     
-    // Step 4 (Context) -> Step 5 (Contact): Prepare summary
-    // Calculation delayed to Step 5 (After Auth)
-    if (_currentStep == 4) {
-      // _fetchAndSetSummary();
+    // Step 0 (Auth): If user just authenticated, skip to Welcome
+    if (_currentStep == 0) {
+      // Auth step handled by the auth form itself
+      // Just advance to next step
     }
     
-    // Step 5 (Contact): Payment is handled by the button directly via _initiatePayment
-    // This function is NOT called for step 5 when clicking "Voir mes résultats"
+    // Step 5 (Context) -> Step 6 (Payment): nothing special
+    
+    // Step 6 (Payment): Payment is handled by the button directly via _initiatePayment
+    // This function is NOT called for step 6 when clicking "Voir mon rapport"
     // But handle edge case where user has subscription and can skip payment
-    if (_currentStep == 5 && !_paymentCompleted) {
+    if (_currentStep == 6 && !_paymentCompleted) {
       // Check for active subscription - if yes, skip payment
       final email = _emailController.text.trim();
       final hasSubscription = await AuthService.instance.hasActiveSubscription(email);
       if (hasSubscription) {
         _paymentCompleted = true;
         await _saveSessionIfPossible();
-        
-        // Authenticate user if not already
-        if (!AuthService.instance.isLoggedIn) {
-          final password = _passwordController.text;
-          await AuthService.instance.signIn(email: email, password: password);
-        }
         
         if (AuthService.instance.isLoggedIn) {
           await _saveCoupleProfile();
@@ -435,10 +435,16 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
 
   bool _validateCurrentStep() {
     switch (_currentStep) {
-      case 1:
-        // Try form validation first
+      case 0:
+        // Auth step: user must be logged in to proceed
+        if (!AuthService.instance.isLoggedIn) {
+          _showSnack('Veuillez vous connecter ou créer un compte pour continuer.');
+          return false;
+        }
+        return true;
+      case 2:
+        // Names step (was case 1)
         if (_namesFormKey.currentState?.validate() ?? false) {
-          // Also check gender selection
           if (_genderA == null) {
             _showSnack('Veuillez indiquer le sexe du partenaire 1.');
             return false;
@@ -449,14 +455,12 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           }
           return true;
         }
-        // Fallback: Check controllers manually if form state is issues or just to be safe
         final nameA = _nameAController.text.trim();
         final nameB = _nameBController.text.trim();
         if (nameA.isEmpty || nameB.isEmpty) {
            _showSnack('Veuillez entrer les deux prénoms pour continuer.');
            return false;
         }
-        // Check gender selection
         if (_genderA == null) {
           _showSnack('Veuillez indiquer le sexe du partenaire 1.');
           return false;
@@ -465,36 +469,30 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           _showSnack('Veuillez indiquer le sexe du partenaire 2.');
           return false;
         }
-        // If controllers are fine but validate() returned false (or was null),
-        // it might be a weird state, but we can trust the text content.
         return true;
-      case 2:
+      case 3:
+        // BirthA (was case 2)
         final hasDateA = _birthA != null;
         if (!hasDateA) {
           _showSnack('Choisissez la date du partenaire 1.');
         }
         return hasDateA;
-      case 3:
+      case 4:
+        // BirthB (was case 3)
         final hasDateB = _birthB != null;
         if (!hasDateB) {
           _showSnack('Choisissez la date du partenaire 2.');
         }
         return hasDateB;
-      case 5:
-        final email = _emailController.text.trim();
-        final password = _passwordController.text;
-        if (email.isEmpty || !_isValidEmail(email)) {
-          _showSnack('Entrez un email valide pour recevoir le rapport.');
-          return false;
-        }
-        if (password.isEmpty || password.length < 6) {
-          _showSnack('Le mot de passe doit contenir au moins 6 caractères.');
+      case 6:
+        // Payment step
+        if (_selectedPlan == null) {
+          _showSnack('Veuillez choisir une formule.');
           return false;
         }
         return true;
-      case 6:
-        // Payment step - always return true here
-        // The actual payment check/trigger happens in _goNext()
+      case 7:
+        // Results step - always valid
         return true;
       default:
         return true;
@@ -502,7 +500,8 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   }
 
   void _goBack() {
-    if (_currentStep == 0) return;
+    // Don't go back to auth step (step 0) once past it
+    if (_currentStep <= 1) return;
     setState(() {
       _currentStep -= 1;
     });
@@ -887,12 +886,13 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
                 controller: _pageController,
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
+                  _buildAuthStep(),
                   _buildWelcomeStep(),
                   _buildNamesStep(),
                   _buildBirthdatesStep(isFirst: true),
                   _buildBirthdatesStep(isFirst: false),
                   _buildContextStep(),
-                  _buildContactStep(),
+                  _buildPaymentStep(),
                   _buildResultsStep(),
                 ],
               ),
@@ -908,6 +908,10 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           onToggle: _toggleMenu,
           entries: menuEntries,
           isDark: true,
+        ),
+        // Social proof notifications - visible on data entry steps only
+        SocialProofBanner(
+          enabled: _currentStep >= 2 && _currentStep <= 6 && !_isMenuOpen,
         ),
       ],
     );
@@ -989,17 +993,22 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
       );
     }
 
-    // Hide navigation on welcome step (step 0) - we have a custom button there
+    // Hide navigation on auth step (step 0) - auth form has its own button
     if (_currentStep == 0) {
       return const SizedBox.shrink();
     }
 
-    // Step 5 (Contact) is the last step before results - clicking triggers payment
-    final isContactStep = _currentStep == 5 && !_paymentCompleted;
+    // Hide navigation on welcome step (step 1) - has its own CTA button
+    if (_currentStep == 1) {
+      return const SizedBox.shrink();
+    }
+
+    // Step 6 (Payment) is the last step before results - clicking triggers payment
+    final isPaymentStep = _currentStep == 6 && !_paymentCompleted;
 
     return Row(
       children: [
-        if (_currentStep > 0)
+        if (_currentStep > 1)
           Expanded(
             child: OutlinedButton(
               style: OutlinedButton.styleFrom(
@@ -1011,12 +1020,12 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
               child: const Text('Précédent'),
             ),
           ),
-        if (_currentStep > 0) const SizedBox(width: 12),
+        if (_currentStep > 1) const SizedBox(width: 12),
         Expanded(
           child: ElevatedButton(
             onPressed: (_isSaving || _isProcessingPayment) ? null : () {
-              debugPrint('>>> Button pressed! Step: $_currentStep, isContactStep: ${_currentStep == 5 && !_paymentCompleted}, _isSaving: $_isSaving, _isProcessingPayment: $_isProcessingPayment');
-              if (_currentStep == 5 && !_paymentCompleted) {
+              debugPrint('>>> Button pressed! Step: $_currentStep, isPaymentStep: ${_currentStep == 6 && !_paymentCompleted}, _isSaving: $_isSaving, _isProcessingPayment: $_isProcessingPayment');
+              if (_currentStep == 6 && !_paymentCompleted) {
                 _initiatePayment();
               } else {
                 _goNext();
@@ -1028,12 +1037,250 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
                     width: 18,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
-                : Text(isContactStep 
+                : Text(isPaymentStep 
                     ? 'Voir mon rapport' 
                     : 'Continuer'),
           ),
         ),
       ],
+    );
+  }
+
+  /// Auth step widget - login or signup inline
+  Widget _buildAuthStep() {
+    // If already logged in, auto-advance
+    if (AuthService.instance.isLoggedIn) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _currentStep == 0) {
+          _goNext();
+        }
+      });
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _emailExists ? 'Bon retour parmi nous !' : 'Créez votre compte',
+            style: GoogleFonts.philosopher(fontSize: 22, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _emailExists 
+                ? 'Ce compte existe déjà. Entrez votre mot de passe pour vous connecter.'
+                : 'Votre compte vous permettra de reconsulter vos rapports à tout moment.',
+            style: const TextStyle(color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 16),
+          // Email
+          TextField(
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            decoration: InputDecoration(
+              labelText: 'Email *',
+              hintText: 'vous@example.com',
+              prefixIcon: const Icon(Icons.email_outlined, color: AppColors.primary),
+              suffixIcon: _isCheckingEmail 
+                  ? const SizedBox(
+                      width: 20, 
+                      height: 20, 
+                      child: Padding(
+                        padding: EdgeInsets.all(12),
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : _emailExists 
+                      ? const Icon(Icons.check_circle, color: Colors.green)
+                      : null,
+            ),
+            onChanged: _onEmailChanged,
+          ),
+          if (_emailCheckError != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                _emailCheckError!,
+                style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+              ),
+            ),
+          const SizedBox(height: 12),
+          // Password
+          TextField(
+            controller: _passwordController,
+            obscureText: _obscurePassword,
+            decoration: InputDecoration(
+              labelText: _emailExists ? 'Mot de passe *' : 'Créer un mot de passe *',
+              hintText: _emailExists ? 'Entrez votre mot de passe' : 'Minimum 6 caractères',
+              prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primary),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                  color: AppColors.textMuted,
+                ),
+                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+              ),
+            ),
+          ),
+          // Confirm password (only in signup mode)
+          if (!_emailExists) ...[
+            const SizedBox(height: 12),
+            TextField(
+              controller: _confirmPasswordController,
+              obscureText: _obscureConfirmPassword,
+              decoration: InputDecoration(
+                labelText: 'Confirmer le mot de passe *',
+                hintText: 'Retapez votre mot de passe',
+                prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primary),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                    color: AppColors.textMuted,
+                  ),
+                  onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                ),
+              ),
+            ),
+          ],
+          if (_emailExists)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    _showSnack('Fonctionnalité bientôt disponible.');
+                  },
+                  child: const Text('Mot de passe oublié ?'),
+                ),
+              ),
+            ),
+          const SizedBox(height: 12),
+          // Phone number
+          IntlPhoneField(
+            controller: _phoneController,
+            decoration: InputDecoration(
+              labelText: 'Téléphone (optionnel)',
+              labelStyle: const TextStyle(color: AppColors.textMuted),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: AppColors.primary),
+              ),
+            ),
+            initialCountryCode: 'BJ',
+            dropdownTextStyle: const TextStyle(color: AppColors.textLight),
+            style: const TextStyle(color: AppColors.textLight),
+            disableLengthCheck: true,
+            onChanged: (phone) {
+              debugPrint('Phone: ${phone.completeNumber}');
+            },
+          ),
+          // Toggle login/signup
+          const SizedBox(height: 16),
+          Center(
+            child: TextButton.icon(
+              onPressed: () {
+                setState(() {
+                  _emailExists = !_emailExists;
+                });
+              },
+              icon: Icon(
+                _emailExists ? Icons.person_add : Icons.login,
+                color: AppColors.secondary,
+                size: 18,
+              ),
+              label: Text(
+                _emailExists 
+                    ? 'Créer un nouveau compte'
+                    : 'J\'ai déjà un compte',
+                style: const TextStyle(color: AppColors.secondary, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Auth action button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _isSaving ? null : () async {
+                // Validate fields
+                final email = _emailController.text.trim();
+                final password = _passwordController.text;
+                if (email.isEmpty || !_isValidEmail(email)) {
+                  _showSnack('Entrez un email valide.');
+                  return;
+                }
+                if (password.isEmpty || password.length < 6) {
+                  _showSnack('Le mot de passe doit contenir au moins 6 caractères.');
+                  return;
+                }
+                if (!_emailExists && _confirmPasswordController.text != password) {
+                  _showSnack('Les mots de passe ne correspondent pas.');
+                  return;
+                }
+                
+                setState(() => _isSaving = true);
+                final success = await _registerOrSignInUser();
+                setState(() => _isSaving = false);
+                
+                if (success && mounted) {
+                  _goNext();
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              child: _isSaving
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : Text(
+                      _emailExists ? 'Se connecter' : 'Créer mon compte',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Security info
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.block.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.security, color: AppColors.primary.withValues(alpha: 0.8)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _emailExists
+                        ? 'Connectez-vous pour retrouver vos analyses.'
+                        : 'Ce mot de passe protège vos données. Choisissez-le avec soin.',
+                    style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1955,7 +2202,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
   Future<bool> _registerOrSignInUser() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
-    final name = _nameAController.text.trim(); // Use partner A name as user name
+    final phone = _phoneController.text.trim();
     
     if (email.isEmpty || password.isEmpty) {
       _showSnack('Email et mot de passe requis.');
@@ -1977,7 +2224,8 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           await AuthService.instance.signUp(
             email: email,
             password: password,
-            name: name,
+            name: email.split('@').first, // Use email prefix as name (names entered later)
+            phone: phone.isNotEmpty ? phone : null,
           );
         } catch (signUpError) {
           // If user already exists, try to sign in instead
@@ -2321,15 +2569,16 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
     }
     debugPrint('>>> _initiatePayment: Validation passed');
     
-    // Authenticate user (Create account or Login) first
-    debugPrint('>>> _initiatePayment: Authenticating user...');
-    final authSuccess = await _registerOrSignInUser();
-    if (!authSuccess) {
-       debugPrint('>>> _initiatePayment: Authentication failed');
-       setState(() => _isProcessingPayment = false);
-       return;
+    // User is already authenticated at step 0
+    // Verify they're still logged in
+    if (!AuthService.instance.isLoggedIn) {
+      debugPrint('>>> _initiatePayment: User not logged in, returning to auth step');
+      setState(() => _currentStep = 0);
+      _pageController.jumpToPage(0);
+      _showSnack('Votre session a expiré. Veuillez vous reconnecter.');
+      return;
     }
-    debugPrint('>>> _initiatePayment: Authentication successful');
+    debugPrint('>>> _initiatePayment: User authenticated');
     
     // NOTE: Profile will be saved AFTER payment success in _fetchAndSetSummary()
     // This avoids RLS policy issues with unauthenticated or newly created users

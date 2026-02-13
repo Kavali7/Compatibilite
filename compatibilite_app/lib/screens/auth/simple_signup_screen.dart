@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl_phone_field/intl_phone_field.dart';
 
 import '../../theme/app_theme.dart';
 import '../../services/auth_service.dart';
@@ -20,6 +21,7 @@ class _SimpleSignupScreenState extends State<SimpleSignupScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _phoneController = TextEditingController();
   
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -32,6 +34,7 @@ class _SimpleSignupScreenState extends State<SimpleSignupScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -48,6 +51,7 @@ class _SimpleSignupScreenState extends State<SimpleSignupScreen> {
         email: _emailController.text.trim(),
         password: _passwordController.text,
         name: _nameController.text.trim(),
+        phone: _phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : null,
       );
 
       if (user != null && mounted) {
@@ -224,6 +228,39 @@ class _SimpleSignupScreenState extends State<SimpleSignupScreen> {
                         return 'Les mots de passe ne correspondent pas';
                       }
                       return null;
+                    },
+                  ),
+                  
+                  const SizedBox(height: 16),
+                  
+                  // Phone field
+                  IntlPhoneField(
+                    controller: _phoneController,
+                    decoration: InputDecoration(
+                      labelText: 'Téléphone (optionnel)',
+                      labelStyle: const TextStyle(color: AppColors.textMuted),
+                      prefixIcon: const Icon(Icons.phone_outlined, color: AppColors.textMuted),
+                      filled: true,
+                      fillColor: AppColors.block.withValues(alpha: 0.6),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.primary),
+                      ),
+                    ),
+                    initialCountryCode: 'BJ',
+                    dropdownTextStyle: const TextStyle(color: AppColors.textLight),
+                    style: const TextStyle(color: AppColors.textLight),
+                    disableLengthCheck: true,
+                    onChanged: (phone) {
+                      debugPrint('Phone: ${phone.completeNumber}');
                     },
                   ),
                   

@@ -107,10 +107,25 @@ class _ServicesCatalogScreenState extends State<ServicesCatalogScreen> {
         );
         break;
       case 'previsions_temporelles':
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const TemporalPurchaseScreen()),
-        );
-        break;
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const TemporalPurchaseScreen()),
+      );
+      break;
+    case 'guidance_quotidienne':
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const TemporalPurchaseScreen(forcedPeriod: 'jour')),
+      );
+      break;
+    case 'mois_decrypte':
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const TemporalPurchaseScreen(forcedPeriod: 'mois')),
+      );
+      break;
+    case 'avenir_annee':
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const TemporalPurchaseScreen(forcedPeriod: 'annee')),
+      );
+      break;
       case 'portrait_ame':
         final plan = PricingService.instance.portraitAmePlan;
         if (plan != null) {

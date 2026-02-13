@@ -24,15 +24,20 @@ import '../widgets/hamburger_menu_overlay.dart';
 import 'dynamic_menu_builder.dart';
 
 /// Screen for purchasing temporal predictions (year, month, day)
+/// If [forcedPeriod] is provided ('jour', 'mois', 'annee'), the period selector
+/// is hidden and the screen is locked to that specific period.
 class TemporalPurchaseScreen extends StatefulWidget {
-  const TemporalPurchaseScreen({super.key});
+  /// Optional: force a specific period (hides the period selector)
+  final String? forcedPeriod;
+  
+  const TemporalPurchaseScreen({super.key, this.forcedPeriod});
 
   @override
   State<TemporalPurchaseScreen> createState() => _TemporalPurchaseScreenState();
 }
 
 class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
-  String _selectedPeriod = 'jour'; // 'jour', 'mois', 'annee'
+  late String _selectedPeriod; // 'jour', 'mois', 'annee'
   DateTime _selectedDate = DateTime.now().add(const Duration(days: 1));
   DateTime? _endDate; // For ranges
   bool _isRange = false;
@@ -69,6 +74,9 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
   @override
   void initState() {
     super.initState();
+    
+    // Apply forced period if provided
+    _selectedPeriod = widget.forcedPeriod ?? 'jour';
     
     // Initialize menu builder
     _menuBuilder = DynamicMenuBuilder(
@@ -161,6 +169,20 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
 
   bool get _isPriceConfigured => _basePrice != null;
 
+  /// Title when screen is locked to a specific period
+  String get _forcedPeriodTitle {
+    switch (widget.forcedPeriod) {
+      case 'jour':
+        return 'Guidance Quotidienne';
+      case 'mois':
+        return 'Votre Mois Décrypté';
+      case 'annee':
+        return 'L\'Avenir de Votre Année';
+      default:
+        return 'Prévisions Temporelles';
+    }
+  }
+
   int get _totalPrice {
     final base = _basePrice;
     if (base == null) return 0;
@@ -245,7 +267,9 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
                         ),
                         Expanded(
                           child: Text(
-                            'Prévisions Temporelles',
+                            widget.forcedPeriod != null 
+                                ? _forcedPeriodTitle 
+                                : 'Prévisions Temporelles',
                             style: GoogleFonts.philosopher(
                               fontSize: 22,
                               fontWeight: FontWeight.w700,
@@ -301,8 +325,9 @@ class _TemporalPurchaseScreenState extends State<TemporalPurchaseScreen> {
           
           const SizedBox(height: 24),
           
-          // Period selector
-          _buildPeriodSelector(),
+          // Period selector (hidden when forced)
+          if (widget.forcedPeriod == null) _buildPeriodSelector(),
+          if (widget.forcedPeriod == null) const SizedBox(height: 20),
           
           const SizedBox(height: 20),
           

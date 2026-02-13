@@ -60,7 +60,7 @@ class ServiceCatalogData {
           'name': item['name'] as String,
           'emoji': item['emoji'] as String,
           'planType': item['plan_type'] as String? ?? 'consultation',
-          'requiresAuth': item['id'] != 'compatibilite_couple',
+          'requiresAuth': true, // All services require auth
           'advantages': (item['advantages'] as List?)?.cast<String>() ?? <String>[],
         }).toList();
         _lastFetch = DateTime.now();
@@ -95,7 +95,7 @@ class ServiceCatalogData {
       'name': 'Compatibilité Couple',
       'emoji': '❤️',
       'planType': 'consultation',
-      'requiresAuth': false,
+      'requiresAuth': true,
       'advantages': [
         'Fini les doutes sur votre relation',
         'Comprenez pourquoi certains moments sont difficiles',
@@ -116,6 +116,48 @@ class ServiceCatalogData {
         'Évitez les erreurs de timing qui fragilisent les couples',
         'Conseils personnalisés selon votre période',
         'Plus de mauvaises surprises',
+      ],
+    },
+    {
+      'id': 'guidance_quotidienne',
+      'name': 'Guidance Quotidienne de Couple',
+      'emoji': '☀️',
+      'planType': 'temporel_jour',
+      'requiresAuth': true,
+      'advantages': [
+        'Un conseil précis pour chaque journée',
+        'Anticipez les tensions avant qu\'elles n\'éclatent',
+        'Sachez exactement quand planifier les conversations importantes',
+        'Basé sur vos données personnelles',
+        'Résultats immédiats',
+      ],
+    },
+    {
+      'id': 'mois_decrypte',
+      'name': 'Votre Mois de Couple Décrypté',
+      'emoji': '📅',
+      'planType': 'temporel_mois',
+      'requiresAuth': true,
+      'advantages': [
+        'Vue d\'ensemble sur les 30 prochains jours',
+        'Identifiez les semaines à risque et les meilleures périodes',
+        'Planifiez les moments importants au bon timing',
+        'Conseils ciblés pour chaque phase du mois',
+        'Investissement rentable pour l\'harmonie du couple',
+      ],
+    },
+    {
+      'id': 'avenir_annee',
+      'name': 'L\'Avenir de Votre Couple Cette Année',
+      'emoji': '🔮',
+      'planType': 'temporel_annee',
+      'requiresAuth': true,
+      'advantages': [
+        'Vision stratégique sur les 12 prochains mois',
+        'Les grandes phases de votre couple révélées',
+        'Évitez les erreurs de timing qui fragilisent les couples',
+        'Inclut le mois en cours et la journée en bonus',
+        'L\'investissement le plus complet pour votre couple',
       ],
     },
     {

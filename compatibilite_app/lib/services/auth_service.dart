@@ -44,6 +44,7 @@ class AuthService {
     required String email,
     required String password,
     String? name,
+    String? phone,
   }) async {
     if (_client == null) {
       debugPrint('AuthService: Supabase not initialized');
@@ -51,10 +52,14 @@ class AuthService {
     }
 
     try {
+      final Map<String, dynamic> metadata = {};
+      if (name != null) metadata['name'] = name;
+      if (phone != null && phone.isNotEmpty) metadata['phone'] = phone;
+      
       final response = await _client!.auth.signUp(
         email: email.trim(),
         password: password,
-        data: name != null ? {'name': name} : null,
+        data: metadata.isNotEmpty ? metadata : null,
       );
 
       if (response.user == null) {
