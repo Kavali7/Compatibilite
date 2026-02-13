@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../services/social_proof_service.dart';
 
-/// A social proof notification banner that shows simulated purchase activity.
-/// Displays messages like "Fatou K. vient de découvrir sa compatibilité, il y a 3 min"
-/// with slide-in/out animations on a periodic timer.
+/// A social proof notification banner that shows activity from backend config.
+/// Loads names, messages, and timing from Supabase via SocialProofService.
+/// Falls back to generating messages internally if no backend data is available.
 class SocialProofBanner extends StatefulWidget {
   /// Whether the banner is enabled (visible) or not
   final bool enabled;
@@ -26,47 +26,9 @@ class _SocialProofBannerState extends State<SocialProofBanner>
   late Animation<Offset> _slideAnimation;
   late Animation<double> _fadeAnimation;
   
-  int _currentIndex = 0;
+  String _currentMessage = '';
   bool _isVisible = false;
-  final _random = Random();
-  
-  // Pool of realistic African first names
-  static const _firstNames = [
-    'Fatou', 'Adama', 'Aïssa', 'Ibrahim', 'Mariam',
-    'Moussa', 'Aminata', 'Ousmane', 'Nafissatou', 'Abdoulaye',
-    'Ramatou', 'Issouf', 'Djamila', 'Koffi', 'Binta',
-    'Youssouf', 'Salimata', 'Dramane', 'Fanta', 'Habib',
-    'Rokia', 'Souleymane', 'Kadiatou', 'Seydou', 'Aicha',
-    'Mamadou', 'Fatoumata', 'Boukary', 'Nana', 'Issa',
-  ];
-  
-  // Last name initials
-  static const _lastInitials = [
-    'K', 'D', 'M', 'T', 'B', 'S', 'O', 'C', 'A', 'N',
-    'H', 'G', 'L', 'Y', 'F', 'Z', 'R', 'W', 'P', 'E',
-  ];
-  
-  // Message templates — {name} will be replaced
-  static const _messageTemplates = [
-    '🎉 {name} vient de découvrir sa compatibilité',
-    '✨ {name} vient d\'acheter son rapport',
-    '❤️ {name} et son partenaire connaissent maintenant leur avenir',
-    '💫 {name} a reçu son analyse de couple',
-    '🔮 {name} vient de consulter ses prévisions',
-    '💕 {name} a débloqué son rapport de compatibilité',
-  ];
-  
-  // Time ago labels
-  static const _timeAgo = [
-    'il y a 2 min',
-    'il y a 3 min',
-    'il y a 5 min',
-    'il y a 7 min',
-    'il y a 12 min',
-    'il y a 15 min',
-    'il y a 20 min',
-    'il y a 25 min',
-  ];
+  bool _dataLoaded = false;
 
   @override
   void initState() {
@@ -94,6 +56,15 @@ class _SocialProofBannerState extends State<SocialProofBanner>
     ));
     
     if (widget.enabled) {
+      _initAndStart();
+    }
+  }
+
+  Future<void> _initAndStart() async {
+    // Load social proof config from backend
+    await SocialProofService.instance.fetchEntries();
+    if (mounted) {
+      setState(() => _dataLoaded = true);
       _startCycle();
     }
   }
@@ -102,7 +73,11 @@ class _SocialProofBannerState extends State<SocialProofBanner>
   void didUpdateWidget(SocialProofBanner oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.enabled && !oldWidget.enabled) {
-      _startCycle();
+      if (_dataLoaded) {
+        _startCycle();
+      } else {
+        _initAndStart();
+      }
     } else if (!widget.enabled && oldWidget.enabled) {
       _stopCycle();
     }
@@ -116,8 +91,12 @@ class _SocialProofBannerState extends State<SocialProofBanner>
   }
 
   void _startCycle() {
-    // Show first notification after a short delay
-    Timer(Duration(seconds: 3 + _random.nextInt(3)), () {
+    final config = SocialProofService.instance.toastConfig;
+    final pauseMin = config?.pauseMinMs ?? 6000;
+    final pauseMax = config?.pauseMaxMs ?? 12000;
+    final delay = 3000 + (pauseMin ~/ 2); // Initial delay
+    
+    Timer(Duration(milliseconds: delay), () {
       if (mounted && widget.enabled) {
         _showNotification();
       }
@@ -135,15 +114,23 @@ class _SocialProofBannerState extends State<SocialProofBanner>
   void _showNotification() {
     if (!mounted || !widget.enabled) return;
     
+    final message = SocialProofService.instance.generateToastMessage();
+    if (message == null) return;
+    
     setState(() {
-      _currentIndex = _random.nextInt(_messageTemplates.length);
+      _currentMessage = message;
       _isVisible = true;
     });
     
     _slideController.forward();
     
-    // Hide after 4 seconds
-    Timer(const Duration(seconds: 4), () {
+    final config = SocialProofService.instance.toastConfig;
+    final showDuration = config?.showDurationMs ?? 4000;
+    final pauseMin = config?.pauseMinMs ?? 6000;
+    final pauseMax = config?.pauseMaxMs ?? 12000;
+    
+    // Hide after configured duration
+    Timer(Duration(milliseconds: showDuration), () {
       if (mounted && _isVisible) {
         _slideController.reverse().then((_) {
           if (mounted) {
@@ -151,22 +138,15 @@ class _SocialProofBannerState extends State<SocialProofBanner>
           }
         });
         
-        // Schedule next notification
-        _cycleTimer = Timer(Duration(seconds: 6 + _random.nextInt(6)), () {
+        // Schedule next notification with configured random pause
+        final pause = pauseMin + (DateTime.now().millisecondsSinceEpoch % (pauseMax - pauseMin));
+        _cycleTimer = Timer(Duration(milliseconds: pause), () {
           if (mounted && widget.enabled) {
             _showNotification();
           }
         });
       }
     });
-  }
-
-  String _generateMessage() {
-    final name = '${_firstNames[_random.nextInt(_firstNames.length)]} '
-        '${_lastInitials[_random.nextInt(_lastInitials.length)]}.';
-    final template = _messageTemplates[_currentIndex];
-    final time = _timeAgo[_random.nextInt(_timeAgo.length)];
-    return '${template.replaceAll('{name}', name)}, $time';
   }
 
   @override
@@ -214,7 +194,7 @@ class _SocialProofBannerState extends State<SocialProofBanner>
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    _generateMessage(),
+                    _currentMessage,
                     style: const TextStyle(
                       color: AppColors.textLight,
                       fontSize: 13,

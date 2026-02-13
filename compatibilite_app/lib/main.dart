@@ -63,27 +63,48 @@ Future<void> main() async {
   debugPrint('Main: SUPABASE_ANON_KEY loaded: ${supabaseAnonKey.isNotEmpty ? "YES" : "NO"}');
   
   try {
+    // Init Supabase with timeout — required before app starts
     await SupabaseManager.init(
       url: supabaseUrl.isNotEmpty ? supabaseUrl : null,
       anonKey: supabaseAnonKey.isNotEmpty ? supabaseAnonKey : null,
+    ).timeout(
+      const Duration(seconds: 3),
+      onTimeout: () {
+        debugPrint('Main: Supabase init timed out after 3s, continuing...');
+      },
     );
     
-    // Load app settings after Supabase is ready
-    await AppSettingsService.instance.fetchSettings();
-    
-    // Load currency settings
-    await CurrencyService.instance.loadCurrency();
-    
-    debugPrint('Main: Initialization complete, starting runApp...');
+    debugPrint('Main: Supabase ready, launching app immediately...');
   } catch (e) {
     debugPrint('Supabase init failed: $e');
     // Continue anyway, app will work with limited functionality
   }
   
+  // Start the app IMMEDIATELY — don't wait for settings/currency
   runApp(const CompatibiliteApp());
+
+  // Load settings and currency in background (non-blocking, fire-and-forget)
+  // These will be available by the time the user interacts
+  _loadBackgroundData();
 
   // Track app open event (fire-and-forget)
   AnalyticsService.instance.logAppOpen();
+}
+
+/// Background data loading — runs after runApp so splash disappears fast
+Future<void> _loadBackgroundData() async {
+  try {
+    await AppSettingsService.instance.fetchSettings();
+    debugPrint('Main: Settings loaded (background)');
+  } catch (e) {
+    debugPrint('Main: Settings load error: $e');
+  }
+  try {
+    await CurrencyService.instance.loadCurrency();
+    debugPrint('Main: Currency loaded (background)');
+  } catch (e) {
+    debugPrint('Main: Currency load error: $e');
+  }
 }
 
 class CompatibiliteApp extends StatelessWidget {
@@ -92,7 +113,7 @@ class CompatibiliteApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Compatibilité & Guidance',
+      title: 'Compatibilit\u00e9 & Guidance',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
       // Use onGenerateRoute to handle payment callback for web

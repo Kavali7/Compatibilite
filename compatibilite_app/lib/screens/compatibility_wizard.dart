@@ -30,6 +30,7 @@ import '../widgets/hamburger_menu_overlay.dart';
 import '../widgets/selectable_card.dart';
 import '../widgets/temporal_report_card.dart';
 import '../widgets/social_proof_banner.dart';
+import '../widgets/testimonial_carousel.dart';
 import 'dynamic_legal_page.dart'; // Added
 // legal_page.dart removed - using dynamic_legal_page.dart and legal_models.dart instead
 
@@ -1352,6 +1353,9 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
             title: 'Des réponses claires, tout de suite',
             subtitle: 'Obtenez votre diagnostic amoureux complet en 1 minute',
           ),
+          const SizedBox(height: 24),
+          // Testimonial carousel from backend
+          const TestimonialCarousel(),
           const SizedBox(height: 24),
           // CTA Button
           AnimatedPrimaryButton(

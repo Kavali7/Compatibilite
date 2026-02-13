@@ -17,6 +17,7 @@ import Prospects from './pages/compatibilite/Prospects';
 import Sessions from './pages/compatibilite/Sessions';
 import TextTypeSettings from './pages/compatibilite/TextTypeSettings';
 import TemporalPurchases from './pages/compatibilite/TemporalPurchases';
+import SocialProofEditor from './pages/SocialProofEditor';
 
 // Cycles de Vie pages
 import CyclesIndex from './pages/cycles/index';
@@ -66,6 +67,7 @@ const router = createBrowserRouter([
           { path: 'sessions', element: <Sessions /> },
           { path: 'text-type-settings', element: <TextTypeSettings /> },
           { path: 'temporal-purchases', element: <TemporalPurchases /> },
+          { path: 'social-proof', element: <SocialProofEditor /> },
           { path: 'legal', element: <div className="page-placeholder"><h2>📃 Pages Légales</h2><p>En cours de développement...</p></div> },
         ],
       },

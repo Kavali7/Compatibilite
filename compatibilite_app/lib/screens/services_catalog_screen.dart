@@ -10,6 +10,8 @@ import '../widgets/animated_background.dart';
 import '../widgets/service_catalog_card.dart';
 import '../widgets/hamburger_menu_overlay.dart';
 import '../widgets/auth_required_wrapper.dart';
+import '../widgets/popularity_badge.dart';
+import '../services/social_proof_service.dart';
 
 // Import all service screens
 import 'compatibility_wizard.dart';
@@ -57,6 +59,7 @@ class _ServicesCatalogScreenState extends State<ServicesCatalogScreen> {
           _menuConfig = config;
         }),
         ServiceCatalogData.loadServices(),
+        SocialProofService.instance.fetchEntries(),
         _menuBuilder.loadConfig(),
       ]);
       if (mounted) {
@@ -267,7 +270,12 @@ class _ServicesCatalogScreenState extends State<ServicesCatalogScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 8),
+
+                  // Popularity counter banner
+                  const PopularityCounterBanner(),
+
+                  const SizedBox(height: 12),
 
                   // Loading or Grid
                   Expanded(

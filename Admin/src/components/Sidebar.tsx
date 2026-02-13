@@ -79,6 +79,7 @@ const MENU_SECTIONS: MenuSection[] = [
         title: '⚙️ Système',
         items: [
             { path: '/settings', label: 'Paramètres', icon: '⚙️' },
+            { path: '/compatibilite/social-proof', label: 'Preuve Sociale', icon: '📢' },
             { path: '/compatibilite/legal', label: 'Pages Légales', icon: '📃' },
             { path: '/cycles/purchases', label: 'Achats Cycles', icon: '🛒' },
         ],
