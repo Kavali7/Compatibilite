@@ -29,10 +29,13 @@ class _TestimonialCarouselState extends State<TestimonialCarousel> {
   }
 
   Future<void> _loadData() async {
-    await SocialProofService.instance.fetchEntries();
-    if (mounted && !_loaded) {
-      setState(() => _loaded = true);
+    // Retry until data is available (handles race condition with other callers)
+    for (int i = 0; i < 5; i++) {
+      await SocialProofService.instance.fetchEntries();
+      if (SocialProofService.instance.testimonialConfigs.isNotEmpty) break;
+      await Future.delayed(const Duration(milliseconds: 500));
     }
+    if (mounted) setState(() => _loaded = true);
   }
 
   @override
