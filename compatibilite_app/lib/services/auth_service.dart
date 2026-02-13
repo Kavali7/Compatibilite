@@ -78,6 +78,9 @@ class AuthService {
         email: userEmail,
         name: name,
       );
+
+      // Track successful signup → triggers CompleteRegistration pixel
+      AnalyticsService.instance.logSignupSuccess(userEmail);
       
       return _currentUser;
     } catch (e) {
@@ -119,6 +122,9 @@ class AuthService {
         email: userEmail,
         name: userName,
       );
+
+      // Track successful login
+      AnalyticsService.instance.logLoginSuccess(userEmail);
 
       return await _checkAndUpdateSubscription(_currentUser!);
     } catch (e) {

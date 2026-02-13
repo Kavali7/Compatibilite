@@ -300,6 +300,9 @@ class KkiapayService {
   }) {
     debugPrint('>>> KKIAPAY: startPayment appelé');
     debugPrint('>>> KKIAPAY: kIsWeb=$kIsWeb');
+
+    // Track InitiateCheckout → triggers pixel event
+    AnalyticsService.instance.logPaymentInitiate(planType: reason, amount: amount);
     
     if (kIsWeb) {
       debugPrint('>>> KKIAPAY: Utilisation du flow WEB');
