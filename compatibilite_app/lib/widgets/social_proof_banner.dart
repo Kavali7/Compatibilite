@@ -40,7 +40,7 @@ class _SocialProofBannerState extends State<SocialProofBanner>
     );
     
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 1.5),
+      begin: const Offset(0, -1.5),
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _slideController,
@@ -154,7 +154,7 @@ class _SocialProofBannerState extends State<SocialProofBanner>
     if (!widget.enabled) return const SizedBox.shrink();
     
     return Positioned(
-      bottom: 80,
+      top: 80,
       left: 16,
       right: 16,
       child: SlideTransition(
@@ -197,7 +197,7 @@ class _SocialProofBannerState extends State<SocialProofBanner>
                     _currentMessage,
                     style: const TextStyle(
                       color: AppColors.textLight,
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),
                     maxLines: 2,
