@@ -4,6 +4,7 @@ import 'package:intl_phone_field/intl_phone_field.dart';
 
 import '../../theme/app_theme.dart';
 import '../../services/auth_service.dart';
+import '../../services/app_settings_service.dart';
 import '../../widgets/animated_background.dart';
 
 /// Simple signup screen - email, password, name only
@@ -237,7 +238,7 @@ class _SimpleSignupScreenState extends State<SimpleSignupScreen> {
                   IntlPhoneField(
                     controller: _phoneController,
                     decoration: InputDecoration(
-                      labelText: 'Téléphone (optionnel)',
+                      labelText: 'Téléphone',
                       labelStyle: const TextStyle(color: AppColors.textMuted),
                       prefixIcon: const Icon(Icons.phone_outlined, color: AppColors.textMuted),
                       filled: true,
@@ -255,7 +256,7 @@ class _SimpleSignupScreenState extends State<SimpleSignupScreen> {
                         borderSide: const BorderSide(color: AppColors.primary),
                       ),
                     ),
-                    initialCountryCode: 'BJ',
+                    initialCountryCode: AppSettingsService.instance.defaultCountryCode,
                     dropdownTextStyle: const TextStyle(color: AppColors.textLight),
                     style: const TextStyle(color: AppColors.textLight),
                     disableLengthCheck: true,

@@ -17,13 +17,12 @@ class _TestimonialCarouselState extends State<TestimonialCarousel> {
   late PageController _pageController;
   Timer? _autoScrollTimer;
   int _currentPage = 0;
-
   bool _loaded = false;
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(viewportFraction: 0.88);
+    _pageController = PageController(viewportFraction: 0.92);
     _startAutoScroll();
     _loadData();
   }
@@ -74,13 +73,13 @@ class _TestimonialCarouselState extends State<TestimonialCarousel> {
           child: Row(
             children: [
               const Icon(Icons.format_quote_rounded, 
-                color: AppColors.primary, size: 22),
+                color: AppColors.primary, size: 24),
               const SizedBox(width: 8),
               Text(
                 'Ce qu\'ils en disent',
                 style: TextStyle(
                   color: AppColors.textLight.withValues(alpha: 0.9),
-                  fontSize: 16,
+                  fontSize: 18,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.3,
                 ),
@@ -88,11 +87,11 @@ class _TestimonialCarouselState extends State<TestimonialCarousel> {
             ],
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         
-        // Carousel
+        // Carousel — square-ish cards
         SizedBox(
-          height: 180,
+          height: 200,
           child: PageView.builder(
             controller: _pageController,
             itemCount: testimonials.length,
@@ -134,24 +133,24 @@ class _TestimonialCarouselState extends State<TestimonialCarousel> {
       margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        // Glassmorphism effect
+        // Distinct look — more opaque background, squarish shape
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Colors.white.withValues(alpha: 0.08),
-            Colors.white.withValues(alpha: 0.03),
+            AppColors.primary.withValues(alpha: 0.12),
+            AppColors.secondary.withValues(alpha: 0.08),
           ],
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(12), // Squarish, not pill-shaped
         border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.2),
-          width: 1,
+          color: AppColors.primary.withValues(alpha: 0.35),
+          width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 16,
+            color: AppColors.primary.withValues(alpha: 0.12),
+            blurRadius: 12,
             offset: const Offset(0, 4),
           ),
         ],
@@ -159,7 +158,7 @@ class _TestimonialCarouselState extends State<TestimonialCarousel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Stars
+          // Stars — bigger
           Row(
             children: List.generate(5, (i) {
               return Icon(
@@ -167,19 +166,19 @@ class _TestimonialCarouselState extends State<TestimonialCarousel> {
                     ? Icons.star_rounded
                     : Icons.star_outline_rounded,
                 color: Colors.amber,
-                size: 16,
+                size: 20,
               );
             }),
           ),
           const SizedBox(height: 10),
           
-          // Quote
+          // Quote — larger font
           Expanded(
             child: Text(
               '"${entry.testimonialText ?? ""}"',
               style: TextStyle(
-                color: AppColors.textLight.withValues(alpha: 0.85),
-                fontSize: 13,
+                color: AppColors.textLight.withValues(alpha: 0.9),
+                fontSize: 14,
                 fontStyle: FontStyle.italic,
                 height: 1.4,
               ),
@@ -195,8 +194,8 @@ class _TestimonialCarouselState extends State<TestimonialCarousel> {
             children: [
               // Avatar circle with initial
               Container(
-                width: 30,
-                height: 30,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [AppColors.primary, AppColors.secondary],
@@ -208,7 +207,7 @@ class _TestimonialCarouselState extends State<TestimonialCarousel> {
                   (entry.testimonialName ?? 'A')[0].toUpperCase(),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 13,
+                    fontSize: 14,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -218,7 +217,7 @@ class _TestimonialCarouselState extends State<TestimonialCarousel> {
                 entry.testimonialName ?? 'Anonyme',
                 style: const TextStyle(
                   color: AppColors.primary,
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -233,7 +232,7 @@ class _TestimonialCarouselState extends State<TestimonialCarousel> {
                 'Vérifié',
                 style: TextStyle(
                   color: AppColors.textLight.withValues(alpha: 0.5),
-                  fontSize: 11,
+                  fontSize: 12,
                 ),
               ),
             ],

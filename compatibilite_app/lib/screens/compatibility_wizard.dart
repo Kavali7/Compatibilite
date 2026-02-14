@@ -12,6 +12,7 @@ import '../models/legal_models.dart'; // Added
 import '../services/compatibility_repository.dart';
 import '../services/supabase_manager.dart';
 import '../services/auth_service.dart';
+import '../services/app_settings_service.dart';
 import '../services/pricing_service.dart';
 import '../services/kkiapay_service.dart';
 import '../services/payment/fedapay_gateway.dart';
@@ -1166,7 +1167,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           IntlPhoneField(
             controller: _phoneController,
             decoration: InputDecoration(
-              labelText: 'Téléphone (optionnel)',
+              labelText: 'Téléphone',
               labelStyle: const TextStyle(color: AppColors.textMuted),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -1181,7 +1182,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
                 borderSide: const BorderSide(color: AppColors.primary),
               ),
             ),
-            initialCountryCode: 'BJ',
+            initialCountryCode: AppSettingsService.instance.defaultCountryCode,
             dropdownTextStyle: const TextStyle(color: AppColors.textLight),
             style: const TextStyle(color: AppColors.textLight),
             disableLengthCheck: true,
@@ -1337,6 +1338,9 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
             ),
           ),
           const SizedBox(height: 16),
+          // Testimonial carousel — top placement for visibility
+          const TestimonialCarousel(),
+          const SizedBox(height: 16),
           // Feature cards
           _buildFeatureCard(
             icon: Icons.check_circle_outline_rounded,
@@ -1355,9 +1359,6 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
             title: 'Des réponses claires, tout de suite',
             subtitle: 'Obtenez votre diagnostic amoureux complet en 1 minute',
           ),
-          const SizedBox(height: 24),
-          // Testimonial carousel from backend
-          const TestimonialCarousel(),
           const SizedBox(height: 24),
           // CTA Button
           AnimatedPrimaryButton(
@@ -2092,7 +2093,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
           IntlPhoneField(
             controller: _phoneController,
             decoration: InputDecoration(
-              labelText: 'Téléphone (optionnel)',
+              labelText: 'Téléphone',
               labelStyle: const TextStyle(color: AppColors.textMuted),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -2107,7 +2108,7 @@ class _CompatibilityWizardState extends State<CompatibilityWizard> {
                 borderSide: const BorderSide(color: AppColors.primary),
               ),
             ),
-            initialCountryCode: 'BJ', // Bénin par défaut
+            initialCountryCode: AppSettingsService.instance.defaultCountryCode,
             dropdownTextStyle: const TextStyle(color: AppColors.textLight),
             style: const TextStyle(color: AppColors.textLight),
             disableLengthCheck: true,

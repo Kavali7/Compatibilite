@@ -11,6 +11,7 @@ class AppSettingsService {
   String _primaryService = 'compatibilite';
   String _contactEmail = 'growpeak.agence@gmail.com';
   String _contactWhatsApp = '+22654255584';
+  String _defaultCountryCode = 'FR';
   Map<String, bool> _paymentMethods = {'kkiapay': true, 'fedapay': true};
   bool _settingsLoaded = false;
   
@@ -34,6 +35,9 @@ class AppSettingsService {
 
   /// Get the contact WhatsApp number
   String get contactWhatsApp => _contactWhatsApp;
+
+  /// Get the default country code for phone fields
+  String get defaultCountryCode => _defaultCountryCode;
 
   /// Check if a payment method is enabled
   bool isPaymentMethodEnabled(String method) => _paymentMethods[method.toLowerCase()] ?? true;
@@ -103,6 +107,23 @@ class AppSettingsService {
 
       debugPrint('AppSettingsService: Primary service = $_primaryService');
       debugPrint('AppSettingsService: Contact = $_contactEmail, WhatsApp = $_contactWhatsApp');
+
+      // Fetch default country code
+      final countryResponse = await client
+          .from('app_settings')
+          .select('value')
+          .eq('key', 'default_country_code')
+          .maybeSingle();
+
+      if (countryResponse != null && countryResponse['value'] != null) {
+        final value = countryResponse['value'] as Map<String, dynamic>;
+        final code = value['code'] as String?;
+        if (code != null && code.isNotEmpty) {
+          _defaultCountryCode = code.toUpperCase();
+        }
+      }
+      debugPrint('AppSettingsService: Default country = $_defaultCountryCode');
+
       _settingsLoaded = true;
       
       // Also fetch report sections
