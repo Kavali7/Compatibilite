@@ -136,18 +136,18 @@ class _ServiceCatalogCardState extends State<ServiceCatalogCard>
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
 
                     // Per-service popularity badge
                     if (widget.serviceId != null)
                       PopularityBadge(serviceId: widget.serviceId),
 
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     
-                    // Advantages list - compact, no Expanded
-                    ...widget.advantages.take(5).map((advantage) {
+                    // Advantages list - compact, limit to 4
+                    ...widget.advantages.take(4).map((advantage) {
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
+                        padding: const EdgeInsets.only(bottom: 3),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -156,7 +156,7 @@ class _ServiceCatalogCardState extends State<ServiceCatalogCard>
                               style: TextStyle(
                                 color: AppColors.primary,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 12,
+                                fontSize: 11,
                               ),
                             ),
                             Expanded(
@@ -164,10 +164,10 @@ class _ServiceCatalogCardState extends State<ServiceCatalogCard>
                                 advantage,
                                 style: TextStyle(
                                   color: AppColors.textLight.withValues(alpha: 0.9),
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   height: 1.3,
                                 ),
-                                maxLines: 2,
+                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -176,7 +176,7 @@ class _ServiceCatalogCardState extends State<ServiceCatalogCard>
                       );
                     }),
                     
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     
                     // Price and CTA
                     Row(
