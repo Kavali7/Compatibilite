@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:html' as html;
 import '../services/menu_config_service.dart';
 import '../services/auth_service.dart';
 import '../services/app_settings_service.dart';
@@ -154,6 +156,17 @@ class DynamicMenuBuilder {
       ));
     }
     
+    // Rafraîchir la page
+    entries.add(MenuEntry(
+      label: '🔄 Rafraîchir la page',
+      onTap: () {
+        if (kIsWeb) {
+          // Use JS interop to reload the page
+          _reloadPage();
+        }
+      },
+    ));
+    
     return entries;
   }
   
@@ -161,6 +174,10 @@ class DynamicMenuBuilder {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
+  }
+  
+  void _reloadPage() {
+    html.window.location.reload();
   }
   
   Future<void> _launchEmail(String email) async {
